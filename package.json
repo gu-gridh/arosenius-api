@@ -1,0 +1,16 @@
+{
+  "name": "arosenius-admin-api",
+  "version": "1.0.0",
+  "description": "",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Trausti Dagsson/CDH",
+  "license": "ISC",
+  "dependencies": {
+    "elasticsearch": "^11.0.1",
+    "express": "^4.13.4",
+    "underscore": "^1.8.3"
+  }
+}
