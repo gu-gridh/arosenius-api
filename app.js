@@ -14,30 +14,18 @@ app.get('/', function(req, res) {
 });
 
 app.get('/documents', function(req, res) {
-	client.search({
-		index: 'arosenius',
-		type: 'artwork',
-		size: 30,
-		from: 0
-	}, function(error, response) {
-		res.json({
-			total: response.hits.total,
-			documents: _.map(response.hits.hits, function(item) {
-				var ret = item._source;
-				ret.id = item._id;
-				return ret;
-			})
-		});
-	});
-});
+	var query = [];
+	if (req.query.museum) {
+		query.push('collection.museum: "'+req.query.museum+'"');
+	}
+	if (req.query.type )
 
-app.get('/documents/museum/:museum', function(req, res) {
 	client.search({
 		index: 'arosenius',
 		type: 'artwork',
 		size: 30,
 		from: 0,
-		q: 'collection.museum: "'+req.params.museum+'"'
+		q: query.length > 0 ? query.join(', ') : null
 	}, function(error, response) {
 		res.json({
 			total: response.hits.total,
@@ -70,6 +58,54 @@ app.get('/museums', function(req, res) {
 	}, function(error, response) {
 		res.json(_.map(response.aggregations.museums.buckets, function(museum) {
 			return museum.key;
+		}));
+	});
+});
+
+app.get('/technic', function(req, res) {
+	client.search({
+		index: 'arosenius',
+		type: 'artwork',
+		body: {
+			"aggs": {
+				"technic": {
+					"terms": {
+						"field": "technic.value",
+						"size": 50,
+						"order": {
+							"_count": "desc"
+						}
+					}
+				}
+			}
+		}
+	}, function(error, response) {
+		res.json(_.map(response.aggregations.technic.buckets, function(technic) {
+			return technic.key;
+		}));
+	});
+});
+
+app.get('/material', function(req, res) {
+	client.search({
+		index: 'arosenius',
+		type: 'artwork',
+		body: {
+			"aggs": {
+				"material": {
+					"terms": {
+						"field": "material",
+						"size": 50,
+						"order": {
+							"_count": "desc"
+						}
+					}
+				}
+			}
+		}
+	}, function(error, response) {
+		res.json(_.map(response.aggregations.material.buckets, function(material) {
+			return material.key;
 		}));
 	});
 });
