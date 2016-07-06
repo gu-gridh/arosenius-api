@@ -4,10 +4,12 @@ var _ = require('underscore');
 var elasticsearch = require('elasticsearch');
 var IMGR = require('imgr').IMGR;
 
+var config = require('./config');
+
 var app = express();
 
 var client = new elasticsearch.Client({
-	host: '127.0.0.1:9200'
+	host: config.es_host
 //	log: 'trace'
 });
 
@@ -256,7 +258,7 @@ var imgr = new IMGR({
 	cache_dir: '/tmp/imgr'
 });
 
-imgr.serve('C:\\Users\\Trausti\\Documents\\Vinna\\Arosenius\\arosenius-imagedata')
+imgr.serve(config.image_path)
 	.namespace('/images')
 	.urlRewrite('/:path/:size/:file.:ext')
 	.using(app);
