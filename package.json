@@ -9,6 +9,7 @@
   "author": "Trausti Dagsson/CDH",
   "license": "ISC",
   "dependencies": {
+    "body-parser": "^1.15.2",
     "elasticsearch": "^11.0.1",
     "express": "^4.13.4",
     "underscore": "^1.8.3"
