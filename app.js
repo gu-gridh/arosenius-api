@@ -7,10 +7,27 @@ var IMGR = require('imgr').IMGR;
 var config = require('./config');
 
 var app = express();
+var auth = require('basic-auth')
 
 var client = new elasticsearch.Client({
 	host: config.es_host
 //	log: 'trace'
+});
+
+var auth = require('basic-auth');
+
+app.use(function(req, res, next) {
+	var user = auth(req);
+
+	if (user === undefined || user['name'] !== 'arosenius' || user['pass'] !== 'dBe55yrPMK') {
+		res.setHeader('WWW-Authenticate', 'Basic realm="AroseniusAdminApi"');
+		res.header('Access-Control-Allow-Origin', '*');
+		res.header('Access-Control-Allow-Methods', 'GET,HEAD,OPTIONS,POST,PUT')
+		res.header('Access-Control-Allow-Headers', 'Authorization,Access-Control-Allow-Headers,Origin,Accept,X-Requested-With,Content-Type,Access-Control-Request-Method,Access-Control-Allow-Headers')
+        res.end('Unauthorized');
+    } else {
+        next();
+    }
 });
 
 app.use(bodyParser.urlencoded({
@@ -21,16 +38,20 @@ app.use(bodyParser.json());
 
 app.all('*', function(req, res, next) {
 	res.header('Access-Control-Allow-Origin', '*');
-	res.header('Access-Control-Allow-Headers', 'X-Requested-With');
-	res.header('Access-Control-Allow-Credentials', 'true')
 	res.header('Access-Control-Allow-Methods', 'GET,HEAD,OPTIONS,POST,PUT')
-	res.header('Access-Control-Allow-Headers', 'Access-Control-Allow-Headers,Origin,Accept,X-Requested-With,Content-Type,Access-Control-Request-Method,Access-Control-Allow-Headers')
+	res.header('Access-Control-Allow-Headers', 'Authorization,Access-Control-Allow-Headers,Origin,Accept,X-Requested-With,Content-Type,Access-Control-Request-Method,Access-Control-Allow-Headers')
 	next();
 });
 
 app.get('/', function(req, res) {
 	res.send('Arosenius API');
 });
+
+app.get('/login', function(req, res) {
+	res.json({
+		login: 'success'
+	});
+})
 
 app.get('/documents', function(req, res) {
 	var pageSize = 30;
@@ -45,6 +66,22 @@ app.get('/documents', function(req, res) {
 		query.push('bundle: "'+req.query.bundle+'"');
 	}
 
+	if (req.query.search) {
+		query.push('(title: "*'+req.query.search+'*" OR description: "*'+req.query.search+'*")');
+	}
+
+	if (req.query.type) {
+		query.push('type: "'+req.query.type+'"');
+	}
+
+	if (req.query.letter_from) {
+		query.push('(sender.firstname: "*'+req.query.letter_from+'*" OR sender.surname: "*'+req.query.letter_from+'*")');
+	}
+
+	if (req.query.letter_to) {
+		query.push('(recipient.firstname: "*'+req.query.letter_to+'*" OR recipient.surname: "*'+req.query.letter_to+'*")');
+	}
+
 	client.search({
 		index: 'arosenius',
 		type: 'artwork',
@@ -54,7 +91,7 @@ app.get('/documents', function(req, res) {
 			'bundle',
 			'page.id'
 		],
-		q: query.length > 0 ? query.join(', ') : null
+		q: query.length > 0 ? query.join(' AND ') : null
 	}, function(error, response) {
 		res.json({
 			total: response.hits.total,
@@ -146,7 +183,9 @@ app.get('/museums', function(req, res) {
 		}
 	}, function(error, response) {
 		res.json(_.map(response.aggregations.museums.buckets, function(museum) {
-			return museum.key;
+			return {
+				museum: museum.key
+			};
 		}));
 	});
 });
