@@ -19,7 +19,10 @@ var auth = require('basic-auth');
 app.use(function(req, res, next) {
 	var user = auth(req);
 
-	if (user === undefined || user['name'] !== 'arosenius' || user['pass'] !== 'dBe55yrPMK') {
+	if (req.path.substr(0, 7) == '/images') {
+		next();
+	}
+	else if (user === undefined || user['name'] !== 'arosenius' || user['pass'] !== 'dBe55yrPMK') {
 		res.setHeader('WWW-Authenticate', 'Basic realm="AroseniusAdminApi"');
 		res.header('Access-Control-Allow-Origin', '*');
 		res.header('Access-Control-Allow-Methods', 'GET,HEAD,OPTIONS,POST,PUT')
