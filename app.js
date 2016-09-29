@@ -22,7 +22,7 @@ app.use(function(req, res, next) {
 	if (req.path.substr(0, 7) == '/images') {
 		next();
 	}
-	else if (user === undefined || user['name'] !== 'arosenius' || user['pass'] !== 'dBe55yrPMK') {
+	else if (req.headers.host.toLowerCase() != 'localhost:3000' && (user === undefined || user['name'] !== 'arosenius' || user['pass'] !== 'dBe55yrPMK')) {
 		res.setHeader('WWW-Authenticate', 'Basic realm="AroseniusAdminApi"');
 		res.header('Access-Control-Allow-Origin', '*');
 		res.header('Access-Control-Allow-Methods', 'GET,HEAD,OPTIONS,POST,PUT')
@@ -85,6 +85,18 @@ app.get('/documents', function(req, res) {
 		query.push('(recipient.firstname: "*'+req.query.letter_to+'*" OR recipient.surname: "*'+req.query.letter_to+'*")');
 	}
 
+	if (req.query.lightness) {
+		query.push('color.dominant.hsv.v: ['+(req.query.lightness-10)+' TO '+(req.query.lightness+10)+']')
+	}
+
+	if (req.query.hue) {
+		query.push('color.dominant.hsv.h: ['+(req.query.hue-10)+' TO '+(req.query.hue+10)+']')
+	}
+
+	if (req.query.saturation) {
+		query.push('color.dominant.hsv.s: ['+(req.query.saturation-10)+' TO '+(req.query.saturation+10)+']')
+	}
+
 	client.search({
 		index: 'arosenius',
 		type: 'artwork',
@@ -124,6 +136,19 @@ app.get('/bundle/:bundle', function(req, res) {
 		});
 	});
 
+});
+
+app.post('/bundle/:id', function(req, res) {
+	client.update({
+		index: 'arosenius',
+		type: 'bundle',
+		id: req.body.id,
+		body: {
+			doc: req.body
+		}
+	}, function(error, response) {
+		res.json({response: 'post'});
+	});
 });
 
 app.put('/document/:id', function(req, res) {
