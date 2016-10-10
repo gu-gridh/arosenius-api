@@ -19,10 +19,10 @@ var auth = require('basic-auth');
 app.use(function(req, res, next) {
 	var user = auth(req);
 
-	if (req.path.substr(0, 7) == '/images') {
+	if (req.path.substr(0, 7).toLowerCase() != '/admin/') {
 		next();
 	}
-	else if (req.headers.host.toLowerCase() != 'localhost:3000' && (user === undefined || user['name'] !== 'arosenius' || user['pass'] !== 'dBe55yrPMK')) {
+	else if (user === undefined || user['name'] !== 'arosenius' || user['pass'] !== 'dBe55yrPMK') {
 		res.setHeader('WWW-Authenticate', 'Basic realm="AroseniusAdminApi"');
 		res.header('Access-Control-Allow-Origin', '*');
 		res.header('Access-Control-Allow-Methods', 'GET,HEAD,OPTIONS,POST,PUT')
@@ -46,17 +46,13 @@ app.all('*', function(req, res, next) {
 	next();
 });
 
-app.get('/', function(req, res) {
-	res.send('Arosenius API');
-});
-
-app.get('/login', function(req, res) {
+var adminLogin = function(req, res) {
 	res.json({
 		login: 'success'
 	});
-})
+};
 
-app.get('/documents', function(req, res) {
+var getDocuments = function(req, res) {
 	var pageSize = 30;
 
 	var query = [];
@@ -117,9 +113,9 @@ app.get('/documents', function(req, res) {
 			})
 		});
 	});
-});
+};
 
-app.get('/bundle/:bundle', function(req, res) {
+var getBundle = function(req, res) {
 	var pageSize = 30;
 
 	var query = [];
@@ -136,9 +132,9 @@ app.get('/bundle/:bundle', function(req, res) {
 		});
 	});
 
-});
+};
 
-app.post('/bundle/:id', function(req, res) {
+var postBundle = function(req, res) {
 	client.update({
 		index: 'arosenius',
 		type: 'bundle',
@@ -149,14 +145,14 @@ app.post('/bundle/:id', function(req, res) {
 	}, function(error, response) {
 		res.json({response: 'post'});
 	});
-});
+};
 
-app.put('/document/:id', function(req, res) {
+var putDocument = function(req, res) {
 	console.log(req);
 	res.json({response: 'put'});
-});
+};
 
-app.post('/document/:id', function(req, res) {
+var postDocument = function(req, res) {
 	client.update({
 		index: 'arosenius',
 		type: 'artwork',
@@ -167,9 +163,9 @@ app.post('/document/:id', function(req, res) {
 	}, function(error, response) {
 		res.json({response: 'post'});
 	});
-});
+};
 
-app.get('/document/:id', function(req, res) {
+var getDocument = function(req, res) {
 	var query = [];
 	if (req.query.museum) {
 		query.push('collection.museum: "'+req.query.museum+'"');
@@ -190,9 +186,9 @@ app.get('/document/:id', function(req, res) {
 			})[0]
 		});
 	});
-});
+};
 
-app.get('/museums', function(req, res) {
+var getMuseums = function(req, res) {
 	client.search({
 		index: 'arosenius',
 		type: 'artwork',
@@ -216,9 +212,9 @@ app.get('/museums', function(req, res) {
 			};
 		}));
 	});
-});
+};
 
-app.get('/bundles', function(req, res) {
+var getBundles = function(req, res) {
 	var pageSize = 30;
 
 	var query = [];
@@ -246,10 +242,9 @@ app.get('/bundles', function(req, res) {
 			})
 		});
 	});
-});
+};
 
-
-app.get('/technic', function(req, res) {
+var getTechnic = function(req, res) {
 	client.search({
 		index: 'arosenius',
 		type: 'artwork',
@@ -271,9 +266,9 @@ app.get('/technic', function(req, res) {
 			return technic.key;
 		}));
 	});
-});
+};
 
-app.get('/material', function(req, res) {
+var getMaterial = function(req, res) {
 	client.search({
 		index: 'arosenius',
 		type: 'artwork',
@@ -295,9 +290,9 @@ app.get('/material', function(req, res) {
 			return material.key;
 		}));
 	});
-});
+};
 
-app.get('/types', function(req, res) {
+var getTypes = function(req, res) {
 	client.search({
 		index: 'arosenius',
 		type: 'artwork',
@@ -319,7 +314,7 @@ app.get('/types', function(req, res) {
 			return type.key;
 		}));
 	});
-});
+};
 
 var imgr = new IMGR({
 	cache_dir: '/tmp/imgr'
@@ -329,6 +324,29 @@ imgr.serve(config.image_path)
 	.namespace('/images')
 	.urlRewrite('/:path/:size/:file.:ext')
 	.using(app);
+
+app.get('/', function(req, res) {
+	res.send('Arosenius API');
+});
+
+app.get('/documents', getDocuments);
+app.get('/bundle/:bundle', getBundle);
+app.get('/document/:id', getDocument);
+app.get('/bundles', getBundles);
+app.get('/museums', getMuseums);
+app.get('/technic', getTechnic);
+app.get('/material', getMaterial);
+app.get('/types', getTypes);
+
+app.get('/admin/login', adminLogin);
+app.get('/admin/documents', getDocuments);
+app.get('/admin/bundle/:bundle', getBundle);
+app.post('/admin/bundle/:id', postBundle);
+app.put('/admin/document/:id', putDocument);
+app.post('/admin/document/:id', postDocument);
+app.get('/admin/document/:id', getDocument);
+app.get('/admin/bundles', getBundles);
+app.get('/admin/museums', getMuseums);
 
 app.listen(3000, function () {
   console.log('Arosenius project API');
