@@ -81,16 +81,16 @@ var getDocuments = function(req, res) {
 		query.push('(recipient.firstname: "*'+req.query.letter_to+'*" OR recipient.surname: "*'+req.query.letter_to+'*")');
 	}
 
-	if (req.query.lightness) {
-		query.push('color.dominant.hsv.v: ['+(req.query.lightness-10)+' TO '+(req.query.lightness+10)+']')
-	}
-
 	if (req.query.hue) {
 		query.push('color.dominant.hsv.h: ['+(req.query.hue-10)+' TO '+(req.query.hue+10)+']')
 	}
 
 	if (req.query.saturation) {
 		query.push('color.dominant.hsv.s: ['+(req.query.saturation-10)+' TO '+(req.query.saturation+10)+']')
+	}
+
+	if (req.query.lightness) {
+		query.push('color.dominant.hsv.v: ['+(req.query.lightness-10)+' TO '+(req.query.lightness+10)+']')
 	}
 
 	client.search({
@@ -105,6 +105,7 @@ var getDocuments = function(req, res) {
 		q: query.length > 0 ? query.join(' AND ') : null
 	}, function(error, response) {
 		res.json({
+			query: query.length > 0 ? query.join(' AND ') : null,
 			total: response.hits.total,
 			documents: _.map(response.hits.hits, function(item) {
 				var ret = item._source;
