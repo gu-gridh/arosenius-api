@@ -82,15 +82,15 @@ var getDocuments = function(req, res) {
 	}
 
 	if (req.query.hue) {
-		query.push('color.dominant.hsv.h: ['+(req.query.hue-10)+' TO '+(req.query.hue+10)+']')
+		query.push('color.dominant.hsv.h: ['+(Number(req.query.hue)-10)+' TO '+(Number(req.query.hue)+10)+']')
 	}
 
 	if (req.query.saturation) {
-		query.push('color.dominant.hsv.s: ['+(req.query.saturation-10)+' TO '+(req.query.saturation+10)+']')
+		query.push('color.dominant.hsv.s: ['+(Number(req.query.saturation)-10)+' TO '+(Number(req.query.saturation)+10)+']')
 	}
 
 	if (req.query.lightness) {
-		query.push('color.dominant.hsv.v: ['+(req.query.lightness-10)+' TO '+(req.query.lightness+10)+']')
+		query.push('color.dominant.hsv.v: ['+(Number(req.query.lightness)-10)+' TO '+(Number(req.query.lightness)+10)+']')
 	}
 
 	client.search({
