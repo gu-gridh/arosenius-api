@@ -52,45 +52,151 @@ var adminLogin = function(req, res) {
 	});
 };
 
+function QueryBuilder() {
+	this.queryBody = {};
+}
+
+QueryBuilder.prototype.addTerm = function(term, value) {
+	if (!this.queryBody['query']) {
+		this.queryBody['query'] = {};
+	}
+	if (!this.queryBody.query['term']) {
+		this.queryBody.query['term'] = {};
+	}
+
+	this.queryBody.query.term[term] = value;
+}
+
+QueryBuilder.prototype.addBool = function(terms, type, caseSensitive) {
+	if (!this.queryBody['query']) {
+		this.queryBody['query'] = {};
+	}
+	if (!this.queryBody.query['bool']) {
+		this.queryBody.query['bool'] = {};
+	}
+	if (!this.queryBody.query.bool['must']) {
+		this.queryBody.query.bool['must'] = [];
+	}
+
+	var shouldObj = {
+		bool: {}
+	};
+	shouldObj.bool[type] = [];
+
+	for (var i = 0; i<terms.length; i++) {
+		var propertyName = terms[i][2] ? terms[i][2] : 'term';
+		var termObj = {};
+		termObj[propertyName] = {}
+
+		if (caseSensitive || propertyName != 'term') {
+			termObj[propertyName][terms[i][0]] = terms[i][1];
+		}
+		else {
+			termObj[propertyName][terms[i][0]] = terms[i][1].toLowerCase();
+		}
+
+		shouldObj.bool[type].push(termObj);
+	}
+
+	this.queryBody.query.bool.must.push(shouldObj)
+}
+
 var getDocuments = function(req, res) {
-	var pageSize = 30;
+	var colorMargins = 20;
+	var pageSize = 100;
 
 	var query = [];
 
+	var queryBuilder = new QueryBuilder();
+
 	if (req.query.museum) {
-		query.push('collection.museum: "'+req.query.museum+'"');
+		queryBuilder.addBool([
+			['collection.museum', req.query.museum]
+		], 'should', true);
 	}
 
 	if (req.query.bundle) {
-		query.push('bundle: "'+req.query.bundle+'"');
+		queryBuilder.addBool([
+			['bundle', req.query.bundle]
+		], 'should');
 	}
 
 	if (req.query.search) {
-		query.push('(title: "*'+req.query.search+'*" OR description: "*'+req.query.search+'*")');
+		var searchTerms = req.query.search.split(' ');
+
+		var terms = [];
+		for (var i = 0; i<searchTerms.length; i++) {		
+			terms.push(['title', searchTerms[i]]);
+			terms.push(['description', searchTerms[i]]);
+		}
+		queryBuilder.addBool(terms, 'should');
 	}
 
 	if (req.query.type) {
-		query.push('type: "'+req.query.type+'"');
+		queryBuilder.addBool([
+			['type', req.query.type]
+		], 'should');
 	}
 
 	if (req.query.letter_from) {
-		query.push('(sender.firstname: "*'+req.query.letter_from+'*" OR sender.surname: "*'+req.query.letter_from+'*")');
+		var searchTerms = req.query.letter_from.split(' ');
+
+		for (var i = 0; i<searchTerms.length; i++) {		
+			queryBuilder.addBool([
+				['sender.firstname', searchTerms[i]],
+				['sender.surname', searchTerms[i]]
+			], 'should');
+		}
 	}
 
 	if (req.query.letter_to) {
-		query.push('(recipient.firstname: "*'+req.query.letter_to+'*" OR recipient.surname: "*'+req.query.letter_to+'*")');
+		var searchTerms = req.query.letter_to.split(' ');
+
+		for (var i = 0; i<searchTerms.length; i++) {		
+			queryBuilder.addBool([
+				['recipient.firstname', searchTerms[i]],
+				['recipient.surname', searchTerms[i]]
+			], 'should');
+		}
 	}
 
 	if (req.query.hue) {
-		query.push('color.dominant.hsv.h: ['+(Number(req.query.hue)-10)+' TO '+(Number(req.query.hue)+10)+']')
+		queryBuilder.addBool([
+			[
+				'color.dominant.hsv.h',
+				{
+					from: Number(req.query.hue)-colorMargins,
+					to: Number(req.query.hue)+colorMargins
+				},
+				'range'
+			]
+		], 'must');
 	}
 
 	if (req.query.saturation) {
-		query.push('color.dominant.hsv.s: ['+(Number(req.query.saturation)-10)+' TO '+(Number(req.query.saturation)+10)+']')
+		queryBuilder.addBool([
+			[
+				'color.dominant.hsv.s',
+				{
+					from: Number(req.query.saturation)-colorMargins,
+					to: Number(req.query.saturation)+colorMargins
+				},
+				'range'
+			]
+		], 'must');
 	}
 
 	if (req.query.lightness) {
-		query.push('color.dominant.hsv.v: ['+(Number(req.query.lightness)-10)+' TO '+(Number(req.query.lightness)+10)+']')
+		queryBuilder.addBool([
+			[
+				'color.dominant.hsv.v',
+				{
+					from: Number(req.query.lightness)-colorMargins,
+					to: Number(req.query.lightness)+colorMargins
+				},
+				'range'
+			]
+		], 'must');
 	}
 
 	client.search({
@@ -102,10 +208,11 @@ var getDocuments = function(req, res) {
 			'bundle',
 			'page.id'
 		],
-		q: query.length > 0 ? query.join(' AND ') : null
+		body: queryBuilder.queryBody
+//		q: query.length > 0 ? query.join(' AND ') : null
 	}, function(error, response) {
 		res.json({
-			query: query.length > 0 ? query.join(' AND ') : null,
+			query: queryBuilder.queryBody,
 			total: response.hits.total,
 			documents: _.map(response.hits.hits, function(item) {
 				var ret = item._source;
