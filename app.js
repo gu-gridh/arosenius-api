@@ -102,7 +102,7 @@ QueryBuilder.prototype.addBool = function(terms, type, caseSensitive) {
 }
 
 var getDocuments = function(req, res) {
-	var colorMargins = 20;
+	var colorMargins = 15;
 	var pageSize = 100;
 
 	var query = [];
@@ -118,7 +118,7 @@ var getDocuments = function(req, res) {
 	if (req.query.bundle) {
 		queryBuilder.addBool([
 			['bundle', req.query.bundle]
-		], 'should');
+		], 'should', true);
 	}
 
 	if (req.query.search) {
@@ -424,6 +424,53 @@ var getTypes = function(req, res) {
 	});
 };
 
+var getColorMap = function(req, res) {
+	client.search({
+		index: 'arosenius',
+		type: 'artwork',
+		body: {
+			size: 0,
+			query: {
+				query_string: {
+					query: req.query.query ? req.query.query : '*',
+					analyze_wildcard: true
+				}
+			},
+			aggs: {
+				hue: {
+					terms: {
+						field: "color.dominant.hsv.h",
+						size: 360,
+						order: {
+							_term: "asc"
+						}
+					},
+					aggs: {
+						saturation: {
+							terms: {
+								field: "color.dominant.hsv.s",
+								size: 100,
+								order: {
+									_term: "asc"
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}, function(error, response) {
+		res.json(_.map(response.aggregations.hue.buckets, function(hue) {
+			return {
+				hue: hue.key,
+				saturation: _.map(hue.saturation.buckets, function(saturation) {
+					return saturation.key;
+				})
+			};
+		}));
+	});
+}
+
 var imgr = new IMGR({
 	cache_dir: '/tmp/imgr'
 });
@@ -445,6 +492,7 @@ app.get('/museums', getMuseums);
 app.get('/technic', getTechnic);
 app.get('/material', getMaterial);
 app.get('/types', getTypes);
+app.get('/colormap', getColorMap);
 
 app.get('/admin/login', adminLogin);
 app.get('/admin/documents', getDocuments);
