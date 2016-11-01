@@ -102,7 +102,7 @@ QueryBuilder.prototype.addBool = function(terms, type, caseSensitive) {
 }
 
 var getDocuments = function(req, res) {
-	var colorMargins = 15;
+	var colorMargins = req.query.color_margins ? Number(req.query.color_margins) : 15;
 	var pageSize = 100;
 
 	var query = [];
