@@ -472,7 +472,7 @@ var getColorMap = function(req, res) {
 }
 
 var imgr = new IMGR({
-	cache_dir: '/tmp/imgr'
+	cache_dir: config.image_temp_path
 });
 
 imgr.serve(config.image_path)
