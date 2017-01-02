@@ -165,7 +165,7 @@ var getDocuments = function(req, res) {
 
 		if (req.query.hue) {
 			terms.push([
-				'color.colors.five.hsv.h',
+				'color.colors.three.hsv.h',
 				{
 					from: Number(req.query.hue)-colorMargins,
 					to: Number(req.query.hue)+colorMargins
@@ -175,7 +175,7 @@ var getDocuments = function(req, res) {
 		}
 		if (req.query.saturation) {
 			terms.push([
-				'color.colors.five.hsv.s',
+				'color.colors.three.hsv.s',
 				{
 					from: Number(req.query.saturation)-colorMargins,
 					to: Number(req.query.saturation)+colorMargins
@@ -185,7 +185,7 @@ var getDocuments = function(req, res) {
 		}
 		if (req.query.lightness) {
 			terms.push([
-				'color.colors.five.hsv.v',
+				'color.colors.three.hsv.v',
 				{
 					from: Number(req.query.lightness)-colorMargins,
 					to: Number(req.query.lightness)+colorMargins
@@ -194,7 +194,7 @@ var getDocuments = function(req, res) {
 			]);
 		}
 
-		queryBuilder.addBool(terms, 'must', false, true, 'color.colors.five');
+		queryBuilder.addBool(terms, 'must', false, true, 'color.colors.three');
 	}
 /*
 	if (req.query.hue) {
