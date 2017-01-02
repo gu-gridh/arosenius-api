@@ -56,18 +56,7 @@ function QueryBuilder() {
 	this.queryBody = {};
 }
 
-QueryBuilder.prototype.addTerm = function(term, value) {
-	if (!this.queryBody['query']) {
-		this.queryBody['query'] = {};
-	}
-	if (!this.queryBody.query['term']) {
-		this.queryBody.query['term'] = {};
-	}
-
-	this.queryBody.query.term[term] = value;
-}
-
-QueryBuilder.prototype.addBool = function(terms, type, caseSensitive) {
+QueryBuilder.prototype.addBool = function(terms, type, caseSensitive, nested, nestedPath) {
 	if (!this.queryBody['query']) {
 		this.queryBody['query'] = {};
 	}
@@ -78,10 +67,11 @@ QueryBuilder.prototype.addBool = function(terms, type, caseSensitive) {
 		this.queryBody.query.bool['must'] = [];
 	}
 
-	var shouldObj = {
+	var boolObj = {
 		bool: {}
 	};
-	shouldObj.bool[type] = [];
+
+	boolObj.bool[type] = [];
 
 	for (var i = 0; i<terms.length; i++) {
 		var propertyName = terms[i][2] ? terms[i][2] : 'term';
@@ -95,10 +85,20 @@ QueryBuilder.prototype.addBool = function(terms, type, caseSensitive) {
 			termObj[propertyName][terms[i][0]] = terms[i][1].toLowerCase();
 		}
 
-		shouldObj.bool[type].push(termObj);
+		boolObj.bool[type].push(termObj);
 	}
 
-	this.queryBody.query.bool.must.push(shouldObj)
+	if (nested) {
+		this.queryBody.query.bool.must.push({
+			nested: {
+				path: nestedPath,
+				query: boolObj
+			}
+		});
+	}
+	else {
+		this.queryBody.query.bool.must.push(boolObj);
+	}
 }
 
 var getDocuments = function(req, res) {
@@ -160,45 +160,82 @@ var getDocuments = function(req, res) {
 		}
 	}
 
+	if (req.query.hue || req.query.saturation || req.query.lightness) {
+		var terms = [];
+
+		if (req.query.hue) {
+			terms.push([
+				'color.colors.five.hsv.h',
+				{
+					from: Number(req.query.hue)-colorMargins,
+					to: Number(req.query.hue)+colorMargins
+				},
+				'range'
+			]);
+		}
+		if (req.query.saturation) {
+			terms.push([
+				'color.colors.five.hsv.s',
+				{
+					from: Number(req.query.saturation)-colorMargins,
+					to: Number(req.query.saturation)+colorMargins
+				},
+				'range'
+			]);
+		}
+		if (req.query.lightness) {
+			terms.push([
+				'color.colors.five.hsv.v',
+				{
+					from: Number(req.query.lightness)-colorMargins,
+					to: Number(req.query.lightness)+colorMargins
+				},
+				'range'
+			]);
+		}
+
+		queryBuilder.addBool(terms, 'must', false, true, 'color.colors.five');
+	}
+/*
 	if (req.query.hue) {
 		queryBuilder.addBool([
 			[
-				'color.dominant.hsv.h',
+				'color.colors.five.hsv.h',
 				{
 					from: Number(req.query.hue)-colorMargins,
 					to: Number(req.query.hue)+colorMargins
 				},
 				'range'
 			]
-		], 'must');
+		], 'must', false, true, 'color.colors.five');
 	}
 
 	if (req.query.saturation) {
 		queryBuilder.addBool([
 			[
-				'color.dominant.hsv.s',
+				'color.colors.five.hsv.s',
 				{
 					from: Number(req.query.saturation)-colorMargins,
 					to: Number(req.query.saturation)+colorMargins
 				},
 				'range'
 			]
-		], 'must');
+		], 'must', false, true, 'color.colors.five');
 	}
 
 	if (req.query.lightness) {
 		queryBuilder.addBool([
 			[
-				'color.dominant.hsv.v',
+				'color.colors.five.hsv.v',
 				{
 					from: Number(req.query.lightness)-colorMargins,
 					to: Number(req.query.lightness)+colorMargins
 				},
 				'range'
 			]
-		], 'must');
+		], 'must', false, true, 'color.colors.five');
 	}
-
+*/
 	client.search({
 		index: 'arosenius',
 		type: 'artwork',
@@ -211,6 +248,7 @@ var getDocuments = function(req, res) {
 		body: queryBuilder.queryBody
 //		q: query.length > 0 ? query.join(' AND ') : null
 	}, function(error, response) {
+		console.log(JSON.stringify(queryBuilder.queryBody));
 		res.json({
 			query: queryBuilder.queryBody,
 			total: response.hits.total,
