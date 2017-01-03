@@ -458,7 +458,7 @@ var getTypes = function(req, res) {
 	}, function(error, response) {
 		res.json(_.map(response.aggregations.types.buckets, function(type) {
 			return {
-				type: type.key
+				value: type.key
 			};
 		}));
 	});
@@ -484,7 +484,7 @@ var getTags = function(req, res) {
 	}, function(error, response) {
 		res.json(_.map(response.aggregations.tags.buckets, function(tag) {
 			return {
-				tag: tag.key
+				value: tag.key
 			};
 		}));
 	});
@@ -510,7 +510,7 @@ var getPersons = function(req, res) {
 	}, function(error, response) {
 		res.json(_.map(response.aggregations.persons.buckets, function(person) {
 			return {
-				person: person.key
+				value: person.key
 			};
 		}));
 	});
