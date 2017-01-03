@@ -468,7 +468,7 @@ var getTags = function(req, res) {
 		type: 'artwork',
 		body: {
 			"aggs": {
-				"types": {
+				"tags": {
 					"terms": {
 						"field": "tags",
 						"size": 50,
@@ -492,7 +492,7 @@ var getPersons = function(req, res) {
 		type: 'artwork',
 		body: {
 			"aggs": {
-				"types": {
+				"persons": {
 					"terms": {
 						"field": "persons",
 						"size": 50,
