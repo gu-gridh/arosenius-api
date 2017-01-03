@@ -462,6 +462,54 @@ var getTypes = function(req, res) {
 	});
 };
 
+var getTags = function(req, res) {
+	client.search({
+		index: 'arosenius',
+		type: 'artwork',
+		body: {
+			"aggs": {
+				"types": {
+					"terms": {
+						"field": "tags",
+						"size": 50,
+						"order": {
+							"_count": "desc"
+						}
+					}
+				}
+			}
+		}
+	}, function(error, response) {
+		res.json(_.map(response.aggregations.tags.buckets, function(tag) {
+			return tag.key;
+		}));
+	});
+};
+
+var getPersons = function(req, res) {
+	client.search({
+		index: 'arosenius',
+		type: 'artwork',
+		body: {
+			"aggs": {
+				"types": {
+					"terms": {
+						"field": "persons",
+						"size": 50,
+						"order": {
+							"_count": "desc"
+						}
+					}
+				}
+			}
+		}
+	}, function(error, response) {
+		res.json(_.map(response.aggregations.persons.buckets, function(person) {
+			return person.key;
+		}));
+	});
+};
+
 var getColorMap = function(req, res) {
 	client.search({
 		index: 'arosenius',
@@ -530,6 +578,8 @@ app.get('/museums', getMuseums);
 app.get('/technic', getTechnic);
 app.get('/material', getMaterial);
 app.get('/types', getTypes);
+app.get('/tags', getTags);
+app.get('/persons', getPersons);
 app.get('/colormap', getColorMap);
 
 app.get('/admin/login', adminLogin);
