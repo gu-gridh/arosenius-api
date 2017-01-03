@@ -354,7 +354,7 @@ var getMuseums = function(req, res) {
 	}, function(error, response) {
 		res.json(_.map(response.aggregations.museums.buckets, function(museum) {
 			return {
-				museum: museum.key
+				value: museum.key
 			};
 		}));
 	});
@@ -433,7 +433,9 @@ var getMaterial = function(req, res) {
 		}
 	}, function(error, response) {
 		res.json(_.map(response.aggregations.material.buckets, function(material) {
-			return material.key;
+			return {
+				value: material.key
+			};
 		}));
 	});
 };
