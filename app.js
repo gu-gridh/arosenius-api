@@ -14,22 +14,45 @@ var client = new elasticsearch.Client({
 //	log: 'trace'
 });
 
+function authenticate(user) {
+	var users = require('./users').users;
+
+	if (user) {
+		var foundUser = _.find(users, function(u) {
+			return u[0] == user['name'] && u[1] == user['pass'];
+		});
+
+		console.log(foundUser);
+		return foundUser !== undefined;
+	}
+	else {
+		return false;
+	}
+}
+
 var auth = require('basic-auth');
 
 app.use(function(req, res, next) {
 	var user = auth(req);
 
 	if (req.path.substr(0, 7).toLowerCase() != '/admin/') {
+		console.log('not admin');
 		next();
 	}
-	else if (user === undefined || user['name'] !== 'arosenius' || user['pass'] !== 'dBe55yrPMK') {
+	else if (user && authenticate(user)) {
+		console.log('authenticated');
+		next();
+	}
+//	else if (user === undefined || user['name'] !== 'arosenius' || user['pass'] !== 'dBe55yrPMK') {
+	else {
+		console.log('not authenticated');
 		res.setHeader('WWW-Authenticate', 'Basic realm="AroseniusAdminApi"');
 		res.header('Access-Control-Allow-Origin', '*');
 		res.header('Access-Control-Allow-Methods', 'GET,HEAD,OPTIONS,POST,PUT')
 		res.header('Access-Control-Allow-Headers', 'Authorization,Access-Control-Allow-Headers,Origin,Accept,X-Requested-With,Content-Type,Access-Control-Request-Method,Access-Control-Allow-Headers')
         res.end('Unauthorized');
-    } else {
-        next();
+//    } else {
+//        next();
     }
 });
 
@@ -46,7 +69,7 @@ app.all('*', function(req, res, next) {
 	next();
 });
 
-var adminLogin = function(req, res) {
+function adminLogin(req, res) {
 	res.json({
 		login: 'success'
 	});
@@ -101,7 +124,7 @@ QueryBuilder.prototype.addBool = function(terms, type, caseSensitive, nested, ne
 	}
 }
 
-var getDocuments = function(req, res) {
+function getDocuments(req, res) {
 	var colorMargins = req.query.color_margins ? Number(req.query.color_margins) : 15;
 	var pageSize = 100;
 
@@ -259,9 +282,9 @@ var getDocuments = function(req, res) {
 			})
 		});
 	});
-};
+}
 
-var getBundle = function(req, res) {
+function getBundle(req, res) {
 	var pageSize = 30;
 
 	var query = [];
@@ -278,9 +301,9 @@ var getBundle = function(req, res) {
 		});
 	});
 
-};
+}
 
-var postBundle = function(req, res) {
+function postBundle(req, res) {
 	client.update({
 		index: 'arosenius',
 		type: 'bundle',
@@ -291,14 +314,14 @@ var postBundle = function(req, res) {
 	}, function(error, response) {
 		res.json({response: 'post'});
 	});
-};
+}
 
-var putDocument = function(req, res) {
+function putDocument(req, res) {
 	console.log(req);
 	res.json({response: 'put'});
-};
+}
 
-var postDocument = function(req, res) {
+function postDocument(req, res) {
 	client.update({
 		index: 'arosenius',
 		type: 'artwork',
@@ -309,9 +332,9 @@ var postDocument = function(req, res) {
 	}, function(error, response) {
 		res.json({response: 'post'});
 	});
-};
+}
 
-var getDocument = function(req, res) {
+function getDocument(req, res) {
 	var query = [];
 	if (req.query.museum) {
 		query.push('collection.museum: "'+req.query.museum+'"');
@@ -332,9 +355,9 @@ var getDocument = function(req, res) {
 			})[0]
 		});
 	});
-};
+}
 
-var getMuseums = function(req, res) {
+function getMuseums(req, res) {
 	client.search({
 		index: 'arosenius',
 		type: 'artwork',
@@ -358,9 +381,9 @@ var getMuseums = function(req, res) {
 			};
 		}));
 	});
-};
+}
 
-var getBundles = function(req, res) {
+function getBundles(req, res) {
 	var pageSize = 30;
 
 	var query = [];
@@ -388,9 +411,9 @@ var getBundles = function(req, res) {
 			})
 		});
 	});
-};
+}
 
-var getTechnic = function(req, res) {
+function getTechnic(req, res) {
 	client.search({
 		index: 'arosenius',
 		type: 'artwork',
@@ -412,9 +435,9 @@ var getTechnic = function(req, res) {
 			return technic.key;
 		}));
 	});
-};
+}
 
-var getMaterial = function(req, res) {
+function getMaterial(req, res) {
 	client.search({
 		index: 'arosenius',
 		type: 'artwork',
@@ -438,9 +461,9 @@ var getMaterial = function(req, res) {
 			};
 		}));
 	});
-};
+}
 
-var getTypes = function(req, res) {
+function getTypes(req, res) {
 	client.search({
 		index: 'arosenius',
 		type: 'artwork',
@@ -464,9 +487,9 @@ var getTypes = function(req, res) {
 			};
 		}));
 	});
-};
+}
 
-var getTags = function(req, res) {
+function getTags(req, res) {
 	client.search({
 		index: 'arosenius',
 		type: 'artwork',
@@ -490,9 +513,9 @@ var getTags = function(req, res) {
 			};
 		}));
 	});
-};
+}
 
-var getPersons = function(req, res) {
+function getPersons(req, res) {
 	client.search({
 		index: 'arosenius',
 		type: 'artwork',
@@ -516,9 +539,9 @@ var getPersons = function(req, res) {
 			};
 		}));
 	});
-};
+}
 
-var getColorMap = function(req, res) {
+function getColorMap(req, res) {
 	client.search({
 		index: 'arosenius',
 		type: 'artwork',
