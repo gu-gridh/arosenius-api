@@ -128,6 +128,7 @@ function getDocuments(req, res) {
 	var colorMargins = req.query.color_margins ? Number(req.query.color_margins) : 15;
 	var pageSize = 100;
 
+	var sort = [];
 	var query = [];
 
 	var queryBuilder = new QueryBuilder();
@@ -142,6 +143,8 @@ function getDocuments(req, res) {
 		queryBuilder.addBool([
 			['bundle', req.query.bundle]
 		], 'should', true);
+
+		sort.push('page.order');
 	}
 
 	if (req.query.search) {
@@ -259,15 +262,15 @@ function getDocuments(req, res) {
 		], 'must', false, true, 'color.colors.five');
 	}
 */
+	sort.push('bundle');
+	sort.push('page.id');
+
 	client.search({
 		index: 'arosenius',
 		type: 'artwork',
 		size: req.query.showAll && req.query.showAll == 'true' ? 1000 : pageSize,
 		from: req.query.showAll && req.query.showAll == 'true' ? 0 : (req.query.page && req.query.page > 0 ? (req.query.page-1)*pageSize : 0),
-		sort: [
-			'bundle',
-			'page.id'
-		],
+		sort: sort,
 		body: queryBuilder.queryBody
 //		q: query.length > 0 ? query.join(' AND ') : null
 	}, function(error, response) {
