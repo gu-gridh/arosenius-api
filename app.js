@@ -394,6 +394,9 @@ function getBundles(req, res) {
 	if (req.query.museum) {
 		query.push('collection.museum: "'+req.query.museum+'"');
 	}
+	if (req.query.search) {
+		query.push('(title: "'+req.query.search+'" OR description: "'+req.query.search+'")');
+	}
 
 	client.search({
 		index: 'arosenius',
@@ -403,7 +406,7 @@ function getBundles(req, res) {
 		sort: [
 			'bundle'
 		],
-		q: query.length > 0 ? query.join(', ') : null
+		q: query.length > 0 ? query.join(' AND ') : null
 	}, function(error, response) {
 		res.json({
 			total: response.hits.total,
@@ -411,7 +414,8 @@ function getBundles(req, res) {
 				var ret = item._source;
 				ret.id = item._id;
 				return ret;
-			})
+			}),
+			query: query.length > 0 ? query.join(' AND ') : null
 		});
 	});
 }
