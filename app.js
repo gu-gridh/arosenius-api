@@ -488,7 +488,9 @@ function getTypes(req, res) {
 			}
 		}
 	}, function(error, response) {
-		res.json(_.map(response.aggregations.types.buckets, function(type) {
+		res.json(_.map(_.filter(response.aggregations.types.buckets, function(type) {
+			return type.key != '';
+		}), function(type) {
 			return {
 				value: type.key
 			};
