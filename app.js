@@ -550,6 +550,32 @@ function getPersons(req, res) {
 	});
 }
 
+function getPlaces(req, res) {
+	client.search({
+		index: 'arosenius',
+		type: 'artwork',
+		body: {
+			"aggs": {
+				"places": {
+					"terms": {
+						"field": "places",
+						"size": 50,
+						"order": {
+							"_count": "desc"
+						}
+					}
+				}
+			}
+		}
+	}, function(error, response) {
+		res.json(_.map(response.aggregations.places.buckets, function(place) {
+			return {
+				value: place.key
+			};
+		}));
+	});
+}
+
 function getColorMap(req, res) {
 	client.search({
 		index: 'arosenius',
@@ -620,6 +646,7 @@ app.get('/material', getMaterial);
 app.get('/types', getTypes);
 app.get('/tags', getTags);
 app.get('/persons', getPersons);
+app.get('/places', getPlaces);
 app.get('/colormap', getColorMap);
 
 app.get('/admin/login', adminLogin);
