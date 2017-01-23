@@ -268,7 +268,7 @@ function getDocuments(req, res) {
 	client.search({
 		index: 'arosenius',
 		type: 'artwork',
-		size: req.query.showAll && req.query.showAll == 'true' ? 1000 : pageSize,
+		size: req.query.showAll && req.query.showAll == 'true' ? 20000 : pageSize,
 		from: req.query.showAll && req.query.showAll == 'true' ? 0 : (req.query.page && req.query.page > 0 ? (req.query.page-1)*pageSize : 0),
 		sort: sort,
 		body: queryBuilder.queryBody
@@ -576,6 +576,32 @@ function getPlaces(req, res) {
 	});
 }
 
+function getGenres(req, res) {
+	client.search({
+		index: 'arosenius',
+		type: 'artwork',
+		body: {
+			"aggs": {
+				"genres": {
+					"terms": {
+						"field": "genre",
+						"size": 50,
+						"order": {
+							"_count": "desc"
+						}
+					}
+				}
+			}
+		}
+	}, function(error, response) {
+		res.json(_.map(response.aggregations.genres.buckets, function(genre) {
+			return {
+				value: genre.key
+			};
+		}));
+	});
+}
+
 function getColorMap(req, res) {
 	client.search({
 		index: 'arosenius',
@@ -647,6 +673,7 @@ app.get('/types', getTypes);
 app.get('/tags', getTags);
 app.get('/persons', getPersons);
 app.get('/places', getPlaces);
+app.get('/genres', getGenres);
 app.get('/colormap', getColorMap);
 
 app.get('/admin/login', adminLogin);
