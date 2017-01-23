@@ -268,7 +268,7 @@ function getDocuments(req, res) {
 	client.search({
 		index: 'arosenius',
 		type: 'artwork',
-		size: req.query.showAll && req.query.showAll == 'true' ? 20000 : pageSize,
+		size: req.query.showAll && req.query.showAll == 'true' ? 10000 : pageSize,
 		from: req.query.showAll && req.query.showAll == 'true' ? 0 : (req.query.page && req.query.page > 0 ? (req.query.page-1)*pageSize : 0),
 		sort: sort,
 		body: queryBuilder.queryBody
