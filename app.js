@@ -50,10 +50,10 @@ app.use(function(req, res, next) {
 		res.header('Access-Control-Allow-Origin', '*');
 		res.header('Access-Control-Allow-Methods', 'GET,HEAD,OPTIONS,POST,PUT')
 		res.header('Access-Control-Allow-Headers', 'Authorization,Access-Control-Allow-Headers,Origin,Accept,X-Requested-With,Content-Type,Access-Control-Request-Method,Access-Control-Allow-Headers')
-        res.end('Unauthorized');
+		res.end('Unauthorized');
 //    } else {
 //        next();
-    }
+	}
 });
 
 app.use(bodyParser.urlencoded({
@@ -187,11 +187,13 @@ function getDocuments(req, res) {
 	}
 
 	if (req.query.hue || req.query.saturation || req.query.lightness) {
+		var colorPath = req.query.prominent ? 'color.colors.prominent' : 'color.colors.three';
+
 		var terms = [];
 
 		if (req.query.hue) {
 			terms.push([
-				'color.colors.three.hsv.h',
+				colorPath+'.hsv.h',
 				{
 					from: Number(req.query.hue)-colorMargins,
 					to: Number(req.query.hue)+colorMargins
@@ -201,7 +203,7 @@ function getDocuments(req, res) {
 		}
 		if (req.query.saturation) {
 			terms.push([
-				'color.colors.three.hsv.s',
+				colorPath+'.hsv.s',
 				{
 					from: Number(req.query.saturation)-colorMargins,
 					to: Number(req.query.saturation)+colorMargins
@@ -211,7 +213,7 @@ function getDocuments(req, res) {
 		}
 		if (req.query.lightness) {
 			terms.push([
-				'color.colors.three.hsv.v',
+				colorPath+'.hsv.v',
 				{
 					from: Number(req.query.lightness)-colorMargins,
 					to: Number(req.query.lightness)+colorMargins
@@ -220,7 +222,7 @@ function getDocuments(req, res) {
 			]);
 		}
 
-		queryBuilder.addBool(terms, 'must', false, true, 'color.colors.three');
+		queryBuilder.addBool(terms, 'must', false, true, colorPath);
 	}
 /*
 	if (req.query.hue) {
@@ -603,6 +605,63 @@ function getGenres(req, res) {
 }
 
 function getColorMap(req, res) {
+	var nestedPath = req.query.prominent == 'true' ? 'color.colors.prominent' : 'color.colors.three';
+
+	client.search({
+		index: 'arosenius',
+		type: 'artwork',
+		body: {
+			size: 0,
+			query: {
+				query_string: {
+					query: req.query.query ? req.query.query : '*',
+					analyze_wildcard: true
+				}
+			},
+
+			aggs: {
+				hue: {
+					nested: {
+						path: nestedPath
+					},
+					aggs: {
+						hue: {
+							terms: {
+								field: nestedPath+'.hsv.h',
+								size: 360,
+								order: {
+									_term: 'asc'
+								}
+							},
+							aggs: {
+								saturation: {
+									terms: {
+										field: nestedPath+'.hsv.s',
+										size: 100,
+										order: {
+											_term: 'asc'
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+			
+		}
+	}, function(error, response) {
+		res.json(_.map(response.aggregations.hue.hue.buckets, function(hue) {
+			return {
+				hue: hue.key,
+				saturation: _.map(hue.saturation.buckets, function(saturation) {
+					return saturation.key;
+				})
+			};
+		}));
+
+	});
+/*
 	client.search({
 		index: 'arosenius',
 		type: 'artwork',
@@ -617,7 +676,7 @@ function getColorMap(req, res) {
 			aggs: {
 				hue: {
 					terms: {
-						field: "color.dominant.hsv.h",
+						field: 'color.dominant.hsv.h',
 						size: 360,
 						order: {
 							_term: "asc"
@@ -626,10 +685,10 @@ function getColorMap(req, res) {
 					aggs: {
 						saturation: {
 							terms: {
-								field: "color.dominant.hsv.s",
+								field: 'color.dominant.hsv.s',
 								size: 100,
 								order: {
-									_term: "asc"
+									_term: 'asc'
 								}
 							}
 						}
@@ -647,6 +706,7 @@ function getColorMap(req, res) {
 			};
 		}));
 	});
+*/
 }
 
 var imgr = new IMGR({
