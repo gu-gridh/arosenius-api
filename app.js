@@ -129,9 +129,26 @@ function getDocuments(req, res) {
 	var pageSize = 100;
 
 	var sort = [];
-	var query = [];
 
 	var queryBuilder = new QueryBuilder();
+
+	if (req.query.ids) {
+		var docIds = req.query.ids.split(';');
+
+		var query = {
+			query: {
+				bool: {
+					should: _.map(docIds, function(docId) {
+						return {
+							term: {
+								_id: docId
+							}
+						};
+					})
+				}
+			}
+		};
+	}
 
 	if (req.query.museum) {
 		queryBuilder.addBool([
@@ -224,46 +241,7 @@ function getDocuments(req, res) {
 
 		queryBuilder.addBool(terms, 'must', false, true, colorPath);
 	}
-/*
-	if (req.query.hue) {
-		queryBuilder.addBool([
-			[
-				'color.colors.five.hsv.h',
-				{
-					from: Number(req.query.hue)-colorMargins,
-					to: Number(req.query.hue)+colorMargins
-				},
-				'range'
-			]
-		], 'must', false, true, 'color.colors.five');
-	}
 
-	if (req.query.saturation) {
-		queryBuilder.addBool([
-			[
-				'color.colors.five.hsv.s',
-				{
-					from: Number(req.query.saturation)-colorMargins,
-					to: Number(req.query.saturation)+colorMargins
-				},
-				'range'
-			]
-		], 'must', false, true, 'color.colors.five');
-	}
-
-	if (req.query.lightness) {
-		queryBuilder.addBool([
-			[
-				'color.colors.five.hsv.v',
-				{
-					from: Number(req.query.lightness)-colorMargins,
-					to: Number(req.query.lightness)+colorMargins
-				},
-				'range'
-			]
-		], 'must', false, true, 'color.colors.five');
-	}
-*/
 	sort.push('bundle');
 	sort.push('page.id');
 
@@ -273,8 +251,7 @@ function getDocuments(req, res) {
 		size: req.query.showAll && req.query.showAll == 'true' ? 10000 : pageSize,
 		from: req.query.showAll && req.query.showAll == 'true' ? 0 : (req.query.page && req.query.page > 0 ? (req.query.page-1)*pageSize : 0),
 		sort: sort,
-		body: queryBuilder.queryBody
-//		q: query.length > 0 ? query.join(' AND ') : null
+		body: req.query.ids ? query : queryBuilder.queryBody
 	}, function(error, response) {
 		console.log(JSON.stringify(queryBuilder.queryBody));
 		res.json({
