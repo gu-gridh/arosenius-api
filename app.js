@@ -22,7 +22,6 @@ function authenticate(user) {
 			return u[0] == user['name'] && u[1] == user['pass'];
 		});
 
-		console.log(foundUser);
 		return foundUser !== undefined;
 	}
 	else {
@@ -36,23 +35,17 @@ app.use(function(req, res, next) {
 	var user = auth(req);
 
 	if (req.path.substr(0, 7).toLowerCase() != '/admin/') {
-		console.log('not admin');
 		next();
 	}
 	else if (user && authenticate(user)) {
-		console.log('authenticated');
 		next();
 	}
-//	else if (user === undefined || user['name'] !== 'arosenius' || user['pass'] !== 'dBe55yrPMK') {
 	else {
-		console.log('not authenticated');
 		res.setHeader('WWW-Authenticate', 'Basic realm="AroseniusAdminApi"');
 		res.header('Access-Control-Allow-Origin', '*');
 		res.header('Access-Control-Allow-Methods', 'GET,HEAD,OPTIONS,POST,PUT')
 		res.header('Access-Control-Allow-Headers', 'Authorization,Access-Control-Allow-Headers,Origin,Accept,X-Requested-With,Content-Type,Access-Control-Request-Method,Access-Control-Allow-Headers')
 		res.end('Unauthorized');
-//    } else {
-//        next();
 	}
 });
 
@@ -285,6 +278,65 @@ function getBundle(req, res) {
 
 }
 
+function putBundle(req, res) {
+	var documents = req.body.documents;
+	delete req.body.documents;
+
+	if (documents.length > 0) {	
+		client.create({
+			index: 'arosenius',
+			type: 'bundle',
+			body: req.body
+		}, function(error, response) {
+			if (response && response._id) {
+				var newId = response._id;
+
+				var bulkBody = [
+					{
+						update: {
+							_index: 'arosenius',
+							_type: 'bundle',
+							_id: newId
+						}
+					},
+					{
+						doc: {
+							bundle: newId
+						}
+					}
+				];
+
+				_.each(documents, function(document) {
+					bulkBody.push({
+						update: {
+							_index: 'arosenius',
+							_type: 'artwork',
+							_id: document
+						}
+					});
+					bulkBody.push({
+						doc: {
+							bundle: newId
+						}
+					});
+				})
+
+				client.bulk({
+					body: bulkBody
+				}, function(error, response) {
+					console.log(error);
+					res.json({
+						data: {
+							_id: newId
+						}
+					});
+				});
+			}
+		});
+	}
+
+}
+
 function postBundle(req, res) {
 	client.update({
 		index: 'arosenius',
@@ -299,7 +351,6 @@ function postBundle(req, res) {
 }
 
 function putDocument(req, res) {
-	console.log(req);
 	res.json({response: 'put'});
 }
 
@@ -498,6 +549,32 @@ function getTags(req, res) {
 		res.json(_.map(response.aggregations.tags.buckets, function(tag) {
 			return {
 				value: tag.key
+			};
+		}));
+	});
+}
+
+function getPagetypes(req, res) {
+	client.search({
+		index: 'arosenius',
+		type: 'artwork',
+		body: {
+			"aggs": {
+				"side": {
+					"terms": {
+						"field": "page.side",
+						"size": 50,
+						"order": {
+							"_count": "desc"
+						}
+					}
+				}
+			}
+		}
+	}, function(error, response) {
+		res.json(_.map(response.aggregations.side.buckets, function(side) {
+			return {
+				value: side.key
 			};
 		}));
 	});
@@ -708,6 +785,7 @@ app.get('/technic', getTechnic);
 app.get('/material', getMaterial);
 app.get('/types', getTypes);
 app.get('/tags', getTags);
+app.get('/pagetypes', getPagetypes);
 app.get('/persons', getPersons);
 app.get('/places', getPlaces);
 app.get('/genres', getGenres);
@@ -716,6 +794,7 @@ app.get('/colormap', getColorMap);
 app.get('/admin/login', adminLogin);
 app.get('/admin/documents', getDocuments);
 app.get('/admin/bundle/:bundle', getBundle);
+app.put('/admin/bundle', putBundle);
 app.post('/admin/bundle/:id', postBundle);
 app.put('/admin/document/:id', putDocument);
 app.post('/admin/document/:id', postDocument);
