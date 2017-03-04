@@ -235,9 +235,9 @@ function getDocuments(req, res) {
 		queryBuilder.addBool(terms, 'must', false, true, colorPath);
 	}
 
-	sort.push('batchnumber');
-	sort.push('bundle');
-	sort.push('page.id');
+	sort.push('batchnumber:desc');
+	sort.push('bundle:asc');
+	sort.push('page.id:asc');
 
 	client.search({
 		index: 'arosenius',
