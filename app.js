@@ -235,6 +235,7 @@ function getDocuments(req, res) {
 		queryBuilder.addBool(terms, 'must', false, true, colorPath);
 	}
 
+	sort.push('batchnumber');
 	sort.push('bundle');
 	sort.push('page.id');
 
