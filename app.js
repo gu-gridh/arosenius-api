@@ -175,25 +175,21 @@ function getDocuments(req, res) {
 	}
 
 	if (req.query.letter_from) {
-		var searchTerms = req.query.letter_from.split(' ');
-
-		for (var i = 0; i<searchTerms.length; i++) {		
-			queryBuilder.addBool([
-				['sender.firstname', searchTerms[i]],
-				['sender.surname', searchTerms[i]]
-			], 'should');
-		}
+		queryBuilder.addBool([
+			['sender.name', req.query.letter_from]
+		], 'should');
 	}
 
 	if (req.query.letter_to) {
-		var searchTerms = req.query.letter_to.split(' ');
+		queryBuilder.addBool([
+			['sender.recipient', req.query.letter_to]
+		], 'should');
+	}
 
-		for (var i = 0; i<searchTerms.length; i++) {		
-			queryBuilder.addBool([
-				['recipient.firstname', searchTerms[i]],
-				['recipient.surname', searchTerms[i]]
-			], 'should');
-		}
+	if (req.query.person) {
+		queryBuilder.addBool([
+			['persons', req.query.person]
+		], 'should', true);
 	}
 
 	if (req.query.hue || req.query.saturation || req.query.lightness) {
@@ -279,6 +275,75 @@ function getBundle(req, res) {
 
 }
 
+function putCombineDocuments(req, res) {
+	var ids = req.body.documents;
+	var finalDocument = req.body.selectedDocument;
+
+	client.search({
+		index: 'arosenius',
+		type: 'artwork',
+		body: {
+			query: {
+				query_string: {
+					query: '_id: '+ids.join(' OR _id: ')
+				}
+			}
+		}
+	}, function(error, response) {
+		var imageMetadataArray = [];
+
+		_.each(response.hits.hits, function(document) {
+			var imageMetadata = {};
+
+			if (document._source.image) {
+				imageMetadata.image = document._source.image;
+			}
+			if (document._source.page) {
+				imageMetadata.page = document._source.page;
+			}
+
+			imageMetadataArray.push(imageMetadata);
+		});
+
+		imageMetadataArray = _.sortBy(imageMetadataArray, function(image) {
+			return image.page.order || 0;
+		});
+
+		client.update({
+			index: 'arosenius',
+			type: 'artwork',
+			id: finalDocument,
+			body: {
+				doc: {
+					images: imageMetadataArray
+				}
+			}
+		}, function(error, response) {
+			var documentsToDelete = _.difference(ids, [finalDocument]);
+
+			var bulkBody = _.map(documentsToDelete, function(document) {
+				return {
+					delete: {
+						_index: 'arosenius', 
+						_type: 'artwork', 
+						_id: document
+					}
+				}
+			});
+
+			client.bulk({
+				body: bulkBody
+			}, function(error, response) {
+				console.log(response);
+				res.json({response: 'post'});
+	
+			});
+		});
+
+		console.log(imageMetadataArray);
+	});
+}
+
 function putBundle(req, res) {
 	var documents = req.body.documents;
 	delete req.body.documents;
@@ -356,12 +421,26 @@ function putDocument(req, res) {
 }
 
 function postDocument(req, res) {
+	var document = req.body;
+
+	if (document.images && document.images.length > 0) {
+		console.log('sort images');
+		var sortedImages = _.sortBy(document.images, function(image) {
+			console.log(image);
+			return image.page.order || 0;
+		});
+
+		console.log(sortedImages);
+
+		document.images = sortedImages;
+	}
+
 	client.update({
 		index: 'arosenius',
 		type: 'artwork',
 		id: req.body.id,
 		body: {
-			doc: req.body
+			doc: document
 		}
 	}, function(error, response) {
 		res.json({response: 'post'});
@@ -793,6 +872,7 @@ app.get('/genres', getGenres);
 app.get('/colormap', getColorMap);
 
 app.get('/admin/login', adminLogin);
+app.put('/admin/documents/combine', putCombineDocuments);
 app.get('/admin/documents', getDocuments);
 app.get('/admin/bundle/:bundle', getBundle);
 app.put('/admin/bundle', putBundle);
