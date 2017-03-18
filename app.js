@@ -192,6 +192,12 @@ function getDocuments(req, res) {
 		], 'should', true);
 	}
 
+	if (req.query.place) {
+		queryBuilder.addBool([
+			['places', req.query.place]
+		], 'should', true);
+	}
+
 	if (req.query.hue || req.query.saturation || req.query.lightness) {
 		var colorPath = req.query.prominent ? 'color.colors.prominent' : 'color.colors.three';
 
