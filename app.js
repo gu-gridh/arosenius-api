@@ -539,9 +539,9 @@ function getTechnic(req, res) {
 				"technic": {
 					"terms": {
 						"field": "technic.value",
-						"size": 50,
+						"size": 200,
 						"order": {
-							"_count": "desc"
+							"_term": "asc"
 						}
 					}
 				}
@@ -563,9 +563,9 @@ function getMaterial(req, res) {
 				"material": {
 					"terms": {
 						"field": "material",
-						"size": 50,
+						"size": 200,
 						"order": {
-							"_count": "desc"
+							"_term": "asc"
 						}
 					}
 				}
@@ -589,9 +589,9 @@ function getTypes(req, res) {
 				"types": {
 					"terms": {
 						"field": "type",
-						"size": 50,
+						"size": 200,
 						"order": {
-							"_count": "desc"
+							"_term": "asc"
 						}
 					}
 				}
@@ -617,9 +617,9 @@ function getTags(req, res) {
 				"tags": {
 					"terms": {
 						"field": "tags",
-						"size": 50,
+						"size": 200,
 						"order": {
-							"_count": "desc"
+							"_term": "asc"
 						}
 					}
 				}
@@ -643,9 +643,9 @@ function getPagetypes(req, res) {
 				"side": {
 					"terms": {
 						"field": "page.side",
-						"size": 50,
+						"size": 200,
 						"order": {
-							"_count": "desc"
+							"_term": "asc"
 						}
 					}
 				}
@@ -669,9 +669,9 @@ function getPersons(req, res) {
 				"persons": {
 					"terms": {
 						"field": "persons",
-						"size": 50,
+						"size": 200,
 						"order": {
-							"_count": "desc"
+							"_term": "asc"
 						}
 					}
 				}
@@ -695,9 +695,9 @@ function getPlaces(req, res) {
 				"places": {
 					"terms": {
 						"field": "places",
-						"size": 50,
+						"size": 200,
 						"order": {
-							"_count": "desc"
+							"_term": "asc"
 						}
 					}
 				}
@@ -721,9 +721,9 @@ function getGenres(req, res) {
 				"genres": {
 					"terms": {
 						"field": "genre",
-						"size": 50,
+						"size": 200,
 						"order": {
-							"_count": "desc"
+							"_term": "asc"
 						}
 					}
 				}
