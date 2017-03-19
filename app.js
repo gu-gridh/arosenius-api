@@ -307,6 +307,9 @@ function putCombineDocuments(req, res) {
 			if (document._source.page) {
 				imageMetadata.page = document._source.page;
 			}
+			if (document._source.color) {
+				imageMetadata.color = document._source.color;
+			}
 
 			imageMetadataArray.push(imageMetadata);
 		});
@@ -321,7 +324,8 @@ function putCombineDocuments(req, res) {
 			id: finalDocument,
 			body: {
 				doc: {
-					images: imageMetadataArray
+					images: imageMetadataArray,
+					color: null
 				}
 			}
 		}, function(error, response) {
