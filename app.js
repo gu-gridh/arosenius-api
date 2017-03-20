@@ -309,15 +309,24 @@ function putCombineDocuments(req, res) {
 
 				if (document._source.image) {
 					imageMetadata.image = document._source.image;
-				}
-				if (document._source.page) {
-					imageMetadata.page = document._source.page;
-				}
-				if (document._source.color) {
-					imageMetadata.color = document._source.color;
+
+					if (document._source.page) {
+						imageMetadata.page = document._source.page;
+					}
+					if (document._source.color) {
+						imageMetadata.color = document._source.color;
+					}
+
+					imageMetadataArray.push(imageMetadata);
 				}
 
-				imageMetadataArray.push(imageMetadata);
+				if (document._source.images) {
+					imageMetadataArray = imageMetadataArray.concat(document._source.images);
+				}
+
+				imageMetadataArray = _.uniq(imageMetadataArray, function(image) {
+					return image.image;
+				});
 			});
 
 			imageMetadataArray = _.sortBy(imageMetadataArray, function(image) {
