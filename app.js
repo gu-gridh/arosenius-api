@@ -296,61 +296,65 @@ function putCombineDocuments(req, res) {
 			}
 		}
 	}, function(error, response) {
-		var imageMetadataArray = [];
+		if (ids.length != response.hits.total) {
+			res.status(500);
+			res.json({error: 'Unable to combine documents, have they been combined before?'});		
+		}
+		else {
 
-		_.each(response.hits.hits, function(document) {
-			var imageMetadata = {};
+			var imageMetadataArray = [];
 
-			if (document._source.image) {
-				imageMetadata.image = document._source.image;
-			}
-			if (document._source.page) {
-				imageMetadata.page = document._source.page;
-			}
-			if (document._source.color) {
-				imageMetadata.color = document._source.color;
-			}
+			_.each(response.hits.hits, function(document) {
+				var imageMetadata = {};
 
-			imageMetadataArray.push(imageMetadata);
-		});
-
-		imageMetadataArray = _.sortBy(imageMetadataArray, function(image) {
-			return image.page.order || 0;
-		});
-
-		client.update({
-			index: 'arosenius',
-			type: 'artwork',
-			id: finalDocument,
-			body: {
-				doc: {
-					images: imageMetadataArray,
-					color: null
+				if (document._source.image) {
+					imageMetadata.image = document._source.image;
 				}
-			}
-		}, function(error, response) {
-			var documentsToDelete = _.difference(ids, [finalDocument]);
+				if (document._source.page) {
+					imageMetadata.page = document._source.page;
+				}
+				if (document._source.color) {
+					imageMetadata.color = document._source.color;
+				}
 
-			var bulkBody = _.map(documentsToDelete, function(document) {
-				return {
-					delete: {
-						_index: 'arosenius', 
-						_type: 'artwork', 
-						_id: document
+				imageMetadataArray.push(imageMetadata);
+			});
+
+			imageMetadataArray = _.sortBy(imageMetadataArray, function(image) {
+				return image.page.order || 0;
+			});
+
+			client.update({
+				index: 'arosenius',
+				type: 'artwork',
+				id: finalDocument,
+				body: {
+					doc: {
+						images: imageMetadataArray,
+						color: null
 					}
 				}
-			});
-
-			client.bulk({
-				body: bulkBody
 			}, function(error, response) {
-				console.log(response);
-				res.json({response: 'post'});
-	
-			});
-		});
+				var documentsToDelete = _.difference(ids, [finalDocument]);
 
-		console.log(imageMetadataArray);
+				var bulkBody = _.map(documentsToDelete, function(document) {
+					return {
+						delete: {
+							_index: 'arosenius', 
+							_type: 'artwork', 
+							_id: document
+						}
+					}
+				});
+
+				client.bulk({
+					body: bulkBody
+				}, function(error, response) {
+					console.log(response);
+					res.json({response: 'post'});		
+				});
+			});
+		}
 	});
 }
 
