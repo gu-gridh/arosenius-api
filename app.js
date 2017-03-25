@@ -316,6 +316,9 @@ function putCombineDocuments(req, res) {
 					if (document._source.color) {
 						imageMetadata.color = document._source.color;
 					}
+					if (document._source.imagesize) {
+						imageMetadata.imagesize = document._source.imagesize;
+					}
 
 					imageMetadataArray.push(imageMetadata);
 				}
