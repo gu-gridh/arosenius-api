@@ -200,7 +200,7 @@ function getDocuments(req, res) {
 
 	if (req.query.genre) {
 		queryBuilder.addBool([
-			['genres', req.query.genre]
+			['genre', req.query.genre]
 		], 'should', true);
 	}
 
