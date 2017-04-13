@@ -248,7 +248,7 @@ function getDocuments(req, res) {
 	sort.push('page.id:asc');
 
 	client.search({
-		index: 'arosenius',
+		index: config.index,
 		type: 'artwork',
 		size: req.query.showAll && req.query.showAll == 'true' ? 10000 : pageSize,
 		from: req.query.showAll && req.query.showAll == 'true' ? 0 : (req.query.page && req.query.page > 0 ? (req.query.page-1)*pageSize : 0),
@@ -276,7 +276,7 @@ function getBundle(req, res) {
 	query.push('bundle: "'+req.params.bundle+'"');
 
 	client.search({
-		index: 'arosenius',
+		index: config.index,
 		type: 'bundle',
 		q: 'bundle: "'+req.params.bundle+'"'
 	}, function(error, response) {
@@ -292,7 +292,7 @@ function putCombineDocuments(req, res) {
 	var finalDocument = req.body.selectedDocument;
 
 	client.search({
-		index: 'arosenius',
+		index: config.index,
 		type: 'artwork',
 		body: {
 			query: {
@@ -343,7 +343,7 @@ function putCombineDocuments(req, res) {
 			});
 
 			client.update({
-				index: 'arosenius',
+				index: config.index,
 				type: 'artwork',
 				id: finalDocument,
 				body: {
@@ -358,7 +358,7 @@ function putCombineDocuments(req, res) {
 				var bulkBody = _.map(documentsToDelete, function(document) {
 					return {
 						delete: {
-							_index: 'arosenius', 
+							_index: config.index, 
 							_type: 'artwork', 
 							_id: document
 						}
@@ -382,7 +382,7 @@ function putBundle(req, res) {
 
 	if (documents.length > 0) {	
 		client.create({
-			index: 'arosenius',
+			index: config.index,
 			type: 'bundle',
 			body: req.body
 		}, function(error, response) {
@@ -392,7 +392,7 @@ function putBundle(req, res) {
 				var bulkBody = [
 					{
 						update: {
-							_index: 'arosenius',
+							_index: config.index,
 							_type: 'bundle',
 							_id: newId
 						}
@@ -407,7 +407,7 @@ function putBundle(req, res) {
 				_.each(documents, function(document) {
 					bulkBody.push({
 						update: {
-							_index: 'arosenius',
+							_index: config.index,
 							_type: 'artwork',
 							_id: document
 						}
@@ -437,7 +437,7 @@ function putBundle(req, res) {
 
 function postBundle(req, res) {
 	client.update({
-		index: 'arosenius',
+		index: config.index,
 		type: 'bundle',
 		id: req.body.id,
 		body: {
@@ -468,7 +468,7 @@ function postDocument(req, res) {
 	}
 
 	client.update({
-		index: 'arosenius',
+		index: config.index,
 		type: 'artwork',
 		id: req.body.id,
 		body: {
@@ -486,7 +486,7 @@ function getDocument(req, res) {
 	}
 
 	client.search({
-		index: 'arosenius',
+		index: config.index,
 		type: 'artwork',
 		size: 1,
 		from: 0,
@@ -504,7 +504,7 @@ function getDocument(req, res) {
 
 function getMuseums(req, res) {
 	client.search({
-		index: 'arosenius',
+		index: config.index,
 		type: 'artwork',
 		body: {
 			"aggs": {
@@ -541,7 +541,7 @@ function getBundles(req, res) {
 	}
 
 	client.search({
-		index: 'arosenius',
+		index: config.index,
 		type: 'bundle',
 		size: pageSize,
 		from: req.query.page && req.query.page > 0 ? (req.query.page-1)*pageSize : 0,
@@ -564,7 +564,7 @@ function getBundles(req, res) {
 
 function getTechnic(req, res) {
 	client.search({
-		index: 'arosenius',
+		index: config.index,
 		type: 'artwork',
 		body: {
 			"aggs": {
@@ -588,7 +588,7 @@ function getTechnic(req, res) {
 
 function getMaterial(req, res) {
 	client.search({
-		index: 'arosenius',
+		index: config.index,
 		type: 'artwork',
 		body: {
 			"aggs": {
@@ -614,7 +614,7 @@ function getMaterial(req, res) {
 
 function getTypes(req, res) {
 	client.search({
-		index: 'arosenius',
+		index: config.index,
 		type: 'artwork',
 		body: {
 			"aggs": {
@@ -642,7 +642,7 @@ function getTypes(req, res) {
 
 function getTags(req, res) {
 	client.search({
-		index: 'arosenius',
+		index: config.index,
 		type: 'artwork',
 		body: {
 			"aggs": {
@@ -668,7 +668,7 @@ function getTags(req, res) {
 
 function getPagetypes(req, res) {
 	client.search({
-		index: 'arosenius',
+		index: config.index,
 		type: 'artwork',
 		body: {
 			"aggs": {
@@ -694,7 +694,7 @@ function getPagetypes(req, res) {
 
 function getPersons(req, res) {
 	client.search({
-		index: 'arosenius',
+		index: config.index,
 		type: 'artwork',
 		body: {
 			"aggs": {
@@ -720,7 +720,7 @@ function getPersons(req, res) {
 
 function getPlaces(req, res) {
 	client.search({
-		index: 'arosenius',
+		index: config.index,
 		type: 'artwork',
 		body: {
 			"aggs": {
@@ -746,7 +746,7 @@ function getPlaces(req, res) {
 
 function getGenres(req, res) {
 	client.search({
-		index: 'arosenius',
+		index: config.index,
 		type: 'artwork',
 		body: {
 			"aggs": {
@@ -774,7 +774,7 @@ function getColorMap(req, res) {
 	var nestedPath = req.query.prominent == 'true' ? 'color.colors.prominent' : 'color.colors.three';
 
 	client.search({
-		index: 'arosenius',
+		index: config.index,
 		type: 'artwork',
 		body: {
 			size: 0,
@@ -829,7 +829,7 @@ function getColorMap(req, res) {
 	});
 /*
 	client.search({
-		index: 'arosenius',
+		index: config.index,
 		type: 'artwork',
 		body: {
 			size: 0,
