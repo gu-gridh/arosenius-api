@@ -169,7 +169,7 @@ function getDocuments(req, res) {
 		terms.push(['museum_int_id', req.query.search]);
 		terms.push(['collection.museum', req.query.search]);
 
-		queryBuilder.addBool(terms, 'should');
+		queryBuilder.addBool(terms, 'should', true);
 	}
 
 	if (req.query.type) {
