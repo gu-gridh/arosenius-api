@@ -158,18 +158,18 @@ function getDocuments(req, res) {
 	}
 
 	if (req.query.search) {
-		var searchTerms = req.query.search.split(' ');
+		var searchTerms = req.query.search.replace(/:|-|\/|\\/g, ' ').split(' ');
 
 		var terms = [];
 		for (var i = 0; i<searchTerms.length; i++) {		
 			terms.push(['title', searchTerms[i]]);
 			terms.push(['description', searchTerms[i]]);
+			terms.push(['museum_int_id', searchTerms[i]]);
 		}
 
-		terms.push(['museum_int_id', req.query.search]);
 		terms.push(['collection.museum', req.query.search]);
 
-		queryBuilder.addBool(terms, 'should', true);
+		queryBuilder.addBool(terms, 'should');
 	}
 
 	if (req.query.type) {
