@@ -164,6 +164,8 @@ function getDocuments(req, res) {
 		for (var i = 0; i<searchTerms.length; i++) {		
 			terms.push(['title', searchTerms[i]]);
 			terms.push(['description', searchTerms[i]]);
+			terms.push(['museum_int_id', searchTerms[i]]);
+			terms.push(['collection.museum', searchTerms[i]]);
 		}
 		queryBuilder.addBool(terms, 'should');
 	}
