@@ -72,7 +72,7 @@ function QueryBuilder() {
 	this.queryBody = {};
 }
 
-QueryBuilder.prototype.addBool = function(terms, type, caseSensitive, nested, nestedPath) {
+QueryBuilder.prototype.addBool = function(terms, type, caseSensitive, nested, nestedPath, disableProcessing) {
 	if (!this.queryBody['query']) {
 		this.queryBody['query'] = {};
 	}
@@ -90,19 +90,28 @@ QueryBuilder.prototype.addBool = function(terms, type, caseSensitive, nested, ne
 	boolObj.bool[type] = [];
 
 	for (var i = 0; i<terms.length; i++) {
-		var propertyName = terms[i][2] ? terms[i][2] : 'term';
-		var termObj = {};
-		termObj[propertyName] = {}
-
-		if (caseSensitive || propertyName != 'term') {
-			termObj[propertyName][terms[i][0]] = terms[i][1];
+		if (disableProcessing) {
+			console.log('disableProcessing')
+			boolObj.bool[type].push(terms[i]);
 		}
-		else {
-			termObj[propertyName][terms[i][0]] = terms[i][1].toLowerCase();
-		}
+		else {		
+			var propertyName = terms[i][2] ? terms[i][2] : 'term';
+			var termObj = {};
+			termObj[propertyName] = {}
 
-		boolObj.bool[type].push(termObj);
+			if (caseSensitive || propertyName != 'term') {
+				termObj[propertyName][terms[i][0]] = terms[i][1];
+			}
+			else {
+				termObj[propertyName][terms[i][0]] = terms[i][1].toLowerCase();
+			}
+
+			boolObj.bool[type].push(termObj);
+		}
 	}
+
+
+	console.log(JSON.stringify(boolObj));
 
 	if (nested) {
 		this.queryBody.query.bool.must.push({
@@ -207,7 +216,100 @@ function getDocuments(req, res) {
 			['genre', req.query.genre]
 		], 'should', true);
 	}
+/*
+"query": {
+	"bool": {
+		"must": [
+			{
+				"nested": {
+					"path": "images.color.colors.three",
+					"query": {
+						"bool": {
+							"must": [
+								{
+									"range": {
+										"images.color.colors.three.hsv.h": {
+											"from": 31,
+											"to": 61
+										}
+									}
+								}, {
+									"range": {
+										"images.color.colors.three.hsv.s": {
+											"from": 62,
+											"to": 92
+										}
+									}
+								}
+							]
+						}
+					}
 
+				}
+			}
+		]
+	}
+}
+*/
+	if (req.query.hue || req.query.saturation || req.query.lightness) {
+		var nestedQuery = {
+			nested: {
+				path: "images.color.colors.three",
+				query: {
+					bool: {
+						must: []
+					}
+				}
+			}
+		}
+
+		if (req.query.hue) {
+			var queryObject = {
+				range: {
+					"images.color.colors.three.hsv.h": {					
+						from: Number(req.query.hue)-colorMargins,
+						to: Number(req.query.hue)+colorMargins
+					}
+				}
+			};
+
+			nestedQuery.nested.query.bool.must.push(queryObject);
+		}
+
+		if (req.query.saturation) {
+			var queryObject = {
+				range: {
+					"images.color.colors.three.hsv.s": {					
+						from: Number(req.query.saturation)-colorMargins,
+						to: Number(req.query.saturation)+colorMargins
+					}
+				}
+			};
+
+			nestedQuery.nested.query.bool.must.push(queryObject);
+		}
+
+		if (req.query.lightness) {
+			var queryObject = {
+				range: {
+					"images.color.colors.three.hsv.v": {					
+						from: Number(req.query.lightness)-colorMargins,
+						to: Number(req.query.lightness)+colorMargins
+					}
+				}
+			};
+
+			nestedQuery.nested.query.bool.must.push(queryObject);
+		}
+
+		var nestedTerms = [];
+
+		nestedTerms.push(nestedQuery);
+
+		queryBuilder.addBool(nestedTerms, 'must', false, true, 'images', true);
+	}
+
+/*
 	if (req.query.hue || req.query.saturation || req.query.lightness) {
 		var colorPath = req.query.prominent ? 'color.colors.prominent' : 'color.colors.three';
 
@@ -246,7 +348,7 @@ function getDocuments(req, res) {
 
 		queryBuilder.addBool(terms, 'must', false, true, colorPath);
 	}
-
+*/
 	sort.push('batchnumber:desc');
 	sort.push('bundle:asc');
 	sort.push('page.id:asc');
@@ -259,15 +361,14 @@ function getDocuments(req, res) {
 		sort: sort,
 		body: req.query.ids ? query : queryBuilder.queryBody
 	}, function(error, response) {
-		console.log(JSON.stringify(queryBuilder.queryBody));
 		res.json({
 			query: queryBuilder.queryBody,
-			total: response.hits.total,
-			documents: _.map(response.hits.hits, function(item) {
+			total: response.hits ? response.hits.total : 0,
+			documents: response.hits ? _.map(response.hits.hits, function(item) {
 				var ret = item._source;
 				ret.id = item._id;
 				return ret;
-			})
+			}) : []
 		});
 	});
 }
