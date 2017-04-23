@@ -200,9 +200,13 @@ function getDocuments(req, res) {
 	}
 
 	if (req.query.person) {
-		queryBuilder.addBool([
-			['persons', req.query.person]
-		], 'should', true);
+		var persons = req.query.person.split(';');
+
+		_.each(persons, _.bind(function(person) {
+			queryBuilder.addBool([
+				['persons', person]
+			], 'should', true);
+		}, this));
 	}
 
 	if (req.query.place) {
