@@ -209,6 +209,16 @@ function getDocuments(req, res) {
 		}, this));
 	}
 
+	if (req.query.tags) {
+		var tags = req.query.tags.split(';');
+
+		_.each(tags, _.bind(function(tag) {
+			queryBuilder.addBool([
+				['tags', tag]
+			], 'should', true);
+		}, this));
+	}
+
 	if (req.query.place) {
 		queryBuilder.addBool([
 			['places', req.query.place]
