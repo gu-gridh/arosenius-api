@@ -128,7 +128,7 @@ QueryBuilder.prototype.addBool = function(terms, type, caseSensitive, nested, ne
 
 function getDocuments(req, res) {
 	var colorMargins = req.query.color_margins ? Number(req.query.color_margins) : 15;
-	var pageSize = 100;
+	var pageSize = req.query.count || 100;
 
 	var sort = [];
 
