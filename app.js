@@ -130,8 +130,6 @@ function getDocuments(req, res) {
 	var colorMargins = req.query.color_margins ? Number(req.query.color_margins) : 15;
 	var pageSize = req.query.count || 100;
 
-	var sort = [];
-
 	var queryBuilder = new QueryBuilder();
 
 	if (req.query.ids) {
@@ -162,8 +160,6 @@ function getDocuments(req, res) {
 		queryBuilder.addBool([
 			['bundle', req.query.bundle]
 		], 'should', true);
-
-		sort.push('page.order');
 	}
 
 	if (req.query.search) {
@@ -363,9 +359,20 @@ function getDocuments(req, res) {
 		queryBuilder.addBool(terms, 'must', false, true, colorPath);
 	}
 */
-	sort.push('batchnumber:desc');
-	sort.push('bundle:asc');
-	sort.push('page.id:asc');
+	var sort = [
+		{
+			'_script': {
+				'script': "if(doc['type'].value=='Konstverk' || doc['type'].values.contains('Konstverk')) return 1; else return 2;",
+				'type': 'number',
+				'order': 'asc'
+			}
+		},
+		{
+			'_score': {
+				'order': 'desc'
+			}
+		}
+	];
 
 	client.search({
 		index: config.index,
