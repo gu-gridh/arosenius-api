@@ -184,7 +184,7 @@ function getDocuments(req, res) {
 	if (req.query.type) {
 		queryBuilder.addBool([
 			['type', req.query.type]
-		], 'should');
+		], 'should', true);
 	}
 
 	if (req.query.letter_from) {
