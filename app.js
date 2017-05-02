@@ -69,7 +69,22 @@ function adminLogin(req, res) {
 };
 
 function QueryBuilder() {
-	this.queryBody = {};
+	this.queryBody = {
+		sort: [
+			{
+				'_script': {
+					'script': "if(doc['type'].value=='Konstverk' || doc['type'].values.contains('Konstverk')) return 1; else return 2;",
+					'type': 'number',
+					'order': 'asc'
+				}
+			},
+			{
+				'_score': {
+					'order': 'desc'
+				}
+			}
+		]
+	};
 }
 
 QueryBuilder.prototype.addBool = function(terms, type, caseSensitive, nested, nestedPath, disableProcessing) {
@@ -379,7 +394,7 @@ function getDocuments(req, res) {
 		type: 'artwork',
 		size: req.query.showAll && req.query.showAll == 'true' ? 10000 : pageSize,
 		from: req.query.showAll && req.query.showAll == 'true' ? 0 : (req.query.page && req.query.page > 0 ? (req.query.page-1)*pageSize : 0),
-		sort: sort,
+//		sort: sort,
 		body: req.query.ids ? query : queryBuilder.queryBody
 	}, function(error, response) {
 		res.json({
