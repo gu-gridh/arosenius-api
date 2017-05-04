@@ -181,15 +181,22 @@ function getDocuments(req, res) {
 		var searchTerms = req.query.search.replace(/:|-|\/|\\/g, ' ').split(' ');
 
 		var terms = [];
+		var caseSensitiveTerms = [];
 		for (var i = 0; i<searchTerms.length; i++) {		
 			terms.push(['title', searchTerms[i]]);
 			terms.push(['description', searchTerms[i]]);
 			terms.push(['museum_int_id', searchTerms[i]]);
+			terms.push(['material', searchTerms[i]]);
+//			caseSensitiveTerms.push(['type', searchTerms[i]]);
+//			caseSensitiveTerms.push(['collection.museum', searchTerms[i]]);
+//			caseSensitiveTerms.push(['places', searchTerms[i]]);
+//			caseSensitiveTerms.push(['persons', searchTerms[i]]);
 		}
 
-		terms.push(['collection.museum', req.query.search]);
+//		caseSensitiveTerms.push(['collection.museum', req.query.search]);
 
 		queryBuilder.addBool(terms, 'should');
+//		queryBuilder.addBool(caseSensitiveTerms, 'should', true);
 	}
 
 	if (req.query.type) {
