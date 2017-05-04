@@ -187,13 +187,13 @@ function getDocuments(req, res) {
 			terms.push(['description', searchTerms[i]]);
 			terms.push(['museum_int_id', searchTerms[i]]);
 			terms.push(['material_analyzed', searchTerms[i]]);
-			terms.push(['type', searchTerms[i], true]);
-			terms.push(['collection.museum', searchTerms[i], true]);
-			terms.push(['places_analyzed', searchTerms[i], true]);
-			terms.push(['persons_analyzed', searchTerms[i], true]);
+			terms.push(['type', searchTerms[i], 'term', true]);
+			terms.push(['collection.museum', searchTerms[i], 'term', true]);
+			terms.push(['places_analyzed', searchTerms[i], 'term', true]);
+			terms.push(['persons_analyzed', searchTerms[i], 'term', true]);
 		}
 
-		terms.push(['collection.museum', req.query.search, true]);
+		terms.push(['collection.museum', req.query.search, 'term', true]);
 
 		queryBuilder.addBool(terms, 'should');
 	}
