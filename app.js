@@ -114,7 +114,7 @@ QueryBuilder.prototype.addBool = function(terms, type, caseSensitive, nested, ne
 			var termObj = {};
 			termObj[propertyName] = {}
 
-			if (caseSensitive || propertyName != 'term') {
+			if (caseSensitive || propertyName != 'term' || terms[i][3]) {
 				termObj[propertyName][terms[i][0]] = terms[i][1];
 			}
 			else {
@@ -186,17 +186,16 @@ function getDocuments(req, res) {
 			terms.push(['title', searchTerms[i]]);
 			terms.push(['description', searchTerms[i]]);
 			terms.push(['museum_int_id', searchTerms[i]]);
-			terms.push(['material', searchTerms[i]]);
-//			caseSensitiveTerms.push(['type', searchTerms[i]]);
-//			caseSensitiveTerms.push(['collection.museum', searchTerms[i]]);
-//			caseSensitiveTerms.push(['places', searchTerms[i]]);
-//			caseSensitiveTerms.push(['persons', searchTerms[i]]);
+			terms.push(['material_analyzed', searchTerms[i]]);
+			terms.push(['type', searchTerms[i], true]);
+			terms.push(['collection.museum', searchTerms[i], true]);
+			terms.push(['places_analyzed', searchTerms[i], true]);
+			terms.push(['persons_analyzed', searchTerms[i], true]);
 		}
 
-//		caseSensitiveTerms.push(['collection.museum', req.query.search]);
+		terms.push(['collection.museum', req.query.search, true]);
 
 		queryBuilder.addBool(terms, 'should');
-//		queryBuilder.addBool(caseSensitiveTerms, 'should', true);
 	}
 
 	if (req.query.type) {
