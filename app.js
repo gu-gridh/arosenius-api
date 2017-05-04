@@ -188,7 +188,7 @@ function getDocuments(req, res) {
 			terms.push(['museum_int_id', searchTerms[i]]);
 			terms.push(['material_analyzed', searchTerms[i]]);
 			terms.push(['type', searchTerms[i], 'term', true]);
-			terms.push(['collection.museum', searchTerms[i], 'term', true]);
+			terms.push(['collection.museum', searchTerms[i], 'term']);
 			terms.push(['places_analyzed', searchTerms[i], 'term', true]);
 			terms.push(['persons_analyzed', searchTerms[i], 'term', true]);
 		}
