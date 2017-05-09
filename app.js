@@ -73,7 +73,7 @@ function QueryBuilder(sort) {
 		var sortObject = [
 			{
 				'insert_id': {
-					'order': 'desc'
+					'order': 'asc'
 				}
 			}
 		];
@@ -175,6 +175,12 @@ function getDocuments(req, res) {
 				}
 			}
 		};
+	}
+
+	if (req.query.insert_id) {
+		queryBuilder.addBool([
+			['insert_id', req.query.insert_id]
+		], 'should', true);
 	}
 
 	if (req.query.museum) {
