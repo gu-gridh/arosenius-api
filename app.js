@@ -178,8 +178,15 @@ function getDocuments(req, res) {
 	}
 
 	if (req.query.insert_id) {
+		var range = {
+			range: {
+				insert_id: {
+					gte: req.query.insert_id
+				}
+			}
+		};
 		queryBuilder.addBool([
-			['insert_id', req.query.insert_id]
+			['insert_id', range, 'range']
 		], 'should', true);
 	}
 
