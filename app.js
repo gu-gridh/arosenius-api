@@ -68,9 +68,18 @@ function adminLogin(req, res) {
 	});
 };
 
-function QueryBuilder() {
-	this.queryBody = {
-		sort: [
+function QueryBuilder(sort) {
+	if (sort && sort == 'insert_id') {
+		var sortObject = [
+			{
+				'insert_id': {
+					'order': 'desc'
+				}
+			}
+		];
+	}
+	else {
+		var sortObject = [
 			{
 				'_script': {
 					'script': "if(doc['type'].value=='Konstverk' || doc['type'].values.contains('Konstverk')) return 1; else return 2;",
@@ -83,7 +92,10 @@ function QueryBuilder() {
 					'order': 'desc'
 				}
 			}
-		]
+		];
+	}
+	this.queryBody = {
+		sort: sortObject
 	};
 }
 
@@ -145,7 +157,7 @@ function getDocuments(req, res) {
 	var colorMargins = req.query.color_margins ? Number(req.query.color_margins) : 15;
 	var pageSize = req.query.count || 100;
 
-	var queryBuilder = new QueryBuilder();
+	var queryBuilder = new QueryBuilder(req.query.sort);
 
 	if (req.query.ids) {
 		var docIds = req.query.ids.split(';');
@@ -340,67 +352,11 @@ function getDocuments(req, res) {
 		queryBuilder.addBool(nestedTerms, 'must', false, true, 'images', true);
 	}
 
-/*
-	if (req.query.hue || req.query.saturation || req.query.lightness) {
-		var colorPath = req.query.prominent ? 'color.colors.prominent' : 'color.colors.three';
-
-		var terms = [];
-
-		if (req.query.hue) {
-			terms.push([
-				colorPath+'.hsv.h',
-				{
-					from: Number(req.query.hue)-colorMargins,
-					to: Number(req.query.hue)+colorMargins
-				},
-				'range'
-			]);
-		}
-		if (req.query.saturation) {
-			terms.push([
-				colorPath+'.hsv.s',
-				{
-					from: Number(req.query.saturation)-colorMargins,
-					to: Number(req.query.saturation)+colorMargins
-				},
-				'range'
-			]);
-		}
-		if (req.query.lightness) {
-			terms.push([
-				colorPath+'.hsv.v',
-				{
-					from: Number(req.query.lightness)-colorMargins,
-					to: Number(req.query.lightness)+colorMargins
-				},
-				'range'
-			]);
-		}
-
-		queryBuilder.addBool(terms, 'must', false, true, colorPath);
-	}
-*/
-	var sort = [
-		{
-			'_script': {
-				'script': "if(doc['type'].value=='Konstverk' || doc['type'].values.contains('Konstverk')) return 1; else return 2;",
-				'type': 'number',
-				'order': 'asc'
-			}
-		},
-		{
-			'_score': {
-				'order': 'desc'
-			}
-		}
-	];
-
 	client.search({
 		index: config.index,
 		type: 'artwork',
 		size: req.query.showAll && req.query.showAll == 'true' ? 10000 : pageSize,
 		from: req.query.showAll && req.query.showAll == 'true' ? 0 : (req.query.page && req.query.page > 0 ? (req.query.page-1)*pageSize : 0),
-//		sort: sort,
 		body: req.query.ids ? query : queryBuilder.queryBody
 	}, function(error, response) {
 		res.json({
