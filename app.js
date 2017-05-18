@@ -107,7 +107,17 @@ QueryBuilder.prototype.addBool = function(terms, type, caseSensitive, nested, ne
 		this.queryBody.query['bool'] = {};
 	}
 	if (!this.queryBody.query.bool['must']) {
-		this.queryBody.query.bool['must'] = [];
+		this.queryBody.query.bool['must'] = [
+			{
+				{
+					'not': {
+						'term': {
+							'published': 'false'
+						}
+					}
+				}
+			}
+		];
 	}
 
 	var boolObj = {
