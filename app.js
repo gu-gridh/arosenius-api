@@ -82,7 +82,7 @@ function QueryBuilder(sort) {
 		var sortObject = [
 			{
 				'_script': {
-					'script': "if (doc['type'].value=='Konstverk' || doc['type'].values.contains('Konstverk')) return 1; else if (doc['type'].value=='fotografi' || doc['type'].values.contains('fotografi')) return 2; else return 3;",
+					'script': "if (doc['type'].value=='Konstverk' || doc['type'].values.contains('Konstverk')) return 1; elseif (doc['type'].value=='fotografi' || doc['type'].values.contains('fotografi')) return 2; else return 3;",
 					'type': 'number',
 					'order': 'asc'
 				}
