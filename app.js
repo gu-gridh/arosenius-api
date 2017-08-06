@@ -370,6 +370,21 @@ function getDocuments(req, res) {
 		queryBuilder.addBool(nestedTerms, 'must', false, true, 'images', true);
 	}
 
+	if (req.query.archivematerial) {
+		if (req.query.archivematerial == 'only') {
+			queryBuilder.addBool([
+				['type', 'fotografi'],
+				['type', 'Konstverk']
+			], 'must_not');
+		}
+		if (req.query.archivematerial == 'exclude') {
+			queryBuilder.addBool([
+				['type', 'fotografi'],
+				['type', 'Konstverk']
+			], 'should');
+		}
+	}
+
 	client.search({
 		index: config.index,
 		type: 'artwork',
