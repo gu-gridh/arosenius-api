@@ -375,13 +375,13 @@ function getDocuments(req, res) {
 			queryBuilder.addBool([
 				['type', 'fotografi'],
 				['type', 'Konstverk']
-			], 'must_not');
+			], 'must_not', true);
 		}
 		if (req.query.archivematerial == 'exclude') {
 			queryBuilder.addBool([
 				['type', 'fotografi'],
 				['type', 'Konstverk']
-			], 'should');
+			], 'should', true);
 		}
 	}
 
