@@ -595,7 +595,7 @@ function postDocument(req, res) {
 		console.log('sort images');
 		var sortedImages = _.sortBy(document.images, function(image) {
 			console.log(image);
-			return image.page.order || 0;
+			return Number(image.page.order) || 0;
 		});
 
 		console.log(sortedImages);
