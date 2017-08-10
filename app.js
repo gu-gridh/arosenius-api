@@ -31,6 +31,7 @@ function authenticate(user) {
 
 var auth = require('basic-auth');
 
+// Check to see if requesting the /admin part of the API, if so, request authentication
 app.use(function(req, res, next) {
 	var user = auth(req);
 
@@ -68,6 +69,7 @@ function adminLogin(req, res) {
 	});
 };
 
+// Helper to build Elasticsearch queries
 function QueryBuilder(sort) {
 	if (sort && sort == 'insert_id') {
 		var sortObject = [
@@ -79,6 +81,7 @@ function QueryBuilder(sort) {
 		];
 	}
 	else {
+		// Automatically sort results to that artwork and photographs appear first in the list
 		var sortObject = [
 			{
 				'_script': {
@@ -94,11 +97,14 @@ function QueryBuilder(sort) {
 			}
 		];
 	}
+
+	// Initialize the main body of the query
 	this.queryBody = {
 		sort: sortObject
 	};
 }
 
+// Function to add boolean query to the query body
 QueryBuilder.prototype.addBool = function(terms, type, caseSensitive, nested, nestedPath, disableProcessing) {
 	if (!this.queryBody['query']) {
 		this.queryBody['query'] = {};
@@ -145,9 +151,6 @@ QueryBuilder.prototype.addBool = function(terms, type, caseSensitive, nested, ne
 		}
 	}
 
-
-	console.log(JSON.stringify(boolObj));
-
 	if (nested) {
 		this.queryBody.query.bool.must.push({
 			nested: {
@@ -161,6 +164,7 @@ QueryBuilder.prototype.addBool = function(terms, type, caseSensitive, nested, ne
 	}
 }
 
+// Search for documents
 function getDocuments(req, res) {
 	var colorMargins = req.query.color_margins ? Number(req.query.color_margins) : 15;
 	var pageSize = req.query.count || 100;
@@ -185,6 +189,7 @@ function getDocuments(req, res) {
 		};
 	}
 
+	// Get documents with insert_id creater than given value
 	if (req.query.insert_id) {
 		var range = {
 			gte: req.query.insert_id
@@ -195,18 +200,21 @@ function getDocuments(req, res) {
 		], 'should', true);
 	}
 
+	// Get documents from a specific museum
 	if (req.query.museum) {
 		queryBuilder.addBool([
 			['collection.museum', req.query.museum]
 		], 'should', true);
 	}
 
+	// Get documents in a specific bundle (deprected)
 	if (req.query.bundle) {
 		queryBuilder.addBool([
 			['bundle', req.query.bundle]
 		], 'should', true);
 	}
 
+	// Get documents based on search strings. Searches in various fields listed below
 	if (req.query.search) {
 		var searchTerms = req.query.search.replace(/:|-|\/|\\/g, ' ').split(' ');
 
@@ -228,24 +236,28 @@ function getDocuments(req, res) {
 		queryBuilder.addBool(terms, 'should');
 	}
 
+	// Get documents of specific type
 	if (req.query.type) {
 		queryBuilder.addBool([
 			['type', req.query.type]
 		], 'should', true);
 	}
 
+	// Get documents based on name of a sender (applies for letters)
 	if (req.query.letter_from) {
 		queryBuilder.addBool([
 			['sender.name', req.query.letter_from]
 		], 'should');
 	}
 
+	// Get documents based on name of a receiver (applies for letters)
 	if (req.query.letter_to) {
 		queryBuilder.addBool([
 			['sender.recipient', req.query.letter_to]
 		], 'should');
 	}
 
+	// Get documents tagged with a specific person/persons
 	if (req.query.person) {
 		var persons = req.query.person.split(';');
 
@@ -256,6 +268,7 @@ function getDocuments(req, res) {
 		}, this));
 	}
 
+	// Get documents with a specific tag/tags
 	if (req.query.tags) {
 		var tags = req.query.tags.split(';');
 
@@ -266,12 +279,14 @@ function getDocuments(req, res) {
 		}, this));
 	}
 
+	// Get documents tagged with a specific place/places
 	if (req.query.place) {
 		queryBuilder.addBool([
 			['places', req.query.place]
 		], 'should', true);
 	}
 
+	// Get documents of specific genre
 	if (req.query.genre) {
 		queryBuilder.addBool([
 			['genre', req.query.genre]
@@ -312,6 +327,7 @@ function getDocuments(req, res) {
 	}
 }
 */
+	// Get documents of specific color - rewrite needed
 	if (req.query.hue || req.query.saturation || req.query.lightness) {
 		var nestedQuery = {
 			nested: {
@@ -370,6 +386,7 @@ function getDocuments(req, res) {
 		queryBuilder.addBool(nestedTerms, 'must', false, true, 'images', true);
 	}
 
+	// Defines if search should exclusively return artworks and photographs (images) or exclude artworks and photographs
 	if (req.query.archivematerial) {
 		if (req.query.archivematerial == 'only') {
 			queryBuilder.addBool([
@@ -385,9 +402,11 @@ function getDocuments(req, res) {
 		}
 	}
 
+	// Send the search query to Elasticsearch
 	client.search({
 		index: config.index,
 		type: 'artwork',
+		// pagination
 		size: req.query.showAll && req.query.showAll == 'true' ? 10000 : pageSize,
 		from: req.query.showAll && req.query.showAll == 'true' ? 0 : (req.query.page && req.query.page > 0 ? (req.query.page-1)*pageSize : 0),
 		body: req.query.ids ? query : queryBuilder.queryBody
@@ -404,6 +423,7 @@ function getDocuments(req, res) {
 	});
 }
 
+// Deprecated
 function getBundle(req, res) {
 	var pageSize = 30;
 
