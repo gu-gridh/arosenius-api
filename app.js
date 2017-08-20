@@ -328,62 +328,43 @@ function getDocuments(req, res) {
 }
 */
 	// Get documents of specific color - rewrite needed
-	if (req.query.hue || req.query.saturation || req.query.lightness) {
-		var nestedQuery = {
-			nested: {
-				path: "color.colors.three",
-				query: {
-					bool: {
-						must: []
-					}
-				}
-			}
-		}
+if (req.query.hue || req.query.saturation || req.query.lightness) {
+		var colorPath = req.query.prominent ? 'color.colors.prominent' : 'color.colors.three';
+
+		var terms = [];
 
 		if (req.query.hue) {
-			var queryObject = {
-				range: {
-					"color.colors.three.hsv.h": {					
-						from: Number(req.query.hue)-colorMargins,
-						to: Number(req.query.hue)+colorMargins
-					}
-				}
-			};
-
-			nestedQuery.nested.query.bool.must.push(queryObject);
+			terms.push([
+				colorPath+'.hsv.h',
+				{
+					from: Number(req.query.hue)-colorMargins,
+					to: Number(req.query.hue)+colorMargins
+				},
+				'range'
+			]);
 		}
-
 		if (req.query.saturation) {
-			var queryObject = {
-				range: {
-					"color.colors.three.hsv.s": {					
-						from: Number(req.query.saturation)-colorMargins,
-						to: Number(req.query.saturation)+colorMargins
-					}
-				}
-			};
-
-			nestedQuery.nested.query.bool.must.push(queryObject);
+			terms.push([
+				colorPath+'.hsv.s',
+				{
+					from: Number(req.query.saturation)-colorMargins,
+					to: Number(req.query.saturation)+colorMargins
+				},
+				'range'
+			]);
 		}
-
 		if (req.query.lightness) {
-			var queryObject = {
-				range: {
-					"color.colors.three.hsv.v": {					
-						from: Number(req.query.lightness)-colorMargins,
-						to: Number(req.query.lightness)+colorMargins
-					}
-				}
-			};
-
-			nestedQuery.nested.query.bool.must.push(queryObject);
+			terms.push([
+				colorPath+'.hsv.v',
+				{
+					from: Number(req.query.lightness)-colorMargins,
+					to: Number(req.query.lightness)+colorMargins
+				},
+				'range'
+			]);
 		}
 
-		var nestedTerms = [];
-
-		nestedTerms.push(nestedQuery);
-
-		queryBuilder.addBool(nestedTerms, 'must', false, true, 'color', true);
+		queryBuilder.addBool(terms, 'must', false, true, colorPath);
 	}
 
 	// Defines if search should exclusively return artworks and photographs (images) or exclude artworks and photographs
