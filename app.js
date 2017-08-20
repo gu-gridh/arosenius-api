@@ -331,7 +331,7 @@ function getDocuments(req, res) {
 	if (req.query.hue || req.query.saturation || req.query.lightness) {
 		var nestedQuery = {
 			nested: {
-				path: "images.color.colors.three",
+				path: "color.colors.three",
 				query: {
 					bool: {
 						must: []
@@ -343,7 +343,7 @@ function getDocuments(req, res) {
 		if (req.query.hue) {
 			var queryObject = {
 				range: {
-					"images.color.colors.three.hsv.h": {					
+					"color.colors.three.hsv.h": {					
 						from: Number(req.query.hue)-colorMargins,
 						to: Number(req.query.hue)+colorMargins
 					}
@@ -356,7 +356,7 @@ function getDocuments(req, res) {
 		if (req.query.saturation) {
 			var queryObject = {
 				range: {
-					"images.color.colors.three.hsv.s": {					
+					"color.colors.three.hsv.s": {					
 						from: Number(req.query.saturation)-colorMargins,
 						to: Number(req.query.saturation)+colorMargins
 					}
@@ -369,7 +369,7 @@ function getDocuments(req, res) {
 		if (req.query.lightness) {
 			var queryObject = {
 				range: {
-					"images.color.colors.three.hsv.v": {					
+					"color.colors.three.hsv.v": {					
 						from: Number(req.query.lightness)-colorMargins,
 						to: Number(req.query.lightness)+colorMargins
 					}
@@ -383,7 +383,7 @@ function getDocuments(req, res) {
 
 		nestedTerms.push(nestedQuery);
 
-		queryBuilder.addBool(nestedTerms, 'must', false, true, 'images', true);
+		queryBuilder.addBool(nestedTerms, 'must', false, true, 'color', true);
 	}
 
 	// Defines if search should exclusively return artworks and photographs (images) or exclude artworks and photographs
