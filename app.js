@@ -164,7 +164,7 @@ QueryBuilder.prototype.addBool = function(terms, type, caseSensitive, nested, ne
 	}
 }
 
-function adminGetDouments(req, res) {
+function adminGetDocuments(req, res) {
 	getDocuments(req, res, true);
 }
 
