@@ -70,7 +70,7 @@ function adminLogin(req, res) {
 };
 
 // Helper to build Elasticsearch queries
-function QueryBuilder(sort) {
+function QueryBuilder(sort, showUnpublished) {
 	if (sort && sort == 'insert_id') {
 		var sortObject = [
 			{
@@ -112,7 +112,7 @@ QueryBuilder.prototype.addBool = function(terms, type, caseSensitive, nested, ne
 	if (!this.queryBody.query['bool']) {
 		this.queryBody.query['bool'] = {};
 	}
-	if (!this.queryBody.query.bool['must']) {
+	if (!this.queryBody.query.bool['must'] && !this.showUnpublished) {
 		this.queryBody.query.bool['must'] = [
 			{
 				'not': {
@@ -164,12 +164,16 @@ QueryBuilder.prototype.addBool = function(terms, type, caseSensitive, nested, ne
 	}
 }
 
+function adminGetDouments(req, res) {
+	getDocuments(req, res, true);
+}
+
 // Search for documents
-function getDocuments(req, res) {
+function getDocuments(req, res, showUnpublished) {
 	var colorMargins = req.query.color_margins ? Number(req.query.color_margins) : 15;
 	var pageSize = req.query.count || 100;
 
-	var queryBuilder = new QueryBuilder(req.query.sort);
+	var queryBuilder = new QueryBuilder(req.query.sort, showUnpublished);
 
 	if (req.query.ids) {
 		var docIds = req.query.ids.split(';');
@@ -328,7 +332,7 @@ function getDocuments(req, res) {
 }
 */
 	// Get documents of specific color - rewrite needed
-if (req.query.hue || req.query.saturation || req.query.lightness) {
+	if (req.query.hue || req.query.saturation || req.query.lightness) {
 		var colorPath = req.query.prominent ? 'color.colors.prominent' : 'color.colors.three';
 
 		var terms = [];
@@ -1042,7 +1046,7 @@ app.get('/colormap', getColorMap);
 
 app.get('/admin/login', adminLogin);
 app.put('/admin/documents/combine', putCombineDocuments);
-app.get('/admin/documents', getDocuments);
+app.get('/admin/documents', adminGetDocuments);
 app.get('/admin/bundle/:bundle', getBundle);
 app.put('/admin/bundle', putBundle);
 app.post('/admin/bundle/:id', postBundle);
