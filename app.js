@@ -1068,7 +1068,7 @@ app.get('/pagetypes', getPagetypes);
 app.get('/persons', getPersons);
 app.get('/places', getPlaces);
 app.get('/genres', getGenres);
-app.get('/exhitions', getExhibitions);
+app.get('/exhibitions', getExhibitions);
 app.get('/colormap', getColorMap);
 
 app.get('/admin/login', adminLogin);
