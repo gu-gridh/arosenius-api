@@ -917,9 +917,9 @@ function getExhibitions(req, res) {
 		type: 'artwork',
 		body: {
 			"aggs": {
-				"exhitions": {
+				"exhibitions": {
 					"terms": {
-						"field": "exhitions",
+						"field": "exhibitions",
 						"size": 200,
 						"order": {
 							"_term": "asc"
@@ -929,7 +929,7 @@ function getExhibitions(req, res) {
 			}
 		}
 	}, function(error, response) {
-		res.json(_.map(response.aggregations.exhitions.buckets, function(genre) {
+		res.json(_.map(response.aggregations.exhibitions.buckets, function(genre) {
 			return {
 				value: genre.key
 			};
