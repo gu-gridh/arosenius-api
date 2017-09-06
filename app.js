@@ -911,6 +911,32 @@ function getGenres(req, res) {
 	});
 }
 
+function getExhibitions(req, res) {
+	client.search({
+		index: config.index,
+		type: 'artwork',
+		body: {
+			"aggs": {
+				"exhitions": {
+					"terms": {
+						"field": "exhitions",
+						"size": 200,
+						"order": {
+							"_term": "asc"
+						}
+					}
+				}
+			}
+		}
+	}, function(error, response) {
+		res.json(_.map(response.aggregations.exhitions.buckets, function(genre) {
+			return {
+				value: genre.key
+			};
+		}));
+	});
+}
+
 function getColorMap(req, res) {
 	var nestedPath = req.query.prominent == 'true' ? 'color.colors.prominent' : 'color.colors.three';
 
@@ -1042,6 +1068,7 @@ app.get('/pagetypes', getPagetypes);
 app.get('/persons', getPersons);
 app.get('/places', getPlaces);
 app.get('/genres', getGenres);
+app.get('/exhitions', getExhibitions);
 app.get('/colormap', getColorMap);
 
 app.get('/admin/login', adminLogin);
