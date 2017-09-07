@@ -102,10 +102,7 @@ function QueryBuilder(sort, showUnpublished) {
 	this.queryBody = {
 		sort: sortObject
 	};
-}
 
-// Function to add boolean query to the query body
-QueryBuilder.prototype.addBool = function(terms, type, caseSensitive, nested, nestedPath, disableProcessing) {
 	if (!this.queryBody['query']) {
 		this.queryBody['query'] = {};
 	}
@@ -123,7 +120,10 @@ QueryBuilder.prototype.addBool = function(terms, type, caseSensitive, nested, ne
 			}
 		];
 	}
+}
 
+// Function to add boolean query to the query body
+QueryBuilder.prototype.addBool = function(terms, type, caseSensitive, nested, nestedPath, disableProcessing) {
 	var boolObj = {
 		bool: {}
 	};
@@ -402,6 +402,15 @@ function getDocuments(req, res, showUnpublished) {
 			documents: response.hits ? _.map(response.hits.hits, function(item) {
 				var ret = item._source;
 				ret.id = item._id;
+
+				if (ret.image.images && ret.image.images.length > 0) {
+					_.each(ret.image.images, function(image) {
+						if (image.color && image.color.colors) {
+							delete image.color.colors;
+						}
+					})
+				}
+
 				return ret;
 			}) : []
 		});
