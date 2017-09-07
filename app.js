@@ -403,8 +403,8 @@ function getDocuments(req, res, showUnpublished) {
 				var ret = item._source;
 				ret.id = item._id;
 
-				if (ret.image.images && ret.image.images.length > 0) {
-					_.each(ret.image.images, function(image) {
+				if (ret.images && ret.images.length > 0) {
+					_.each(ret.images, function(image) {
 						if (image.color && image.color.colors) {
 							delete image.color.colors;
 						}
