@@ -100,7 +100,7 @@ function QueryBuilder(sort, showUnpublished) {
 
 	// Initialize the main body of the query
 	this.queryBody = {
-		sort: sortObject
+//		sort: sortObject
 	};
 
 	if (!this.queryBody['query']) {
@@ -608,8 +608,7 @@ function postDocument(req, res) {
 	if (document.images && document.images.length > 0) {
 		console.log('sort images');
 		var sortedImages = _.sortBy(document.images, function(image) {
-			console.log(image);
-			return Number(image.page.order) || 0;
+			return image.page && Number(image.page.order) || 0;
 		});
 
 		console.log(sortedImages);
