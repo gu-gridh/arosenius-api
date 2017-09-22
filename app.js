@@ -945,6 +945,31 @@ function getExhibitions(req, res) {
 	});
 }
 
+function getPersonRelations(req, res) {
+	client.search({
+		index: config.index,
+		type: 'artwork',
+		body: {
+			size: 10000,
+			query: {
+				query_string: {
+					query: '*'
+				}
+			}
+		}
+	}, function(error, response) {
+		res.json(_.map(response.hits.hits, function(hit) {
+			return {
+				id: hit._id,
+				type: hit._source.type,
+				museum: hit._source.collection ? hit._source.collection.museum : null,
+				title: hit._source.title,
+				persons: hit._source.persons
+			};
+		}));
+	});
+}
+
 function getColorMap(req, res) {
 	var nestedPath = req.query.prominent == 'true' ? 'color.colors.prominent' : 'color.colors.three';
 
@@ -1078,6 +1103,7 @@ app.get('/places', getPlaces);
 app.get('/genres', getGenres);
 app.get('/exhibitions', getExhibitions);
 app.get('/colormap', getColorMap);
+app.get('/person_relations', getPersonRelations)
 
 app.get('/admin/login', adminLogin);
 app.put('/admin/documents/combine', putCombineDocuments);
