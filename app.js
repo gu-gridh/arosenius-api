@@ -967,7 +967,7 @@ function getPersonRelations(req, res) {
 				persons: hit._source.persons,
 				genre: hit._source.genre,
 				places: hit._source.places,
-				tas: hit._source.tags
+				tags: hit._source.tags
 			};
 		}));
 	});
