@@ -964,7 +964,10 @@ function getPersonRelations(req, res) {
 				type: hit._source.type,
 				museum: hit._source.collection ? hit._source.collection.museum : null,
 				title: hit._source.title,
-				persons: hit._source.persons
+				persons: hit._source.persons,
+				genre: hit._source.genre,
+				places: hit._source.places,
+				tas: hit._source.tags
 			};
 		}));
 	});
