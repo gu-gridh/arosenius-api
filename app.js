@@ -100,7 +100,7 @@ function QueryBuilder(sort, showUnpublished) {
 
 	// Initialize the main body of the query
 	this.queryBody = {
-		sort: sortObject
+//		sort: sortObject
 	};
 
 	if (!this.queryBody['query']) {
@@ -109,7 +109,7 @@ function QueryBuilder(sort, showUnpublished) {
 	if (!this.queryBody.query['bool']) {
 		this.queryBody.query['bool'] = {};
 	}
-	if (!this.queryBody.query.bool['must'] && !this.showUnpublished) {
+	if (!this.queryBody.query.bool['must'] && !showUnpublished) {
 		this.queryBody.query.bool['must'] = [
 			{
 				'not': {
@@ -119,6 +119,9 @@ function QueryBuilder(sort, showUnpublished) {
 				}
 			}
 		];
+	}
+	else {
+		this.queryBody.query.bool['must'] = [];
 	}
 }
 
@@ -173,7 +176,7 @@ function getDocuments(req, res, showUnpublished) {
 	var colorMargins = req.query.color_margins ? Number(req.query.color_margins) : 15;
 	var pageSize = req.query.count || 100;
 
-	var queryBuilder = new QueryBuilder(req.query.sort, showUnpublished);
+	var queryBuilder = new QueryBuilder(req.query.sort, req.query.showUnpublished == 'true' || showUnpublished == true);
 
 	if (req.query.ids) {
 		var docIds = req.query.ids.split(';');
@@ -225,14 +228,15 @@ function getDocuments(req, res, showUnpublished) {
 		var terms = [];
 		var caseSensitiveTerms = [];
 		for (var i = 0; i<searchTerms.length; i++) {		
-			terms.push(['title', searchTerms[i]]);
-			terms.push(['description', searchTerms[i]]);
+			terms.push(['title', searchTerms[i]+'*', 'wildcard']);
+			terms.push(['description', searchTerms[i]+'*', 'wildcard']);
 			terms.push(['museum_int_id', searchTerms[i]]);
 			terms.push(['material_analyzed', searchTerms[i]]);
 			terms.push(['type', searchTerms[i], 'term', true]);
-			terms.push(['collection.museum', searchTerms[i], 'term']);
-			terms.push(['places_analyzed', searchTerms[i], 'term', true]);
-			terms.push(['persons_analyzed', searchTerms[i], 'term', true]);
+			terms.push(['collection.museum', searchTerms[i]+'*', 'wildcard']);
+			terms.push(['places_analyzed', searchTerms[i]+'*', 'wildcard', true]);
+			terms.push(['persons_analyzed', searchTerms[i]+'*', 'wildcard', true]);
+			terms.push(['tags', searchTerms[i]+'*', 'wildcard', true]);
 		}
 
 		terms.push(['collection.museum', req.query.search, 'term', true]);
@@ -397,7 +401,7 @@ function getDocuments(req, res, showUnpublished) {
 		body: req.query.ids ? query : queryBuilder.queryBody
 	}, function(error, response) {
 		res.json({
-			query: queryBuilder.queryBody,
+			query: req.query.showQuery == 'true' ? queryBuilder.queryBody : null,
 			total: response.hits ? response.hits.total : 0,
 			documents: response.hits ? _.map(response.hits.hits, function(item) {
 				var ret = item._source;
