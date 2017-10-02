@@ -228,15 +228,15 @@ function getDocuments(req, res, showUnpublished) {
 		var terms = [];
 		var caseSensitiveTerms = [];
 		for (var i = 0; i<searchTerms.length; i++) {		
-			terms.push(['title', searchTerms[i]+'*', 'wildcard']);
-			terms.push(['description', searchTerms[i]+'*', 'wildcard']);
+			terms.push(['title', '*'+searchTerms[i]+'*', 'wildcard']);
+			terms.push(['description', '*'+searchTerms[i]+'*', 'wildcard']);
 			terms.push(['museum_int_id', searchTerms[i]]);
 			terms.push(['material_analyzed', searchTerms[i]]);
 			terms.push(['type', searchTerms[i], 'term', true]);
-			terms.push(['collection.museum', searchTerms[i]+'*', 'wildcard']);
-			terms.push(['places_analyzed', searchTerms[i]+'*', 'wildcard', true]);
-			terms.push(['persons_analyzed', searchTerms[i]+'*', 'wildcard', true]);
-			terms.push(['tags', searchTerms[i]+'*', 'wildcard', true]);
+			terms.push(['collection.museum', '*'+searchTerms[i]+'*', 'wildcard']);
+			terms.push(['places_analyzed', '*'+searchTerms[i]+'*', 'wildcard', true]);
+			terms.push(['persons_analyzed', '*'+searchTerms[i]+'*', 'wildcard', true]);
+			terms.push(['tags', '*'+searchTerms[i]+'*', 'wildcard', true]);
 		}
 
 		terms.push(['collection.museum', req.query.search, 'term', true]);
