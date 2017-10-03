@@ -101,6 +101,7 @@ function QueryBuilder(sort, showUnpublished) {
 	// Initialize the main body of the query
 	this.queryBody = {
 //		sort: sortObject
+		sort: sortObject
 	};
 
 	if (!this.queryBody['query']) {
