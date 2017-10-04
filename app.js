@@ -210,7 +210,7 @@ function getDocuments(req, res, showUnpublished) {
 	// Get documents from a specific museum
 	if (req.query.museum) {
 		queryBuilder.addBool([
-			['collection.museum', req.query.museum]
+			['collection.museum', req.query.museum.toLowerCase()]
 		], 'should', true);
 	}
 
@@ -227,16 +227,18 @@ function getDocuments(req, res, showUnpublished) {
 
 		var terms = [];
 		var caseSensitiveTerms = [];
-		for (var i = 0; i<searchTerms.length; i++) {		
-			terms.push(['title', '*'+searchTerms[i]+'*', 'wildcard']);
-			terms.push(['description', '*'+searchTerms[i]+'*', 'wildcard']);
+		for (var i = 0; i<searchTerms.length; i++) {
+			var searchTerm = searchTerms[i].toLowerCase();
+
+			terms.push(['title', '*'+searchTerm+'*', 'wildcard']);
+			terms.push(['description', '*'+searchTerm+'*', 'wildcard']);
 			terms.push(['museum_int_id', searchTerms[i]]);
 			terms.push(['material_analyzed', searchTerms[i]]);
-			terms.push(['type', searchTerms[i], 'term', true]);
-			terms.push(['collection.museum', '*'+searchTerms[i]+'*', 'wildcard']);
-			terms.push(['places_analyzed', '*'+searchTerms[i]+'*', 'wildcard', true]);
-			terms.push(['persons_analyzed', '*'+searchTerms[i]+'*', 'wildcard', true]);
-			terms.push(['tags', '*'+searchTerms[i]+'*', 'wildcard', true]);
+			terms.push(['type', searchTerm, 'term', true]);
+			terms.push(['collection.museum', '*'+searchTerm+'*', 'wildcard']);
+			terms.push(['places_analyzed', '*'+searchTerm+'*', 'wildcard', true]);
+			terms.push(['persons_analyzed', '*'+searchTerm+'*', 'wildcard', true]);
+			terms.push(['tags', '*'+searchTerm+'*', 'wildcard', true]);
 		}
 
 		terms.push(['collection.museum', req.query.search, 'term', true]);
@@ -247,7 +249,7 @@ function getDocuments(req, res, showUnpublished) {
 	// Get documents of specific type
 	if (req.query.type) {
 		queryBuilder.addBool([
-			['type', req.query.type]
+			['type.raw', req.query.type]
 		], 'should', true);
 	}
 
@@ -271,7 +273,7 @@ function getDocuments(req, res, showUnpublished) {
 
 		_.each(persons, _.bind(function(person) {
 			queryBuilder.addBool([
-				['persons', person]
+				['persons.raw', person]
 			], 'should', true);
 		}, this));
 	}
@@ -282,7 +284,7 @@ function getDocuments(req, res, showUnpublished) {
 
 		_.each(tags, _.bind(function(tag) {
 			queryBuilder.addBool([
-				['tags', tag]
+				['tags.raw', tag]
 			], 'should', true);
 		}, this));
 	}
@@ -290,14 +292,14 @@ function getDocuments(req, res, showUnpublished) {
 	// Get documents tagged with a specific place/places
 	if (req.query.place) {
 		queryBuilder.addBool([
-			['places', req.query.place]
+			['places.raw', req.query.place]
 		], 'should', true);
 	}
 
 	// Get documents of specific genre
 	if (req.query.genre) {
 		queryBuilder.addBool([
-			['genre', req.query.genre]
+			['genre.raw', req.query.genre]
 		], 'should', true);
 	}
 /*
@@ -380,13 +382,13 @@ function getDocuments(req, res, showUnpublished) {
 		if (req.query.archivematerial == 'only') {
 			queryBuilder.addBool([
 				['type', 'fotografi'],
-				['type', 'Konstverk']
+				['type', 'konstverk']
 			], 'must_not', true);
 		}
 		if (req.query.archivematerial == 'exclude') {
 			queryBuilder.addBool([
 				['type', 'fotografi'],
-				['type', 'Konstverk']
+				['type', 'konstverk']
 			], 'should', true);
 		}
 	}
