@@ -72,7 +72,7 @@ function adminLogin(req, res) {
 // Helper to build Elasticsearch queries
 function QueryBuilder(sort, showUnpublished) {
 	if (sort && sort == 'insert_id') {
-		var sortObject = [
+		var .bject = [
 			{
 				'insert_id': {
 					'order': 'asc'
@@ -85,7 +85,7 @@ function QueryBuilder(sort, showUnpublished) {
 		var sortObject = [
 			{
 				'_script': {
-                    'script': "if (doc['type'].value=='Konstverk' || doc['type'].values.contains('Konstverk')) return 1; else if (doc['type'].value=='fotografi' || doc['type'].values.contains('fotografi')) return 2; else return 3;",
+                    'script': "if (doc['type']['raw'].value=='Konstverk' || doc['type']['raw'].values.contains('Konstverk')) return 1; else if (doc['type']['raw'].value=='fotografi' || doc['type']['raw'].values.contains('fotografi')) return 2; else return 3;",
 					'type': 'number',
 					'order': 'asc'
 				}
