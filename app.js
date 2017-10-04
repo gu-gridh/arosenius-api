@@ -72,7 +72,7 @@ function adminLogin(req, res) {
 // Helper to build Elasticsearch queries
 function QueryBuilder(sort, showUnpublished) {
 	if (sort && sort == 'insert_id') {
-		var .bject = [
+		var sortObject = [
 			{
 				'insert_id': {
 					'order': 'asc'
