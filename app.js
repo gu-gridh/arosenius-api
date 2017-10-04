@@ -1101,7 +1101,7 @@ function getAutoComplete(req, res) {
 				aggs: {
 					results: {
 						terms: {
-							field: 'title_static',
+							field: 'title.raw',
 							size: 200,
 							order: {
 								_term: 'asc'
@@ -1123,7 +1123,7 @@ function getAutoComplete(req, res) {
 				aggs: {
 					results: {
 						terms: {
-							field: 'tags',
+							field: 'tags.raw',
 							size: 200,
 							order: {
 								_term: 'asc'
@@ -1145,7 +1145,7 @@ function getAutoComplete(req, res) {
 				aggs: {
 					results: {
 						terms: {
-							field: 'places',
+							field: 'places.raw',
 							size: 200,
 							order: {
 								_term: 'asc'
@@ -1167,7 +1167,7 @@ function getAutoComplete(req, res) {
 				aggs: {
 					results: {
 						terms: {
-							field: 'persons',
+							field: 'persons.raw',
 							size: 200,
 							order: {
 								_term: 'asc'
