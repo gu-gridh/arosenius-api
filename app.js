@@ -100,7 +100,6 @@ function QueryBuilder(sort, showUnpublished) {
 
 	// Initialize the main body of the query
 	this.queryBody = {
-//		sort: sortObject
 		sort: sortObject
 	};
 
@@ -664,7 +663,7 @@ function getMuseums(req, res) {
 			"aggs": {
 				"museums": {
 					"terms": {
-						"field": "collection.museum",
+						"field": "collection.museum.raw",
 						"size": 5,
 						"order": {
 							"_count": "desc"
@@ -774,7 +773,7 @@ function getTypes(req, res) {
 			"aggs": {
 				"types": {
 					"terms": {
-						"field": "type",
+						"field": "type.raw",
 						"size": 200,
 						"order": {
 							"_term": "asc"
@@ -802,7 +801,7 @@ function getTags(req, res) {
 			"aggs": {
 				"tags": {
 					"terms": {
-						"field": "tags",
+						"field": "tags.raw",
 						"size": 200,
 						"order": {
 							"_term": "asc"
@@ -854,7 +853,7 @@ function getPersons(req, res) {
 			"aggs": {
 				"persons": {
 					"terms": {
-						"field": "persons",
+						"field": "persons.raw",
 						"size": 200,
 						"order": {
 							"_term": "asc"
@@ -880,7 +879,7 @@ function getPlaces(req, res) {
 			"aggs": {
 				"places": {
 					"terms": {
-						"field": "places",
+						"field": "places.raw",
 						"size": 200,
 						"order": {
 							"_term": "asc"
@@ -906,7 +905,7 @@ function getGenres(req, res) {
 			"aggs": {
 				"genres": {
 					"terms": {
-						"field": "genre",
+						"field": "genre.raw",
 						"size": 200,
 						"order": {
 							"_term": "asc"
@@ -932,7 +931,7 @@ function getExhibitions(req, res) {
 			"aggs": {
 				"exhibitions": {
 					"terms": {
-						"field": "exhibitions",
+						"field": "exhibitions.raw",
 						"size": 200,
 						"order": {
 							"_term": "asc"
@@ -1083,6 +1082,103 @@ function getColorMap(req, res) {
 */
 }
 
+function getAutoComplete(req, res) {
+	var searchString = '*'+req.query.search+'*';
+
+	client.msearch({
+		body: [
+			// Titles
+			{ index: config.index, type: 'artwork' },
+			{
+				size: 0,
+				query: {
+					wildcard: {
+						title: searchString
+					}
+				},
+				aggs: {
+					results: {
+						terms: {
+							field: 'title_static',
+							size: 200,
+							order: {
+								_term: 'asc'
+							}
+						}
+					}
+				}
+			},
+
+			// Tags
+			{ index: config.index, type: 'artwork' },
+			{
+				size: 0,
+				query: {
+					wildcard: {
+						tags: searchString
+					}
+				},
+				aggs: {
+					results: {
+						terms: {
+							field: 'tags',
+							size: 200,
+							order: {
+								_term: 'asc'
+							}
+						}
+					}
+				}
+			},
+
+			// Places
+			{ index: config.index, type: 'artwork' },
+			{
+				size: 0,
+				query: {
+					wildcard: {
+						places: searchString
+					}
+				},
+				aggs: {
+					results: {
+						terms: {
+							field: 'places',
+							size: 200,
+							order: {
+								_term: 'asc'
+							}
+						}
+					}
+				}
+			},
+
+			// Persons
+			{ index: config.index, type: 'artwork' },
+			{
+				size: 0,
+				query: {
+					wildcard: {
+						persons: searchString
+					}
+				},
+				aggs: {
+					results: {
+						terms: {
+							field: 'persons',
+							size: 200,
+							order: {
+								_term: 'asc'
+							}
+						}
+					}
+				}
+			}
+		]
+	}, function(error, response) {
+		res.json(response);
+	});
+} 
 var imgr = new IMGR({
 	cache_dir: config.image_temp_path
 });
@@ -1111,7 +1207,8 @@ app.get('/places', getPlaces);
 app.get('/genres', getGenres);
 app.get('/exhibitions', getExhibitions);
 app.get('/colormap', getColorMap);
-app.get('/person_relations', getPersonRelations)
+app.get('/person_relations', getPersonRelations);
+app.get('/autocomplete', getAutoComplete);
 
 app.get('/admin/login', adminLogin);
 app.put('/admin/documents/combine', putCombineDocuments);
