@@ -85,7 +85,7 @@ function QueryBuilder(sort, showUnpublished) {
 		var sortObject = [
 			{
 				'_script': {
-                    'script': "if (doc['type']['raw'].value=='Konstverk' || doc['type']['raw'].values.contains('Konstverk')) return 1; else if (doc['type']['raw'].value=='fotografi' || doc['type']['raw'].values.contains('fotografi')) return 2; else return 3;",
+                    'script': "if (doc['type.raw'].value=='Konstverk' || doc['type.raw'].values.contains('Konstverk')) return 1; else if (doc['type.raw'].value=='fotografi' || doc['type.raw'].values.contains('fotografi')) return 2; else return 3;",
 					'type': 'number',
 					'order': 'asc'
 				}
