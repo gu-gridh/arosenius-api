@@ -210,7 +210,7 @@ function getDocuments(req, res, showUnpublished) {
 	// Get documents from a specific museum
 	if (req.query.museum) {
 		queryBuilder.addBool([
-			['collection.museum', req.query.museum.toLowerCase()]
+			['collection.museum.raw', req.query.museum]
 		], 'should', true);
 	}
 
@@ -1085,7 +1085,7 @@ function getColorMap(req, res) {
 }
 
 function getAutoComplete(req, res) {
-	var searchString = '*'+req.query.search+'*';
+	var searchString = '*'+req.query.search.toLowerCase()+'*';
 
 	client.msearch({
 		body: [
@@ -1099,10 +1099,10 @@ function getAutoComplete(req, res) {
 					}
 				},
 				aggs: {
-					results: {
+					titles: {
 						terms: {
 							field: 'title.raw',
-							size: 200,
+							size: 10,
 							order: {
 								_term: 'asc'
 							}
@@ -1121,10 +1121,10 @@ function getAutoComplete(req, res) {
 					}
 				},
 				aggs: {
-					results: {
+					tags: {
 						terms: {
 							field: 'tags.raw',
-							size: 200,
+							size: 10,
 							order: {
 								_term: 'asc'
 							}
@@ -1143,10 +1143,10 @@ function getAutoComplete(req, res) {
 					}
 				},
 				aggs: {
-					results: {
+					places: {
 						terms: {
 							field: 'places.raw',
-							size: 200,
+							size: 10,
 							order: {
 								_term: 'asc'
 							}
@@ -1165,10 +1165,10 @@ function getAutoComplete(req, res) {
 					}
 				},
 				aggs: {
-					results: {
+					persons: {
 						terms: {
 							field: 'persons.raw',
-							size: 200,
+							size: 10,
 							order: {
 								_term: 'asc'
 							}
@@ -1178,7 +1178,27 @@ function getAutoComplete(req, res) {
 			}
 		]
 	}, function(error, response) {
-		res.json(response);
+		var getBuckets = function(field) {
+			var responseItem = _.find(response.responses, function(item) {
+				return Boolean(item.aggregations[field]);
+			});
+
+			var buckets = _.filter(responseItem.aggregations[field].buckets, function(item) {
+				return item.key.toLowerCase().indexOf(req.query.search.toLowerCase()) > -1;
+			});
+
+			return buckets;
+		};
+
+		var results = {
+			titles: getBuckets('titles'),
+			tags: getBuckets('tags'),
+			persons: getBuckets('persons'),
+			places: getBuckets('places')
+		};
+
+
+		res.json(results);
 	});
 } 
 var imgr = new IMGR({
