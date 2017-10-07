@@ -233,11 +233,11 @@ function getDocuments(req, res, showUnpublished) {
 			terms.push(['title', '*'+searchTerm+'*', 'wildcard']);
 			terms.push(['description', '*'+searchTerm+'*', 'wildcard']);
 			terms.push(['museum_int_id', searchTerms[i]]);
-			terms.push(['material_analyzed', searchTerms[i]]);
+			terms.push(['material_analyzed', '*'+searchTerms[i]+'*']);
 			terms.push(['type', searchTerm, 'term', true]);
 			terms.push(['collection.museum', '*'+searchTerm+'*', 'wildcard']);
-			terms.push(['places_analyzed', '*'+searchTerm+'*', 'wildcard', true]);
-			terms.push(['persons_analyzed', '*'+searchTerm+'*', 'wildcard', true]);
+			terms.push(['places', '*'+searchTerm+'*', 'wildcard', true]);
+			terms.push(['persons', '*'+searchTerm+'*', 'wildcard', true]);
 			terms.push(['tags', '*'+searchTerm+'*', 'wildcard', true]);
 		}
 
@@ -1085,98 +1085,124 @@ function getColorMap(req, res) {
 }
 
 function getAutoComplete(req, res) {
-	var searchString = '*'+req.query.search.toLowerCase()+'*';
+	var searchStrings = req.query.search.toLowerCase().split(' ');
 
-	client.msearch({
-		body: [
-			// Titles
-			{ index: config.index, type: 'artwork' },
-			{
-				size: 0,
-				query: {
-					wildcard: {
-						title: searchString
-					}
-				},
-				aggs: {
-					titles: {
-						terms: {
-							field: 'title.raw',
-							size: 10,
-							order: {
-								_term: 'asc'
+	var query = [
+		// Titles
+		{ index: config.index, type: 'artwork' },
+		{
+			size: 0,
+			query: {
+				bool: {
+					must: _.map(searchStrings, function(searchString) {
+						return {
+							wildcard: {
+								title: '*'+searchString+'*'
 							}
 						}
-					}
+					})
 				}
 			},
-
-			// Tags
-			{ index: config.index, type: 'artwork' },
-			{
-				size: 0,
-				query: {
-					wildcard: {
-						tags: searchString
-					}
-				},
-				aggs: {
-					tags: {
-						terms: {
-							field: 'tags.raw',
-							size: 10,
-							order: {
-								_term: 'asc'
-							}
-						}
-					}
-				}
-			},
-
-			// Places
-			{ index: config.index, type: 'artwork' },
-			{
-				size: 0,
-				query: {
-					wildcard: {
-						places: searchString
-					}
-				},
-				aggs: {
-					places: {
-						terms: {
-							field: 'places.raw',
-							size: 10,
-							order: {
-								_term: 'asc'
-							}
-						}
-					}
-				}
-			},
-
-			// Persons
-			{ index: config.index, type: 'artwork' },
-			{
-				size: 0,
-				query: {
-					wildcard: {
-						persons: searchString
-					}
-				},
-				aggs: {
-					persons: {
-						terms: {
-							field: 'persons.raw',
-							size: 10,
-							order: {
-								_term: 'asc'
-							}
+			aggs: {
+				titles: {
+					terms: {
+						field: 'title.raw',
+						size: 10,
+						order: {
+							_term: 'asc'
 						}
 					}
 				}
 			}
-		]
+		},
+
+		// Tags
+		{ index: config.index, type: 'artwork' },
+		{
+			size: 0,
+			query: {
+				bool: {
+					must: _.map(searchStrings, function(searchString) {
+						return {
+							wildcard: {
+								tags: '*'+searchString+'*'
+							}
+						}
+					})
+				}
+			},
+			aggs: {
+				tags: {
+					terms: {
+						field: 'tags.raw',
+						size: 10,
+						order: {
+							_term: 'asc'
+						}
+					}
+				}
+			}
+		},
+
+		// Places
+		{ index: config.index, type: 'artwork' },
+		{
+			size: 0,
+			query: {
+				bool: {
+					must: _.map(searchStrings, function(searchString) {
+						return {
+							wildcard: {
+								places: '*'+searchString+'*'
+							}
+						}
+					})
+				}
+			},
+			aggs: {
+				places: {
+					terms: {
+						field: 'places.raw',
+						size: 10,
+						order: {
+							_term: 'asc'
+						}
+					}
+				}
+			}
+		},
+
+		// Persons
+		{ index: config.index, type: 'artwork' },
+		{
+			size: 0,
+			query: {
+				bool: {
+					must: _.map(searchStrings, function(searchString) {
+						return {
+							wildcard: {
+								persons: '*'+searchString+'*'
+							}
+						}
+					})
+				}
+			},
+			aggs: {
+				persons: {
+					terms: {
+						field: 'persons.raw',
+						size: 10,
+						order: {
+							_term: 'asc'
+						}
+					}
+				}
+			}
+		}
+	];
+
+	client.msearch({
+		body: query
 	}, function(error, response) {
 		var getBuckets = function(field) {
 			var responseItem = _.find(response.responses, function(item) {
@@ -1184,7 +1210,14 @@ function getAutoComplete(req, res) {
 			});
 
 			var buckets = _.filter(responseItem.aggregations[field].buckets, function(item) {
-				return item.key.toLowerCase().indexOf(req.query.search.toLowerCase()) > -1;
+				var found = false;
+
+				_.each(searchStrings, function(searchString) {
+					if (item.key.toLowerCase().indexOf(searchString) > -1) {
+						found = true;
+					}
+				})
+				return found;
 			});
 
 			return buckets;
@@ -1194,7 +1227,9 @@ function getAutoComplete(req, res) {
 			titles: getBuckets('titles'),
 			tags: getBuckets('tags'),
 			persons: getBuckets('persons'),
-			places: getBuckets('places')
+			places: getBuckets('places'),
+			query: query,
+			response: response
 		};
 
 
