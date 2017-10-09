@@ -1091,7 +1091,7 @@ function getAutoComplete(req, res) {
 		// Titles
 		{ index: config.index, type: 'artwork' },
 		{
-			size: 0,
+			size: 10,
 			query: {
 				bool: {
 					must: _.map(searchStrings, function(searchString) {
@@ -1102,7 +1102,8 @@ function getAutoComplete(req, res) {
 						}
 					})
 				}
-			},
+			}
+/*
 			aggs: {
 				titles: {
 					terms: {
@@ -1114,6 +1115,7 @@ function getAutoComplete(req, res) {
 					}
 				}
 			}
+*/
 		},
 
 		// Tags
@@ -1206,7 +1208,7 @@ function getAutoComplete(req, res) {
 	}, function(error, response) {
 		var getBuckets = function(field) {
 			var responseItem = _.find(response.responses, function(item) {
-				return Boolean(item.aggregations[field]);
+				return Boolean(item.aggregations && item.aggregations[field]);
 			});
 
 			var buckets = _.filter(responseItem.aggregations[field].buckets, function(item) {
@@ -1224,7 +1226,13 @@ function getAutoComplete(req, res) {
 		};
 
 		var results = {
-			titles: getBuckets('titles'),
+
+			titles: _.map(response.responses[0].hits.hits, function(item) {
+				return {
+					key: item._source.title,
+					id: item._id
+				}
+			}),
 			tags: getBuckets('tags'),
 			persons: getBuckets('persons'),
 			places: getBuckets('places'),
