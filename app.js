@@ -450,6 +450,7 @@ function putCombineDocuments(req, res) {
 	client.search({
 		index: config.index,
 		type: 'artwork',
+		size: 100,
 		body: {
 			query: {
 				query_string: {
