@@ -1089,7 +1089,7 @@ function getAutoComplete(req, res) {
 	var searchStrings = req.query.search.toLowerCase().split(' ');
 
 	var query = [
-		// Titles
+		// Documents
 		{ index: config.index, type: 'artwork' },
 		{
 			size: 10,
@@ -1117,6 +1117,34 @@ function getAutoComplete(req, res) {
 				}
 			}
 */
+		},
+
+		// Titles aggregation
+		{ index: config.index, type: 'artwork' },
+		{
+			size: 0,
+			query: {
+				bool: {
+					must: _.map(searchStrings, function(searchString) {
+						return {
+							wildcard: {
+								title: '*'+searchString+'*'
+							}
+						}
+					})
+				}
+			},
+			aggs: {
+				titles: {
+					terms: {
+						field: 'title.raw',
+						size: 10,
+						order: {
+							_term: 'asc'
+						}
+					}
+				}
+			}
 		},
 
 		// Tags
@@ -1228,12 +1256,13 @@ function getAutoComplete(req, res) {
 
 		var results = {
 
-			titles: _.map(response.responses[0].hits.hits, function(item) {
+			documents: _.map(response.responses[0].hits.hits, function(item) {
 				return {
 					key: item._source.title,
 					id: item._id
 				}
 			}),
+			titles: getBuckets('titles'),
 			tags: getBuckets('tags'),
 			persons: getBuckets('persons'),
 			places: getBuckets('places'),
