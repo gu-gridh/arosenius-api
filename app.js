@@ -223,10 +223,11 @@ function getDocuments(req, res, showUnpublished) {
 
 	// Get documents based on search strings. Searches in various fields listed below
 	if (req.query.search) {
+		var terms = [];
+
 		if (req.query.wildcard) {
 			var searchTerms = req.query.search.replace(/:|-|\/|\\/g, ' ').split(' ');
 
-			var terms = [];
 			var caseSensitiveTerms = [];
 			for (var i = 0; i<searchTerms.length; i++) {
 				var searchTerm = searchTerms[i].toLowerCase();
