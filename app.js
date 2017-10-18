@@ -244,17 +244,15 @@ function getDocuments(req, res, showUnpublished) {
 			}
 		}
 		else {
-			var searchTerm = req.query.search;
-
-			terms.push(['title', searchTerm, 'term']);
-			terms.push(['description', searchTerm, 'term']);
-			terms.push(['museum_int_id', searchTerms]);
-			terms.push(['material_analyzed', searchTerm]);
-			terms.push(['type', searchTerm, 'term', true]);
-			terms.push(['collection.museum', searchTerm, 'term']);
-			terms.push(['places', searchTerm, 'term', true]);
-			terms.push(['persons', searchTerm, 'term', true]);
-			terms.push(['tags', searchTerm, 'term', true]);
+			terms.push(['title', req.query.search, 'term']);
+			terms.push(['description', req.query.search, 'term']);
+			terms.push(['museum_int_id', req.query.search]);
+			terms.push(['material_analyzed', req.query.search]);
+			terms.push(['type', req.query.search, 'term', true]);
+			terms.push(['collection.museum', req.query.search, 'term']);
+			terms.push(['places', req.query.search, 'term', true]);
+			terms.push(['persons', req.query.search, 'term', true]);
+			terms.push(['tags', req.query.search, 'term', true]);
 		}
 
 		terms.push(['collection.museum', req.query.search, 'term', true]);
