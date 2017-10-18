@@ -225,22 +225,35 @@ function getDocuments(req, res, showUnpublished) {
 	if (req.query.search) {
 		var terms = [];
 
-		if (req.query.wildcard) {
+		if (req.query.generous || req.query.wildcard) {
 			var searchTerms = req.query.search.replace(/:|-|\/|\\/g, ' ').split(' ');
 
 			var caseSensitiveTerms = [];
 			for (var i = 0; i<searchTerms.length; i++) {
 				var searchTerm = searchTerms[i].toLowerCase();
 
-				terms.push(['title', '*'+searchTerm+'*', 'wildcard']);
-				terms.push(['description', '*'+searchTerm+'*', 'wildcard']);
-				terms.push(['museum_int_id', searchTerms[i]]);
-				terms.push(['material_analyzed', '*'+searchTerms[i]+'*']);
-				terms.push(['type', searchTerm, 'term', true]);
-				terms.push(['collection.museum', '*'+searchTerm+'*', 'wildcard']);
-				terms.push(['places', '*'+searchTerm+'*', 'wildcard', true]);
-				terms.push(['persons', '*'+searchTerm+'*', 'wildcard', true]);
-				terms.push(['tags', '*'+searchTerm+'*', 'wildcard', true]);
+				if (req.query.wildcard) {
+					terms.push(['title', '*'+searchTerm+'*', 'wildcard']);
+					terms.push(['description', '*'+searchTerm+'*', 'wildcard']);
+					terms.push(['museum_int_id', searchTerms[i]]);
+					terms.push(['material_analyzed', '*'+searchTerms[i]+'*']);
+					terms.push(['type', searchTerm, 'term', true]);
+					terms.push(['collection.museum', '*'+searchTerm+'*', 'wildcard']);
+					terms.push(['places', '*'+searchTerm+'*', 'wildcard', true]);
+					terms.push(['persons', '*'+searchTerm+'*', 'wildcard', true]);
+					terms.push(['tags', '*'+searchTerm+'*', 'wildcard', true]);
+				}
+				else {
+					terms.push(['title', searchTerm, 'term']);
+					terms.push(['description', searchTerm, 'term']);
+					terms.push(['museum_int_id', searchTerms[i]]);
+					terms.push(['material_analyzed', searchTerm+'*']);
+					terms.push(['type', searchTerm, 'term', true]);
+					terms.push(['collection.museum', searchTerm, 'term']);
+					terms.push(['places', searchTerm, 'term', true]);
+					terms.push(['persons', searchTerm, 'term', true]);
+					terms.push(['tags', searchTerm, 'term', true]);
+				}
 			}
 		}
 		else {
