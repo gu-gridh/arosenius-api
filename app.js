@@ -223,22 +223,37 @@ function getDocuments(req, res, showUnpublished) {
 
 	// Get documents based on search strings. Searches in various fields listed below
 	if (req.query.search) {
-		var searchTerms = req.query.search.replace(/:|-|\/|\\/g, ' ').split(' ');
+		if (req.query.wildcard) {
+			var searchTerms = req.query.search.replace(/:|-|\/|\\/g, ' ').split(' ');
 
-		var terms = [];
-		var caseSensitiveTerms = [];
-		for (var i = 0; i<searchTerms.length; i++) {
-			var searchTerm = searchTerms[i].toLowerCase();
+			var terms = [];
+			var caseSensitiveTerms = [];
+			for (var i = 0; i<searchTerms.length; i++) {
+				var searchTerm = searchTerms[i].toLowerCase();
 
-			terms.push(['title', '*'+searchTerm+'*', 'wildcard']);
-			terms.push(['description', '*'+searchTerm+'*', 'wildcard']);
-			terms.push(['museum_int_id', searchTerms[i]]);
-			terms.push(['material_analyzed', '*'+searchTerms[i]+'*']);
+				terms.push(['title', '*'+searchTerm+'*', 'wildcard']);
+				terms.push(['description', '*'+searchTerm+'*', 'wildcard']);
+				terms.push(['museum_int_id', searchTerms[i]]);
+				terms.push(['material_analyzed', '*'+searchTerms[i]+'*']);
+				terms.push(['type', searchTerm, 'term', true]);
+				terms.push(['collection.museum', '*'+searchTerm+'*', 'wildcard']);
+				terms.push(['places', '*'+searchTerm+'*', 'wildcard', true]);
+				terms.push(['persons', '*'+searchTerm+'*', 'wildcard', true]);
+				terms.push(['tags', '*'+searchTerm+'*', 'wildcard', true]);
+			}
+		}
+		else {
+			var searchTerm = req.query.search;
+
+			terms.push(['title', searchTerm, 'term']);
+			terms.push(['description', searchTerm, 'term']);
+			terms.push(['museum_int_id', searchTerms]);
+			terms.push(['material_analyzed', searchTerm]);
 			terms.push(['type', searchTerm, 'term', true]);
-			terms.push(['collection.museum', '*'+searchTerm+'*', 'wildcard']);
-			terms.push(['places', '*'+searchTerm+'*', 'wildcard', true]);
-			terms.push(['persons', '*'+searchTerm+'*', 'wildcard', true]);
-			terms.push(['tags', '*'+searchTerm+'*', 'wildcard', true]);
+			terms.push(['collection.museum', searchTerm, 'term']);
+			terms.push(['places', searchTerm, 'term', true]);
+			terms.push(['persons', searchTerm, 'term', true]);
+			terms.push(['tags', searchTerm, 'term', true]);
 		}
 
 		terms.push(['collection.museum', req.query.search, 'term', true]);
