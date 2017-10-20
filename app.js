@@ -179,15 +179,15 @@ QueryBuilder.prototype.addBool = function(terms, type, caseSensitive, nested, ne
 }
 
 function adminGetDocuments(req, res) {
-	getDocuments(req, res, true);
+	getDocuments(req, res, true, true);
 }
 
 // Search for documents
-function getDocuments(req, res, showUnpublished) {
+function getDocuments(req, res, showUnpublished, showDeleted) {
 	var colorMargins = req.query.color_margins ? Number(req.query.color_margins) : 15;
 	var pageSize = req.query.count || 100;
 
-	var queryBuilder = new QueryBuilder(req.query.sort, req.query.showUnpublished == 'true' || showUnpublished == true);
+	var queryBuilder = new QueryBuilder(req.query.sort, req.query.showUnpublished == 'true' || showUnpublished == true, req.query.showDeleted == 'true' || showDeleted == true);
 
 	if (req.query.ids) {
 		var docIds = req.query.ids.split(';');
