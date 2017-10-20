@@ -117,11 +117,26 @@ function QueryBuilder(sort, showUnpublished) {
 						'published': 'false'
 					}
 				}
+			},
+			{
+				'not': {
+					'term': {
+						'deleted': 'true'
+					}
+				}
 			}
 		];
 	}
 	else {
-		this.queryBody.query.bool['must'] = [];
+		this.queryBody.query.bool['must'] = [
+			{
+				'not': {
+					'term': {
+						'deleted': 'true'
+					}
+				}
+			}
+		];
 	}
 }
 
