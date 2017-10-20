@@ -70,7 +70,7 @@ function adminLogin(req, res) {
 };
 
 // Helper to build Elasticsearch queries
-function QueryBuilder(sort, showUnpublished, showDeleted) {
+function QueryBuilder(sort, showUnpublished) {
 	if (sort && sort == 'insert_id') {
 		var sortObject = [
 			{
@@ -121,10 +121,8 @@ function QueryBuilder(sort, showUnpublished, showDeleted) {
 		];
 	}
 	else {
-		this.queryBody.query.bool['must'] = [
-		];
+		this.queryBody.query.bool['must'] = [];
 	}
-
 }
 
 // Function to add boolean query to the query body
@@ -170,15 +168,15 @@ QueryBuilder.prototype.addBool = function(terms, type, caseSensitive, nested, ne
 }
 
 function adminGetDocuments(req, res) {
-	getDocuments(req, res, true, true);
+	getDocuments(req, res, true);
 }
 
 // Search for documents
-function getDocuments(req, res, showUnpublished, showDeleted) {
+function getDocuments(req, res, showUnpublished) {
 	var colorMargins = req.query.color_margins ? Number(req.query.color_margins) : 15;
 	var pageSize = req.query.count || 100;
 
-	var queryBuilder = new QueryBuilder(req.query.sort, req.query.showUnpublished == 'true' || showUnpublished == true, req.query.showDeleted == 'true' || showDeleted == true);
+	var queryBuilder = new QueryBuilder(req.query.sort, req.query.showUnpublished == 'true' || showUnpublished == true);
 
 	if (req.query.ids) {
 		var docIds = req.query.ids.split(';');
