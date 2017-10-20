@@ -70,7 +70,7 @@ function adminLogin(req, res) {
 };
 
 // Helper to build Elasticsearch queries
-function QueryBuilder(sort, showUnpublished) {
+function QueryBuilder(sort, showUnpublished, showDeleted) {
 	if (sort && sort == 'insert_id') {
 		var sortObject = [
 			{
@@ -117,26 +117,22 @@ function QueryBuilder(sort, showUnpublished) {
 						'published': 'false'
 					}
 				}
-			},
-			{
-				'not': {
-					'term': {
-						'deleted': 'true'
-					}
-				}
 			}
 		];
 	}
 	else {
 		this.queryBody.query.bool['must'] = [
-			{
-				'not': {
-					'term': {
-						'deleted': 'true'
-					}
+		];
+	}
+
+	if (!showDeleted) {
+		this.queryBody.query.bool.must.push({
+			'not': {
+				'term': {
+					'deleted': 'true'
 				}
 			}
-		];
+		});
 	}
 }
 
@@ -183,7 +179,7 @@ QueryBuilder.prototype.addBool = function(terms, type, caseSensitive, nested, ne
 }
 
 function adminGetDocuments(req, res) {
-	getDocuments(req, res, true);
+	getDocuments(req, res, true, true);
 }
 
 // Search for documents
@@ -191,7 +187,7 @@ function getDocuments(req, res, showUnpublished) {
 	var colorMargins = req.query.color_margins ? Number(req.query.color_margins) : 15;
 	var pageSize = req.query.count || 100;
 
-	var queryBuilder = new QueryBuilder(req.query.sort, req.query.showUnpublished == 'true' || showUnpublished == true);
+	var queryBuilder = new QueryBuilder(req.query.sort, req.query.showUnpublished == 'true' || showUnpublished == true, req.query.showDeleted == 'true' || showDeleted == true);
 
 	if (req.query.ids) {
 		var docIds = req.query.ids.split(';');
