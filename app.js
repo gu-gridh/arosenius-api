@@ -179,7 +179,7 @@ QueryBuilder.prototype.addBool = function(terms, type, caseSensitive, nested, ne
 }
 
 function adminGetDocuments(req, res) {
-	getDocuments(req, res, true, true);
+	getDocuments(req, res, true);
 }
 
 // Search for documents
