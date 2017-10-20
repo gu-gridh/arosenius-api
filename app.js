@@ -183,11 +183,11 @@ function adminGetDocuments(req, res) {
 }
 
 // Search for documents
-function getDocuments(req, res, showUnpublished, showDeleted) {
+function getDocuments(req, res, showUnpublished) {
 	var colorMargins = req.query.color_margins ? Number(req.query.color_margins) : 15;
 	var pageSize = req.query.count || 100;
 
-	var queryBuilder = new QueryBuilder(req.query.sort, req.query.showUnpublished == 'true' || showUnpublished == true, req.query.showDeleted == 'true' || showDeleted == true);
+	var queryBuilder = new QueryBuilder(req.query.sort, req.query.showUnpublished == 'true' || showUnpublished == true);
 
 	if (req.query.ids) {
 		var docIds = req.query.ids.split(';');
