@@ -70,7 +70,7 @@ function adminLogin(req, res) {
 };
 
 // Helper to build Elasticsearch queries
-function QueryBuilder(sort, showUnpublished) {
+function QueryBuilder(sort, showUnpublished, showDeleted) {
 	if (sort && sort == 'insert_id') {
 		var sortObject = [
 			{
@@ -117,26 +117,22 @@ function QueryBuilder(sort, showUnpublished) {
 						'published': 'false'
 					}
 				}
-			},
-			{
-				'not': {
-					'term': {
-						'deleted': 'true'
-					}
-				}
 			}
 		];
 	}
 	else {
 		this.queryBody.query.bool['must'] = [
-			{
-				'not': {
-					'term': {
-						'deleted': 'true'
-					}
+		];
+	}
+
+	if (!showDeleted) {
+		this.queryBody.query.bool.must.push({
+			'not': {
+				'term': {
+					'deleted': 'true'
 				}
 			}
-		];
+		});
 	}
 }
 
