@@ -183,7 +183,7 @@ function adminGetDocuments(req, res) {
 }
 
 // Search for documents
-function getDocuments(req, res, showUnpublished) {
+function getDocuments(req, res, showUnpublished, showDeleted) {
 	var colorMargins = req.query.color_margins ? Number(req.query.color_margins) : 15;
 	var pageSize = req.query.count || 100;
 
