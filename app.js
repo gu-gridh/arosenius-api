@@ -125,15 +125,6 @@ function QueryBuilder(sort, showUnpublished, showDeleted) {
 		];
 	}
 
-	if (!showDeleted) {
-		this.queryBody.query.bool.must.push({
-			'not': {
-				'term': {
-					'deleted': 'true'
-				}
-			}
-		});
-	}
 }
 
 // Function to add boolean query to the query body
