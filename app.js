@@ -179,15 +179,15 @@ QueryBuilder.prototype.addBool = function(terms, type, caseSensitive, nested, ne
 }
 
 function adminGetDocuments(req, res) {
-	getDocuments(req, res, true);
+	getDocuments(req, res, true, true);
 }
 
 // Search for documents
-function getDocuments(req, res, showUnpublished) {
+function getDocuments(req, res, showUnpublished = false, showDeleted = false) {
 	var colorMargins = req.query.color_margins ? Number(req.query.color_margins) : 15;
 	var pageSize = req.query.count || 100;
 
-	var queryBuilder = new QueryBuilder(req.query.sort, req.query.showUnpublished == 'true' || showUnpublished == true);
+	var queryBuilder = new QueryBuilder(req.query.sort, req.query.showUnpublished == 'true' || showUnpublished == true, req.query.showDeleted || showDeleted);
 
 	if (req.query.ids) {
 		var docIds = req.query.ids.split(';');
@@ -1355,6 +1355,6 @@ app.get('/admin/document/:id', getDocument);
 app.get('/admin/bundles', getBundles);
 app.get('/admin/museums', getMuseums);
 
-app.listen(3000, function () {
+app.listen(3010, function () {
   console.log('Arosenius project API');
 });
