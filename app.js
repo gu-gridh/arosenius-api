@@ -235,7 +235,7 @@ function getDocuments(req, res, showUnpublished = false, showDeleted = false) {
 	// Get documents based on search strings. Searches in various fields listed below
 	if (req.query.search) {
 		var terms = [];
-
+/*
 		if (req.query.generous || req.query.wildcard) {
 			var searchTerms = req.query.search.replace(/:|-|\/|\\/g, ' ').split(' ');
 
@@ -280,8 +280,25 @@ function getDocuments(req, res, showUnpublished = false, showDeleted = false) {
 		}
 
 		terms.push(['collection.museum', req.query.search, 'term', true]);
+*/
+		var textSearchTerm = {
+			'query_string': {
+			'query': req.query.search+'*',
+				'fields': [
+					'title^5',
+					'description^5',
+					'collection.museum',
+					'places',
+					'persons',
+					'tags',
+					'type^10',
+					'museum_int_id',
+					'material'
+				]
+			}
+		};
 
-		queryBuilder.addBool(terms, 'should');
+		queryBuilder.addBool([textSearchTerm], 'must');
 	}
 
 	// Get documents of specific type
