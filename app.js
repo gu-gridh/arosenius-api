@@ -298,7 +298,7 @@ function getDocuments(req, res, showUnpublished = false, showDeleted = false) {
 			}
 		};
 
-		queryBuilder.addBool([textSearchTerm], 'must');
+		queryBuilder.addBool([textSearchTerm], 'must', false, false, null, true);
 	}
 
 	// Get documents of specific type
