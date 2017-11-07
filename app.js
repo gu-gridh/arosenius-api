@@ -1313,6 +1313,62 @@ function getAutoComplete(req, res) {
 					}
 				}
 			}
+		},
+
+		// Type
+		{ index: config.index, type: 'artwork' },
+		{
+			size: 0,
+			query: {
+				bool: {
+					must: _.map(searchStrings, function(searchString) {
+						return {
+							wildcard: {
+								type: '*'+searchString+'*'
+							}
+						}
+					})
+				}
+			},
+			aggs: {
+				type: {
+					terms: {
+						field: 'type.raw',
+						size: 10,
+						order: {
+							_term: 'asc'
+						}
+					}
+				}
+			}
+		},
+
+		// Museum
+		{ index: config.index, type: 'artwork' },
+		{
+			size: 0,
+			query: {
+				bool: {
+					must: _.map(searchStrings, function(searchString) {
+						return {
+							wildcard: {
+								collection.museum: '*'+searchString+'*'
+							}
+						}
+					})
+				}
+			},
+			aggs: {
+				museum: {
+					terms: {
+						field: 'collection.museum.raw',
+						size: 10,
+						order: {
+							_term: 'asc'
+						}
+					}
+				}
+			}
 		}
 	];
 
