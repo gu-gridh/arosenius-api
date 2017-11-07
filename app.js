@@ -1194,7 +1194,7 @@ function getAutoComplete(req, res) {
 				titles: {
 					terms: {
 						field: 'title.raw',
-						size: 10,
+						size: 100,
 						order: {
 							_term: 'asc'
 						}
@@ -1222,7 +1222,7 @@ function getAutoComplete(req, res) {
 				tags: {
 					terms: {
 						field: 'tags.raw',
-						size: 10,
+						size: 100,
 						order: {
 							_term: 'asc'
 						}
@@ -1250,7 +1250,7 @@ function getAutoComplete(req, res) {
 				places: {
 					terms: {
 						field: 'places.raw',
-						size: 10,
+						size: 100,
 						order: {
 							_term: 'asc'
 						}
@@ -1278,7 +1278,7 @@ function getAutoComplete(req, res) {
 				persons: {
 					terms: {
 						field: 'persons.raw',
-						size: 10,
+						size: 100,
 						order: {
 							_term: 'asc'
 						}
@@ -1306,7 +1306,7 @@ function getAutoComplete(req, res) {
 				genre: {
 					terms: {
 						field: 'genre.raw',
-						size: 10,
+						size: 100,
 						order: {
 							_term: 'asc'
 						}
@@ -1334,7 +1334,7 @@ function getAutoComplete(req, res) {
 				type: {
 					terms: {
 						field: 'type.raw',
-						size: 10,
+						size: 100,
 						order: {
 							_term: 'asc'
 						}
@@ -1362,7 +1362,7 @@ function getAutoComplete(req, res) {
 				museum: {
 					terms: {
 						field: 'collection.museum.raw',
-						size: 10,
+						size: 100,
 						order: {
 							_term: 'asc'
 						}
@@ -1384,7 +1384,7 @@ function getAutoComplete(req, res) {
 				var found = false;
 
 				_.each(searchStrings, function(searchString) {
-					if (item.key.toLowerCase().indexOf(searchString.toLowerCase()) > -1) {
+					if (item.key.toLowerCase().indexOf(searchString) > -1) {
 						found = true;
 					}
 				})
