@@ -291,6 +291,7 @@ function getDocuments(req, res, showUnpublished = false, showDeleted = false) {
 					'places',
 					'persons',
 					'tags',
+					'genre^10',
 					'type^10',
 					'museum_int_id',
 					'material'
