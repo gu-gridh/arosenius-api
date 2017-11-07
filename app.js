@@ -1406,7 +1406,9 @@ function getAutoComplete(req, res) {
 			tags: getBuckets('tags'),
 			persons: getBuckets('persons'),
 			places: getBuckets('places'),
-			genre: getBuckets('genre')
+			genre: getBuckets('genre'),
+			type: getBuckets('type'),
+			museum: getBuckets('museum')
 		};
 
 
