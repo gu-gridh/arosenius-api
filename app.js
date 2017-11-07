@@ -1384,7 +1384,7 @@ function getAutoComplete(req, res) {
 				var found = false;
 
 				_.each(searchStrings, function(searchString) {
-					if (item.key.toLowerCase().indexOf(searchString) > -1) {
+					if (item.key.toLowerCase().indexOf(searchString.toLowerCase()) > -1) {
 						found = true;
 					}
 				})
