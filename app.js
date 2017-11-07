@@ -1352,7 +1352,7 @@ function getAutoComplete(req, res) {
 					must: _.map(searchStrings, function(searchString) {
 						return {
 							wildcard: {
-								collection.museum: '*'+searchString+'*'
+								'collection.museum': '*'+searchString+'*'
 							}
 						}
 					})
