@@ -1284,6 +1284,34 @@ function getAutoComplete(req, res) {
 					}
 				}
 			}
+		},
+
+		// Genre
+		{ index: config.index, type: 'artwork' },
+		{
+			size: 0,
+			query: {
+				bool: {
+					must: _.map(searchStrings, function(searchString) {
+						return {
+							wildcard: {
+								genre: '*'+searchString+'*'
+							}
+						}
+					})
+				}
+			},
+			aggs: {
+				genre: {
+					terms: {
+						field: 'genre.raw',
+						size: 10,
+						order: {
+							_term: 'asc'
+						}
+					}
+				}
+			}
 		}
 	];
 
@@ -1321,8 +1349,7 @@ function getAutoComplete(req, res) {
 			tags: getBuckets('tags'),
 			persons: getBuckets('persons'),
 			places: getBuckets('places'),
-			query: query,
-			response: response
+			genre: getBuckets('genre')
 		};
 
 
