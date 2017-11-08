@@ -295,7 +295,8 @@ function getDocuments(req, res, showUnpublished = false, showDeleted = false) {
 					'type^10',
 					'museum_int_id',
 					'material'
-				]
+				],
+				'minimum_should_match': '10%'
 			}
 		};
 
