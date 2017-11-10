@@ -1142,6 +1142,83 @@ function getColorMap(req, res) {
 */
 }
 
+function getColorMatrix(req, res) {
+	var nestedPath = req.query.prominent == 'true' ? 'color.colors.prominent' : 'color.colors.three';
+
+	client.search({
+		index: config.index,
+		type: 'artwork',
+		body: {
+			size: 0,
+			query: {
+				query_string: {
+					query: req.query.query ? req.query.query : '*',
+					analyze_wildcard: true
+				}
+			},
+
+			aggs: {
+				hue: {
+					nested: {
+						path: nestedPath
+					},
+					aggs: {
+						hue: {
+							terms: {
+								field: nestedPath+'.hsv.h',
+								size: 360,
+								order: {
+									_term: 'asc'
+								}
+							},
+							aggs: {
+								saturation: {
+									terms: {
+										field: nestedPath+'.hsv.s',
+										size: 100,
+										order: {
+											_term: 'asc'
+										}
+									},
+									aggs: {
+										lightness: {
+											terms: {
+												field: nestedPath+'.hsv.v',
+												size: 100,
+												order: {
+													_term: 'asc'
+												}
+											}
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+			
+		}
+	}, function(error, response) {
+		res.json(_.map(response.aggregations.hue.hue.buckets, function(hue) {
+			return {
+				hue: hue.key,
+				saturation: _.map(hue.saturation.buckets, function(saturation) {
+					return {
+						saturation: saturation.key,
+						lightness: _.map(saturation.lightness.buckets, function(lightnesObj) {
+							return {
+								lightness: lightness.key
+							}
+						})
+					};
+				})
+			};
+		}));
+
+	});
+}
+
 function getAutoComplete(req, res) {
 	var searchStrings = req.query.search.toLowerCase().split(' ');
 
@@ -1444,6 +1521,7 @@ app.get('/places', getPlaces);
 app.get('/genres', getGenres);
 app.get('/exhibitions', getExhibitions);
 app.get('/colormap', getColorMap);
+app.get('/colormatrix', getColorMatrix);
 app.get('/person_relations', getPersonRelations);
 app.get('/autocomplete', getAutoComplete);
 
