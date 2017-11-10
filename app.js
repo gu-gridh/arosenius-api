@@ -1206,9 +1206,9 @@ function getColorMatrix(req, res) {
 				saturation: _.map(hue.saturation.buckets, function(saturation) {
 					return {
 						saturation: saturation.key,
-						lightness: _.map(saturation.lightness.buckets, function(lightnesObj) {
+						lightness: _.map(saturation.lightness.buckets, function(lightnessObj) {
 							return {
-								lightness: lightness.key
+								lightness: lightnessObj.key
 							}
 						})
 					};
