@@ -1219,6 +1219,36 @@ function getColorMatrix(req, res) {
 	});
 }
 
+function getYearRange(req, res) {
+	client.search({
+		size: 0,
+		query: {
+			query_string: {
+				query: "*",
+				analyze_wildcard: true
+			}
+		},
+		aggs: {
+			years: {
+				date_histogram: {
+					field: "item_date_string",
+					interval: "1y",
+					time_zone: "Europe/Berlin",
+					min_doc_count: 1
+				}
+			}
+		}
+	}, function(error, response) {
+		res.json(_.map(response.aggregations.years.buckets, function(bucket) {
+			return {
+				year: bucket.key_as_string.split('-')[0],
+				key: bucket.key,
+				doc_count: bucket.doc_count
+			};
+		}));
+	});
+}
+
 function getAutoComplete(req, res) {
 	var searchStrings = req.query.search.toLowerCase().split(' ');
 
@@ -1523,7 +1553,10 @@ app.get('/exhibitions', getExhibitions);
 app.get('/colormap', getColorMap);
 app.get('/colormatrix', getColorMatrix);
 app.get('/person_relations', getPersonRelations);
+
 app.get('/autocomplete', getAutoComplete);
+
+app.get('/year_range', getYearRange);
 
 app.get('/admin/login', adminLogin);
 app.put('/admin/documents/combine', putCombineDocuments);
