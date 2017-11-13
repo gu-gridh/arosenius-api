@@ -3,6 +3,7 @@ var bodyParser = require('body-parser');
 var _ = require('underscore');
 var elasticsearch = require('elasticsearch');
 var IMGR = require('imgr').IMGR;
+var request = require('request');
 
 var config = require('./config');
 
@@ -100,7 +101,7 @@ function QueryBuilder(sort, showUnpublished, showDeleted) {
 
 	// Initialize the main body of the query
 	this.queryBody = {
-		sort: sortObject
+//		sort: sortObject
 	};
 
 	if (!this.queryBody['query']) {
@@ -182,30 +183,8 @@ function adminGetDocuments(req, res) {
 	getDocuments(req, res, true, true);
 }
 
-// Search for documents
-function getDocuments(req, res, showUnpublished = false, showDeleted = false) {
-	var colorMargins = req.query.color_margins ? Number(req.query.color_margins) : 15;
-	var pageSize = req.query.count || 100;
-
+function createQuery(req, showUnpublished, showDeleted) {
 	var queryBuilder = new QueryBuilder(req.query.sort, req.query.showUnpublished == 'true' || showUnpublished == true, req.query.showDeleted || showDeleted);
-
-	if (req.query.ids) {
-		var docIds = req.query.ids.split(';');
-
-		var query = {
-			query: {
-				bool: {
-					should: _.map(docIds, function(docId) {
-						return {
-							term: {
-								_id: docId
-							}
-						};
-					})
-				}
-			}
-		};
-	}
 
 	// Get documents with insert_id creater than given value
 	if (req.query.insert_id) {
@@ -235,52 +214,6 @@ function getDocuments(req, res, showUnpublished = false, showDeleted = false) {
 	// Get documents based on search strings. Searches in various fields listed below
 	if (req.query.search) {
 		var terms = [];
-/*
-		if (req.query.generous || req.query.wildcard) {
-			var searchTerms = req.query.search.replace(/:|-|\/|\\/g, ' ').split(' ');
-
-			var caseSensitiveTerms = [];
-			for (var i = 0; i<searchTerms.length; i++) {
-				var searchTerm = searchTerms[i].toLowerCase();
-
-				if (req.query.wildcard) {
-					terms.push(['title', '*'+searchTerm+'*', 'wildcard']);
-					terms.push(['description', '*'+searchTerm+'*', 'wildcard']);
-					terms.push(['museum_int_id', searchTerms[i]]);
-					terms.push(['material_analyzed', '*'+searchTerms[i]+'*']);
-					terms.push(['type', searchTerm, 'term', true]);
-					terms.push(['collection.museum', '*'+searchTerm+'*', 'wildcard']);
-					terms.push(['places', '*'+searchTerm+'*', 'wildcard', true]);
-					terms.push(['persons', '*'+searchTerm+'*', 'wildcard', true]);
-					terms.push(['tags', '*'+searchTerm+'*', 'wildcard', true]);
-				}
-				else {
-					terms.push(['title', searchTerm, 'term']);
-					terms.push(['description', searchTerm, 'term']);
-					terms.push(['museum_int_id', searchTerms[i]]);
-					terms.push(['material_analyzed', searchTerm+'*']);
-					terms.push(['type', searchTerm, 'term', true]);
-					terms.push(['collection.museum', searchTerm, 'term']);
-					terms.push(['places', searchTerm, 'term', true]);
-					terms.push(['persons', searchTerm, 'term', true]);
-					terms.push(['tags', searchTerm, 'term', true]);
-				}
-			}
-		}
-		else {
-			terms.push(['title', req.query.search, 'term']);
-			terms.push(['description', req.query.search, 'term']);
-			terms.push(['museum_int_id', req.query.search]);
-			terms.push(['material_analyzed', req.query.search]);
-			terms.push(['type', req.query.search, 'term', true]);
-			terms.push(['collection.museum', req.query.search, 'term']);
-			terms.push(['places', req.query.search, 'term', true]);
-			terms.push(['persons', req.query.search, 'term', true]);
-			terms.push(['tags', req.query.search, 'term', true]);
-		}
-
-		terms.push(['collection.museum', req.query.search, 'term', true]);
-*/
 		var textSearchTerm = {
 			'query_string': {
 			'query': req.query.search+'*',
@@ -450,6 +383,37 @@ function getDocuments(req, res, showUnpublished = false, showDeleted = false) {
 		}
 	}
 
+	return queryBuilder.queryBody;
+}
+
+// Search for documents
+function getDocuments(req, res, showUnpublished = false, showDeleted = false) {
+	var colorMargins = req.query.color_margins ? Number(req.query.color_margins) : 15;
+	var pageSize = req.query.count || 100;
+
+	var query = {};
+
+	if (req.query.ids) {
+		var docIds = req.query.ids.split(';');
+
+		query = {
+			query: {
+				bool: {
+					should: _.map(docIds, function(docId) {
+						return {
+							term: {
+								_id: docId
+							}
+						};
+					})
+				}
+			}
+		};
+	}
+	else {
+		query = createQuery(req, showUnpublished, showDeleted);
+	}
+
 	// Send the search query to Elasticsearch
 	client.search({
 		index: config.index,
@@ -457,10 +421,10 @@ function getDocuments(req, res, showUnpublished = false, showDeleted = false) {
 		// pagination
 		size: req.query.showAll && req.query.showAll == 'true' ? 10000 : pageSize,
 		from: req.query.showAll && req.query.showAll == 'true' ? 0 : (req.query.page && req.query.page > 0 ? (req.query.page-1)*pageSize : 0),
-		body: req.query.ids ? query : queryBuilder.queryBody
+		body: req.query.ids ? query : query
 	}, function(error, response) {
 		res.json({
-			query: req.query.showQuery == 'true' ? queryBuilder.queryBody : null,
+			query: req.query.showQuery == 'true' ? query : null,
 			total: response.hits ? response.hits.total : 0,
 			documents: response.hits ? _.map(response.hits.hits, function(item) {
 				var ret = item._source;
@@ -1009,7 +973,7 @@ function getExhibitions(req, res) {
 	});
 }
 
-function getPersonRelations(req, res) {
+function getArtworkRelations(req, res) {
 	client.search({
 		index: config.index,
 		type: 'artwork',
@@ -1031,7 +995,10 @@ function getPersonRelations(req, res) {
 				persons: hit._source.persons,
 				genre: hit._source.genre,
 				places: hit._source.places,
-				tags: hit._source.tags
+				tags: hit._source.tags,
+				images: _.map(hit._source.images, function(image) {
+					return image.image
+				})
 			};
 		}));
 	});
@@ -1221,25 +1188,23 @@ function getColorMatrix(req, res) {
 
 function getYearRange(req, res) {
 	client.search({
-		size: 0,
-		query: {
-			query_string: {
-				query: "*",
-				analyze_wildcard: true
-			}
-		},
-		aggs: {
-			years: {
-				date_histogram: {
-					field: "item_date_string",
-					interval: "1y",
-					time_zone: "Europe/Berlin",
-					min_doc_count: 1
+		index: config.index,
+		type: 'artwork',
+		body: {
+			size: 0,
+			query: createQuery(req),
+			aggs: {
+				years: {
+					date_histogram: {
+						field: "item_date_string",
+						interval: "1y",
+						time_zone: "Europe/Berlin",
+						min_doc_count: 1
+					}
 				}
 			}
 		}
 	}, function(error, response) {
-		/*
 		res.json(_.map(response.aggregations.years.buckets, function(bucket) {
 			return {
 				year: bucket.key_as_string.split('-')[0],
@@ -1247,9 +1212,6 @@ function getYearRange(req, res) {
 				doc_count: bucket.doc_count
 			};
 		}));
-		*/
-
-		res.json(response);
 	});
 }
 
@@ -1526,7 +1488,27 @@ function getAutoComplete(req, res) {
 
 		res.json(results);
 	});
-} 
+}
+
+function getNeo4jArtworkRelations(req, res) {
+	request.post('http://localhost:7474/db/data/cypher', {
+		'auth': {
+			'user': 'neo4j',
+			'pass': 'lcp010xx',
+			'sendImmediately': false
+		},
+		json: true,
+		body: {
+			"query" : "MATCH (n1:Object)-[r1]-(n2:Tag) WHERE n1.type = {type} RETURN n1, r1, n2",
+			"params" : {
+				"type" : "Konstverk"
+			}
+		}
+	}, function(error, response, body) {
+		res.json(response);
+	});
+}
+
 var imgr = new IMGR({
 	cache_dir: config.image_temp_path
 });
@@ -1556,7 +1538,9 @@ app.get('/genres', getGenres);
 app.get('/exhibitions', getExhibitions);
 app.get('/colormap', getColorMap);
 app.get('/colormatrix', getColorMatrix);
-app.get('/person_relations', getPersonRelations);
+app.get('/artwork_relations', getArtworkRelations);
+
+app.get('/neo4j_artwork_relations', getNeo4jArtworkRelations)
 
 app.get('/autocomplete', getAutoComplete);
 
