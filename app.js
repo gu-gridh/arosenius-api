@@ -1239,6 +1239,7 @@ function getYearRange(req, res) {
 			}
 		}
 	}, function(error, response) {
+		/*
 		res.json(_.map(response.aggregations.years.buckets, function(bucket) {
 			return {
 				year: bucket.key_as_string.split('-')[0],
@@ -1246,6 +1247,9 @@ function getYearRange(req, res) {
 				doc_count: bucket.doc_count
 			};
 		}));
+		*/
+
+		res.json(response);
 	});
 }
 
