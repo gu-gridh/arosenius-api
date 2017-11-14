@@ -101,7 +101,7 @@ function QueryBuilder(sort, showUnpublished, showDeleted) {
 
 	// Initialize the main body of the query
 	this.queryBody = {
-		sort: sortObject
+	sort: sortObject
 	};
 
 	if (!this.queryBody['query']) {
@@ -297,14 +297,14 @@ function createQuery(req, showUnpublished, showDeleted) {
 	if (req.query.year) {
 		queryBuilder.addBool([
 			[{
-	          "range": {
-	            "item_date_string": {
-	              "gte": "1900||/y",
-	              "lte": "1900||/y",
-	              "format": "yyyy"
-	            }
-	          }
-	        }]
+				'range': {
+					'item_date_string': {
+						'gte': req.query.year+'||/y',
+						'lte': req.query.year+'||/y',
+						'format': 'yyyy'
+					}
+				}
+			}]
 		], 'must', false, false, null, true);
 
 		//terms, type, caseSensitive, nested, nestedPath, disableProcessing
