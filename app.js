@@ -292,41 +292,24 @@ function createQuery(req, showUnpublished, showDeleted) {
 			['genre.raw', req.query.genre]
 		], 'should', true);
 	}
-/*
-"query": {
-	"bool": {
-		"must": [
-			{
-				"nested": {
-					"path": "images.color.colors.three",
-					"query": {
-						"bool": {
-							"must": [
-								{
-									"range": {
-										"images.color.colors.three.hsv.h": {
-											"from": 31,
-											"to": 61
-										}
-									}
-								}, {
-									"range": {
-										"images.color.colors.three.hsv.s": {
-											"from": 62,
-											"to": 92
-										}
-									}
-								}
-							]
-						}
-					}
 
-				}
-			}
-		]
+	// Get documents of specific genre
+	if (req.query.year) {
+		queryBuilder.addBool([
+			[{
+	          "range": {
+	            "item_date_string": {
+	              "gte": "1900||/y",
+	              "lte": "1900||/y",
+	              "format": "yyyy"
+	            }
+	          }
+	        }]
+		], 'must', false, false, null, true);
+
+		//terms, type, caseSensitive, nested, nestedPath, disableProcessing
 	}
-}
-*/
+
 	// Get documents of specific color - rewrite needed
 	if (req.query.hue || req.query.saturation || req.query.lightness) {
 		var colorPath = req.query.prominent ? 'color.colors.prominent' : 'color.colors.three';
@@ -1187,12 +1170,18 @@ function getColorMatrix(req, res) {
 }
 
 function getYearRange(req, res) {
+	var query = createQuery(req);
+
+	if (query.sort) {
+		delete query.sort;
+	}
+
 	client.search({
 		index: config.index,
 		type: 'artwork',
 		body: {
 			size: 0,
-			query: createQuery(req),
+			query: query,
 			aggs: {
 				years: {
 					date_histogram: {
@@ -1499,13 +1488,54 @@ function getNeo4jArtworkRelations(req, res) {
 		},
 		json: true,
 		body: {
-			"query" : "MATCH (n1:Object)-[r1]-(n2:Tag) WHERE n1.type = {type} RETURN n1, r1, n2",
+			"query" : "MATCH (n1:Object)-[r1:SHARE_TAG]-(n2:Object) WHERE n1.type = {type} AND n2.type = {type} RETURN n1, r1, n2",
 			"params" : {
 				"type" : "Konstverk"
 			}
 		}
 	}, function(error, response, body) {
-		res.json(response);
+		var getNodeIndex = function(id) {
+			return _.findIndex(output.nodes, function(node) {
+				return node.id == id;
+			});
+		}
+
+		var output = {
+			nodes: [],
+			connections: [],
+			//raw: response
+		};
+
+		_.each(response.body.data, function(item) {
+			_.each(item, function(subItem) {
+
+				if (subItem.metadata.type != 'SHARE_TAG') {
+					var node = subItem.data;
+					node.es_id = subItem.data.id;
+					node.id = subItem.metadata.id;
+					node.label = subItem.metadata.labels[0];
+
+					output.nodes.push(node);
+				}
+			});
+		});
+
+		_.each(response.body.data, function(item) {
+			output.connections.push({
+				source: item[0].metadata.id,
+				target: item[2].metadata.id
+			});
+		});
+
+		output.nodes = _.map(_.uniq(output.nodes, function(node) {
+			return node.id;
+		}), function(item, index) {
+			item.index = index;
+			return item;
+		});
+
+		res.json(output);
+//		res.json(response);
 	});
 }
 
