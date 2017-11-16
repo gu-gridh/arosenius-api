@@ -101,7 +101,7 @@ function QueryBuilder(sort, showUnpublished, showDeleted) {
 
 	// Initialize the main body of the query
 	this.queryBody = {
-	sort: sortObject
+		sort: sortObject
 	};
 
 	if (!this.queryBody['query']) {
@@ -970,7 +970,7 @@ function getArtworkRelations(req, res) {
 		}
 	}, function(error, response) {
 		res.json(_.map(response.hits.hits, function(hit) {
-			return {
+			var ret = {
 				id: hit._id,
 				type: hit._source.type,
 				museum: hit._source.collection ? hit._source.collection.museum : null,
@@ -981,8 +981,22 @@ function getArtworkRelations(req, res) {
 				tags: hit._source.tags,
 				images: _.map(hit._source.images, function(image) {
 					return image.image
-				})
+				}),
 			};
+
+			if (hit._source.images && hit._source.images[0] && hit._source.images[0].color) {
+				ret.dominant_1_r = hit._source.images[0].color.colors.three[0].rgb[0];
+				ret.dominant_1_g = hit._source.images[0].color.colors.three[0].rgb[1];
+				ret.dominant_1_b = hit._source.images[0].color.colors.three[0].rgb[2];
+				ret.dominant_2_r = hit._source.images[0].color.colors.three[1].rgb[0];
+				ret.dominant_2_g = hit._source.images[0].color.colors.three[1].rgb[1];
+				ret.dominant_2_b = hit._source.images[0].color.colors.three[1].rgb[2];
+				ret.dominant_3_r = hit._source.images[0].color.colors.three[2].rgb[0];
+				ret.dominant_3_g = hit._source.images[0].color.colors.three[2].rgb[1];
+				ret.dominant_3_b = hit._source.images[0].color.colors.three[2].rgb[2];
+			}
+
+			return ret;
 		}));
 	});
 }
