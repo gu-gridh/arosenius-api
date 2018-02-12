@@ -152,7 +152,7 @@ QueryBuilder.prototype.addBool = function(terms, type, caseSensitive, nested, ne
 			console.log('disableProcessing')
 			boolObj.bool[type].push(terms[i]);
 		}
-		else {		
+		else {
 			var propertyName = terms[i][2] ? terms[i][2] : 'term';
 			var termObj = {};
 			termObj[propertyName] = {}
@@ -218,7 +218,7 @@ function createQuery(req, showUnpublished, showDeleted) {
 		var terms = [];
 		var textSearchTerm = {
 			'query_string': {
-			'query': req.query.search+'*',
+				'query': req.query.search+'*',
 				'fields': [
 					'title^5',
 					'description^5',
@@ -314,7 +314,8 @@ function createQuery(req, showUnpublished, showDeleted) {
 
 	// Get documents of specific color - rewrite needed
 	if (req.query.hue || req.query.saturation || req.query.lightness) {
-		var colorPath = req.query.prominent ? 'color.colors.prominent' : 'color.colors.three';
+		var colorMargins = 5;
+		var colorPath = 'googleVisionColors';
 
 		var terms = [];
 
@@ -348,6 +349,15 @@ function createQuery(req, showUnpublished, showDeleted) {
 				'range'
 			]);
 		}
+
+		terms.push([
+			colorPath+'.score',
+			{
+				from: 0.8,
+				to: 1
+			},
+			'range'
+		]);
 
 		queryBuilder.addBool(terms, 'must', false, true, colorPath);
 	}
@@ -467,7 +477,7 @@ function putCombineDocuments(req, res) {
 	}, function(error, response) {
 		if (ids.length != response.hits.total) {
 			res.status(500);
-			res.json({error: 'Unable to combine documents, have they been combined before?'});		
+			res.json({error: 'Unable to combine documents, have they been combined before?'});
 		}
 		else {
 
@@ -521,8 +531,8 @@ function putCombineDocuments(req, res) {
 				var bulkBody = _.map(documentsToDelete, function(document) {
 					return {
 						delete: {
-							_index: config.index, 
-							_type: 'artwork', 
+							_index: config.index,
+							_type: 'artwork',
 							_id: document
 						}
 					}
@@ -532,7 +542,7 @@ function putCombineDocuments(req, res) {
 					body: bulkBody
 				}, function(error, response) {
 					console.log(response);
-					res.json({response: 'post'});		
+					res.json({response: 'post'});
 				});
 			});
 		}
@@ -543,7 +553,7 @@ function putBundle(req, res) {
 	var documents = req.body.documents;
 	delete req.body.documents;
 
-	if (documents.length > 0) {	
+	if (documents.length > 0) {
 		client.create({
 			index: config.index,
 			type: 'bundle',
@@ -1049,7 +1059,7 @@ function getColorMap(req, res) {
 					}
 				}
 			}
-			
+
 		}
 	}, function(error, response) {
 		res.json(_.map(response.aggregations.hue.hue.buckets, function(hue) {
@@ -1165,7 +1175,7 @@ function getColorMatrix(req, res) {
 					}
 				}
 			}
-			
+
 		}
 	}, function(error, response) {
 		res.json(_.map(response.aggregations.hue.hue.buckets, function(hue) {
