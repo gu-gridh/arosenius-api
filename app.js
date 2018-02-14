@@ -314,7 +314,7 @@ function createQuery(req, showUnpublished, showDeleted) {
 
 	// Get documents of specific color - rewrite needed
 	if (req.query.hue || req.query.saturation || req.query.lightness) {
-		var colorMargins = 5;
+		var colorMargins = 10;
 		var colorPath = 'googleVisionColors';
 
 		var terms = [];
@@ -353,7 +353,7 @@ function createQuery(req, showUnpublished, showDeleted) {
 		terms.push([
 			colorPath+'.score',
 			{
-				from: 0.8,
+				from: 0.6,
 				to: 1
 			},
 			'range'
@@ -1016,7 +1016,7 @@ function getArtworkRelations(req, res) {
 }
 
 function getColorMap(req, res) {
-	var nestedPath = req.query.prominent == 'true' ? 'color.colors.prominent' : 'color.colors.three';
+	var nestedPath = 'googleVisionColors';
 
 	client.search({
 		index: config.index,
