@@ -1031,26 +1031,37 @@ function getColorMap(req, res) {
 			},
 
 			aggs: {
-				hue: {
+				colormap: {
 					nested: {
 						path: nestedPath
 					},
 					aggs: {
-						hue: {
-							terms: {
-								field: nestedPath+'.hsv.h',
-								size: 360,
-								order: {
-									_term: 'asc'
+						filtered: {
+							filter: {
+								range: {
+									'googleVisionColors.score': {
+										gte: 0.7,
+										lte: 1
+									}
 								}
 							},
 							aggs: {
-								saturation: {
-									terms: {
-										field: nestedPath+'.hsv.s',
-										size: 100,
-										order: {
-											_term: 'asc'
+							hue: {
+								terms: {
+									field: nestedPath+'.hsv.h',
+									size: 360,
+									order: {
+										_term: 'asc'
+									}
+								},
+								aggs: {
+									saturation: {
+										terms: {
+											field: nestedPath+'.hsv.s',
+											size: 100,
+											order: {
+												_term: 'asc'
+											}
 										}
 									}
 								}
@@ -1062,7 +1073,7 @@ function getColorMap(req, res) {
 
 		}
 	}, function(error, response) {
-		res.json(_.map(response.aggregations.hue.hue.buckets, function(hue) {
+		res.json(_.map(response.aggregations.colormap.filtered.hue.buckets, function(hue) {
 			return {
 				hue: hue.key,
 				saturation: _.map(hue.saturation.buckets, function(saturation) {
