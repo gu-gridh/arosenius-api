@@ -103,7 +103,7 @@ function QueryBuilder(sort, showUnpublished, showDeleted) {
 
 	// Initialize the main body of the query
 	this.queryBody = {
-		sort: sortObject
+//		sort: sortObject
 	};
 
 	if (!this.queryBody['query']) {
@@ -314,7 +314,7 @@ function createQuery(req, showUnpublished, showDeleted) {
 
 	// Get documents of specific color - rewrite needed
 	if (req.query.hue || req.query.saturation || req.query.lightness) {
-		var colorMargins = 10;
+		var colorMargins = 15;
 		var colorPath = 'googleVisionColors';
 
 		var terms = [];
@@ -353,7 +353,7 @@ function createQuery(req, showUnpublished, showDeleted) {
 		terms.push([
 			colorPath+'.score',
 			{
-				from: 0.6,
+				from: 0.2,
 				to: 1
 			},
 			'range'
@@ -968,6 +968,69 @@ function getExhibitions(req, res) {
 	});
 }
 
+function getGenres(req, res) {
+	client.search({
+		index: config.index,
+		type: 'artwork',
+		body: {
+			"aggs": {
+				"genres": {
+					"terms": {
+						"field": "genre.raw",
+						"size": 200,
+						"order": {
+							"_term": "asc"
+						}
+					}
+				}
+			}
+		}
+	}, function(error, response) {
+		res.json(_.map(response.aggregations.genres.buckets, function(genre) {
+			return {
+				value: genre.key
+			};
+		}));
+	});
+}
+
+function getGoogleVisionLabels(req, res) {
+	var query = createQuery(req);
+
+
+	console.log(JSON.stringify(query))
+
+	client.search({
+		index: config.index,
+		type: 'artwork',
+		query: query,
+		body: {
+			aggs: {
+				googleVison: {
+					nested: {
+						path: "googleVisionLabels"
+					},
+					aggs: {
+						labels: {
+							terms: {
+								field: "googleVisionLabels.label",
+								size: 1000
+							}
+						}
+					}
+				}
+			}
+		}
+	}, function(error, response) {
+		res.json(_.map(response.aggregations.googleVison.labels.buckets, function(label) {
+			return {
+				value: label.key,
+				doc_count: label.doc_count
+			}
+		}));
+	});
+}
+
 function getArtworkRelations(req, res) {
 	client.search({
 		index: config.index,
@@ -1017,19 +1080,14 @@ function getArtworkRelations(req, res) {
 
 function getColorMap(req, res) {
 	var nestedPath = 'googleVisionColors';
+	var query = createQuery(req);
 
 	client.search({
 		index: config.index,
 		type: 'artwork',
 		body: {
 			size: 0,
-			query: {
-				query_string: {
-					query: req.query.query ? req.query.query : '*',
-					analyze_wildcard: true
-				}
-			},
-
+			query: query,
 			aggs: {
 				colormap: {
 					nested: {
@@ -1040,7 +1098,7 @@ function getColorMap(req, res) {
 							filter: {
 								range: {
 									"googleVisionColors.score": {
-										gte: 0.7,
+										gte: 0.2,
 										lte: 1
 									}
 								}
@@ -1083,52 +1141,6 @@ function getColorMap(req, res) {
 		}));
 
 	});
-/*
-	client.search({
-		index: config.index,
-		type: 'artwork',
-		body: {
-			size: 0,
-			query: {
-				query_string: {
-					query: req.query.query ? req.query.query : '*',
-					analyze_wildcard: true
-				}
-			},
-			aggs: {
-				hue: {
-					terms: {
-						field: 'color.dominant.hsv.h',
-						size: 360,
-						order: {
-							_term: "asc"
-						}
-					},
-					aggs: {
-						saturation: {
-							terms: {
-								field: 'color.dominant.hsv.s',
-								size: 100,
-								order: {
-									_term: 'asc'
-								}
-							}
-						}
-					}
-				}
-			}
-		}
-	}, function(error, response) {
-		res.json(_.map(response.aggregations.hue.buckets, function(hue) {
-			return {
-				hue: hue.key,
-				saturation: _.map(hue.saturation.buckets, function(saturation) {
-					return saturation.key;
-				})
-			};
-		}));
-	});
-*/
 }
 
 function getColorMatrix(req, res) {
@@ -1608,6 +1620,8 @@ app.get('/exhibitions', getExhibitions);
 app.get('/colormap', getColorMap);
 app.get('/colormatrix', getColorMatrix);
 app.get('/artwork_relations', getArtworkRelations);
+
+app.get('/googleVisionLabels', getGoogleVisionLabels);
 
 app.get('/neo4j_artwork_relations', getNeo4jArtworkRelations)
 
