@@ -281,6 +281,19 @@ function createQuery(req, showUnpublished, showDeleted) {
 		}, this));
 	}
 
+	if (req.query.google_label) {
+		var persons = req.query.google_label.split(';');
+
+		_.each(persons, _.bind(function(google_label) {
+			// terms, type, caseSensitive, nested, nestedPath, disableProcessing
+//		queryBuilder.addBool(terms, 'must', false, true, colorPath);
+
+			queryBuilder.addBool([
+				['googleVisionLabels.label', google_label]
+			], 'must', false, true, 'googleVisionLabels');
+		}, this));
+	}
+
 	// Get documents tagged with a specific place/places
 	if (req.query.place) {
 		queryBuilder.addBool([
