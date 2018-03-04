@@ -997,14 +997,12 @@ function getGenres(req, res) {
 function getGoogleVisionLabels(req, res) {
 	var query = createQuery(req);
 
-
-	console.log(JSON.stringify(query))
-
 	client.search({
 		index: config.index,
 		type: 'artwork',
-		query: query,
 		body: {
+			query: query.query,
+			size: 0,
 			aggs: {
 				googleVison: {
 					nested: {
