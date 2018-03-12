@@ -748,22 +748,27 @@ function getBundles(req, res) {
 }
 
 function getTechnic(req, res) {
-	client.search({
-		index: config.index,
-		type: 'artwork',
-		body: {
-			"aggs": {
-				"technic": {
-					"terms": {
-						"field": "technic.value",
-						"size": 200,
-						"order": {
-							"_term": "asc"
-						}
-					}
+	var queryBody = {
+		"aggs": {
+			"technic": {
+				"terms": {
+					"field": "technic.value",
+					"size": 200
 				}
 			}
 		}
+	};
+
+	if (!req.query.sort || req.query.sort != 'doc_count') {
+		queryBody.aggs.technic.terms['order'] = {
+			_term: 'asc'
+		}
+	}
+
+	client.search({
+		index: config.index,
+		type: 'artwork',
+		body: queryBody
 	}, function(error, response) {
 		res.json(_.map(response.aggregations.technic.buckets, function(technic) {
 			return technic.key;
@@ -772,22 +777,27 @@ function getTechnic(req, res) {
 }
 
 function getMaterial(req, res) {
-	client.search({
-		index: config.index,
-		type: 'artwork',
-		body: {
-			"aggs": {
-				"material": {
-					"terms": {
-						"field": "material",
-						"size": 200,
-						"order": {
-							"_term": "asc"
-						}
-					}
+	var queryBody = {
+		"aggs": {
+			"material": {
+				"terms": {
+					"field": "material",
+					"size": 200
 				}
 			}
 		}
+	};
+
+	if (!req.query.sort || req.query.sort != 'doc_count') {
+		queryBody.aggs.persons.terms['order'] = {
+			_term: 'asc'
+		}
+	}
+
+	client.search({
+		index: config.index,
+		type: 'artwork',
+		body: queryBody
 	}, function(error, response) {
 		res.json(_.map(response.aggregations.material.buckets, function(material) {
 			return {
@@ -798,22 +808,27 @@ function getMaterial(req, res) {
 }
 
 function getTypes(req, res) {
-	client.search({
-		index: config.index,
-		type: 'artwork',
-		body: {
-			"aggs": {
-				"types": {
-					"terms": {
-						"field": "type.raw",
-						"size": 200,
-						"order": {
-							"_term": "asc"
-						}
-					}
+	var queryBody = {
+		"aggs": {
+			"types": {
+				"terms": {
+					"field": "type.raw",
+					"size": 200
 				}
 			}
 		}
+	};
+
+	if (!req.query.sort || req.query.sort != 'doc_count') {
+		queryBody.aggs.types.terms['order'] = {
+			_term: 'asc'
+		}
+	}
+
+	client.search({
+		index: config.index,
+		type: 'artwork',
+		body: queryBody
 	}, function(error, response) {
 		res.json(_.map(_.filter(response.aggregations.types.buckets, function(type) {
 			return type.key != '';
@@ -826,22 +841,29 @@ function getTypes(req, res) {
 }
 
 function getTags(req, res) {
-	client.search({
-		index: config.index,
-		type: 'artwork',
-		body: {
-			"aggs": {
-				"tags": {
-					"terms": {
-						"field": "tags.raw",
-						"size": 200,
-						"order": {
-							"_term": "asc"
-						}
-					}
+	var queryBody = {
+		"aggs": {
+			"tags": {
+				"terms": {
+					"field": "tags.raw",
+					"size": 200
 				}
 			}
 		}
+	};
+
+	if (!req.query.sort || req.query.sort != 'doc_count') {
+		queryBody.aggs.tags.terms['order'] = {
+			_term: 'asc'
+		}
+	}
+
+	console.log(JSON.stringify(queryBody))
+
+	client.search({
+		index: config.index,
+		type: 'artwork',
+		body: queryBody
 	}, function(error, response) {
 		res.json(_.map(response.aggregations.tags.buckets, function(tag) {
 			return {
@@ -860,10 +882,7 @@ function getPagetypes(req, res) {
 				"side": {
 					"terms": {
 						"field": "page.side",
-						"size": 200,
-						"order": {
-							"_term": "asc"
-						}
+						"size": 200
 					}
 				}
 			}
@@ -878,22 +897,27 @@ function getPagetypes(req, res) {
 }
 
 function getPersons(req, res) {
-	client.search({
-		index: config.index,
-		type: 'artwork',
-		body: {
-			"aggs": {
-				"persons": {
-					"terms": {
-						"field": "persons.raw",
-						"size": 200,
-						"order": {
-							"_term": "asc"
-						}
-					}
+	var queryBody = {
+		"aggs": {
+			"persons": {
+				"terms": {
+					"field": "persons.raw",
+					"size": 200
 				}
 			}
 		}
+	};
+
+	if (!req.query.sort || req.query.sort != 'doc_count') {
+		queryBody.aggs.persons.terms['order'] = {
+			_term: 'asc'
+		}
+	}
+
+	client.search({
+		index: config.index,
+		type: 'artwork',
+		body: queryBody
 	}, function(error, response) {
 		res.json(_.map(response.aggregations.persons.buckets, function(person) {
 			return {
@@ -904,22 +928,27 @@ function getPersons(req, res) {
 }
 
 function getPlaces(req, res) {
-	client.search({
-		index: config.index,
-		type: 'artwork',
-		body: {
-			"aggs": {
-				"places": {
-					"terms": {
-						"field": "places.raw",
-						"size": 200,
-						"order": {
-							"_term": "asc"
-						}
-					}
+	var queryBody = {
+		"aggs": {
+			"places": {
+				"terms": {
+					"field": "places.raw",
+					"size": 200
 				}
 			}
 		}
+	};
+
+	if (!req.query.sort || req.query.sort != 'doc_count') {
+		queryBody.aggs.places.terms['order'] = {
+			_term: 'asc'
+		}
+	}
+
+	client.search({
+		index: config.index,
+		type: 'artwork',
+		body: queryBody
 	}, function(error, response) {
 		res.json(_.map(response.aggregations.places.buckets, function(place) {
 			return {
@@ -930,22 +959,27 @@ function getPlaces(req, res) {
 }
 
 function getGenres(req, res) {
-	client.search({
-		index: config.index,
-		type: 'artwork',
-		body: {
-			"aggs": {
-				"genres": {
-					"terms": {
-						"field": "genre.raw",
-						"size": 200,
-						"order": {
-							"_term": "asc"
-						}
-					}
+	var queryBody = {
+		"aggs": {
+			"genres": {
+				"terms": {
+					"field": "genre.raw",
+					"size": 200
 				}
 			}
 		}
+	};
+
+	if (!req.query.sort || req.query.sort != 'doc_count') {
+		queryBody.aggs.genres.terms['order'] = {
+			_term: 'asc'
+		}
+	}
+
+	client.search({
+		index: config.index,
+		type: 'artwork',
+		body: queryBody
 	}, function(error, response) {
 		res.json(_.map(response.aggregations.genres.buckets, function(genre) {
 			return {
@@ -974,32 +1008,6 @@ function getExhibitions(req, res) {
 		}
 	}, function(error, response) {
 		res.json(_.map(response.aggregations.exhibitions.buckets, function(genre) {
-			return {
-				value: genre.key
-			};
-		}));
-	});
-}
-
-function getGenres(req, res) {
-	client.search({
-		index: config.index,
-		type: 'artwork',
-		body: {
-			"aggs": {
-				"genres": {
-					"terms": {
-						"field": "genre.raw",
-						"size": 200,
-						"order": {
-							"_term": "asc"
-						}
-					}
-				}
-			}
-		}
-	}, function(error, response) {
-		res.json(_.map(response.aggregations.genres.buckets, function(genre) {
 			return {
 				value: genre.key
 			};
