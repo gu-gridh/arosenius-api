@@ -149,7 +149,6 @@ QueryBuilder.prototype.addBool = function(terms, type, caseSensitive, nested, ne
 
 	for (var i = 0; i<terms.length; i++) {
 		if (disableProcessing) {
-			console.log('disableProcessing')
 			boolObj.bool[type].push(terms[i]);
 		}
 		else {
@@ -554,7 +553,6 @@ function putCombineDocuments(req, res) {
 				client.bulk({
 					body: bulkBody
 				}, function(error, response) {
-					console.log(response);
 					res.json({response: 'post'});
 				});
 			});
@@ -608,7 +606,6 @@ function putBundle(req, res) {
 				client.bulk({
 					body: bulkBody
 				}, function(error, response) {
-					console.log(error);
 					res.json({
 						data: {
 							_id: newId
@@ -642,12 +639,9 @@ function postDocument(req, res) {
 	var document = req.body;
 
 	if (document.images && document.images.length > 0) {
-		console.log('sort images');
 		var sortedImages = _.sortBy(document.images, function(image) {
 			return image.page && Number(image.page.order) || 0;
 		});
-
-		console.log(sortedImages);
 
 		document.images = sortedImages;
 	}
@@ -857,8 +851,6 @@ function getTags(req, res) {
 			_term: 'asc'
 		}
 	}
-
-	console.log(JSON.stringify(queryBody))
 
 	client.search({
 		index: config.index,
@@ -1098,8 +1090,6 @@ function getArtworkRelations(req, res) {
 }
 
 function getSimilarDocuments(req, res) {
-	console.log(req.query.id);
-
 	client.search({
 		index: config.index,
 		type: 'artwork',
@@ -1108,7 +1098,21 @@ function getSimilarDocuments(req, res) {
 		q: '_id: '+req.query.id
 	}, function(error, response) {
 		if (response.hits.hits.length > 0) {
-			var nestedQuery = _.map(response.hits.hits[0]._source.googleVisionLabels, function(label) {
+			var lookupLabels = _.filter(response.hits.hits[0]._source.googleVisionLabels, function(label) {
+				var blacklist = [
+					'painting',
+					'art',
+					'illustration',
+					'artwork',
+					'modern',
+					'visual',
+					'arts'
+				];
+
+				return _.intersection(label.label.split(' '), blacklist) == 0;
+			});
+
+			var nestedQuery = _.map(lookupLabels, function(label) {
 				return {
 					nested: {
 						path: "googleVisionLabels",
