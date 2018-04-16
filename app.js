@@ -1106,21 +1106,86 @@ function getSimilarDocuments(req, res) {
 					'artwork',
 					'modern',
 					'visual',
-					'arts'
+					'arts',
+					'black'
 				];
 
 				return _.intersection(label.label.split(' '), blacklist) == 0;
 			});
 
-			var nestedQuery = _.map(lookupLabels, function(label) {
+			var nestedLabelsQuery = _.map(lookupLabels, function(label) {
 				return {
 					nested: {
 						path: "googleVisionLabels",
 						query: {
-							term: {
-								"googleVisionLabels.label": {
-									value: label.label
-								}
+							bool: {
+								must: [
+									{
+										term: {
+											"googleVisionLabels.label": {
+												value: label.label
+											}
+										}
+									},
+									/*
+									{
+										range: {
+											"googleVisionLabels.score": {
+												gte: label.score-(0.2),
+												lte: label.score+(0.2)
+											}
+										}
+									}
+									*/
+								]
+							}
+						}
+					}
+				};
+			});
+
+			var colorMargins = 5;
+
+			var nestedColorsQuery = _.map(response.hits.hits[0]._source.googleVisionColors, function(color) {
+				return {
+					nested: {
+						path: "googleVisionColors",
+						query: {
+							bool: {
+								must: [
+									{
+										range: {
+											'googleVisionColors.color.red': {
+												gte: color.color.red-(colorMargins),
+												lte: color.color.red+(colorMargins)
+											}
+										}
+									},
+									{
+										range: {
+											'googleVisionColors.color.green': {
+												gte: color.color.green-(colorMargins),
+												lte: color.color.green+(colorMargins)
+											}
+										}
+									},
+									{
+										range: {
+											'googleVisionColors.color.blue': {
+												gte: color.color.blue-(colorMargins),
+												lte: color.color.blue+(colorMargins)
+											}
+										}
+									},
+									{
+										range: {
+											'googleVisionColors.score': {
+												gte: color.score-0.2,
+												lte: color.score+0.2
+											}
+										}
+									}
+								]
 							}
 						}
 					}
@@ -1136,7 +1201,7 @@ function getSimilarDocuments(req, res) {
 								values: [req.query.id]
 							}
 						},
-						should: nestedQuery
+						should: nestedLabelsQuery
 					}
 				}
 			};
