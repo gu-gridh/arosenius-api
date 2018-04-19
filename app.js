@@ -1089,7 +1089,7 @@ function getArtworkRelations(req, res) {
 	});
 }
 
-function getSimilarLabelsDocuments(req, res) {
+function getSimilarDocuments(req, res) {
 	client.search({
 		index: config.index,
 		type: 'artwork',
@@ -1145,8 +1145,15 @@ function getSimilarLabelsDocuments(req, res) {
 			});
 
 			var colorMargins = 5;
+			var scoreMargins = 0.2;
 
-			var nestedColorsQuery = _.map(response.hits.hits[0]._source.googleVisionColors, function(color) {
+			var lookupColors = response.hits.hits[0]._source.googleVisionColors.sort(function(a, b) {
+				return a.score-b.score;
+			}).reverse();
+
+			lookupColors = lookupColors.splice(0, Math.round(lookupColors.length/2));
+
+			var nestedColorsQuery = _.map(lookupColors, function(color) {
 				return {
 					nested: {
 						path: "googleVisionColors",
@@ -1155,33 +1162,141 @@ function getSimilarLabelsDocuments(req, res) {
 								must: [
 									{
 										range: {
-											'googleVisionColors.color.red': {
-												gte: color.color.red-(colorMargins),
-												lte: color.color.red+(colorMargins)
+											'googleVisionColors.hsv.h': {
+												gte: color.hsv.h-(colorMargins),
+												lte: color.hsv.h+(colorMargins)
 											}
 										}
 									},
 									{
 										range: {
-											'googleVisionColors.color.green': {
-												gte: color.color.green-(colorMargins),
-												lte: color.color.green+(colorMargins)
+											'googleVisionColors.hsv.s': {
+												gte: color.hsv.s-(colorMargins),
+												lte: color.hsv.s+(colorMargins)
 											}
 										}
 									},
+									/*
 									{
 										range: {
-											'googleVisionColors.color.blue': {
-												gte: color.color.blue-(colorMargins),
-												lte: color.color.blue+(colorMargins)
+											'googleVisionColors.hsv.v': {
+												gte: color.hsv.v-(colorMargins),
+												lte: color.hsv.v+(colorMargins)
 											}
 										}
 									},
+									*/
 									{
 										range: {
 											'googleVisionColors.score': {
 												gte: color.score-scoreMargins,
 												lte: color.score+scoreMargins
+											}
+										}
+									}
+								]
+							}
+						}
+					}
+				};
+			});
+
+			var query = {
+				query: {
+					bool: {
+						must_not: {
+							/*
+							'term': {
+								'published': 'false'
+							},
+							*/
+							ids: {
+								type: 'artwork',
+								values: [req.query.id]
+							}
+						},
+						should: [nestedLabelsQuery, nestedColorsQuery]
+					}
+				}
+			};
+
+			var pageSize = req.query.count || 100;
+
+			client.search({
+				index: config.index,
+				type: 'artwork',
+				size: req.query.showAll && req.query.showAll == 'true' ? 10000 : (req.query.size || pageSize),
+				from: req.query.showAll && req.query.showAll == 'true' ? 0 : (req.query.page && req.query.page > 0 ? (req.query.page-1)*pageSize : 0),
+				body: query
+			}, function(error, response) {
+				res.json({
+					query: req.query.showQuery == 'true' ? query : null,
+					total: response.hits ? response.hits.total : 0,
+					documents: response.hits ? _.map(response.hits.hits, function(item) {
+						var ret = item._source;
+						ret.id = item._id;
+
+						if (ret.images && ret.images.length > 0) {
+							_.each(ret.images, function(image) {
+								if (image.color && image.color.colors) {
+									delete image.color.colors;
+								}
+							})
+						}
+
+						return ret;
+					}) : []
+				});
+			});
+		}
+	});
+}
+
+function getSimilarLabelsDocuments(req, res) {
+	client.search({
+		index: config.index,
+		type: 'artwork',
+		size: 1,
+		from: 0,
+		q: '_id: '+req.query.id
+	}, function(error, response) {
+		if (response.hits.hits.length > 0) {
+			var lookupLabels = _.filter(response.hits.hits[0]._source.googleVisionLabels, function(label) {
+				var blacklist = [
+					'painting',
+					'art',
+					'illustration',
+					'artwork',
+					'modern',
+					'visual',
+					'arts',
+					'black'
+				];
+
+				return _.intersection(label.label.split(' '), blacklist) == 0;
+			});
+
+			var scoreMargins = 0.1;
+
+			var nestedLabelsQuery = _.map(lookupLabels, function(label) {
+				return {
+					nested: {
+						path: "googleVisionLabels",
+						query: {
+							bool: {
+								must: [
+									{
+										term: {
+											"googleVisionLabels.label": {
+												value: label.label
+											}
+										}
+									},
+									{
+										range: {
+											"googleVisionLabels.score": {
+												gte: label.score-(scoreMargins),
+												lte: label.score+(scoreMargins)
 											}
 										}
 									}
@@ -1252,10 +1367,16 @@ function getSimilarColorsDocuments(req, res) {
 		q: '_id: '+req.query.id
 	}, function(error, response) {
 		if (response.hits.hits.length > 0) {
-			var colorMargins = 2;
-			var scoreMargins = 0.1;
+			var colorMargins = 5;
+			var scoreMargins = 0.2;
 
-			var nestedColorsQuery = _.map(response.hits.hits[0]._source.googleVisionColors, function(color) {
+			var lookupColors = response.hits.hits[0]._source.googleVisionColors.sort(function(a, b) {
+				return a.score-b.score;
+			}).reverse();
+
+			lookupColors = lookupColors.splice(0, Math.round(lookupColors.length/2));
+
+			var nestedColorsQuery = _.map(lookupColors, function(color) {
 				return {
 					nested: {
 						path: "googleVisionColors",
@@ -1264,28 +1385,30 @@ function getSimilarColorsDocuments(req, res) {
 								must: [
 									{
 										range: {
-											'googleVisionColors.color.red': {
-												gte: color.color.red-(colorMargins),
-												lte: color.color.red+(colorMargins)
+											'googleVisionColors.hsv.h': {
+												gte: color.hsv.h-(colorMargins),
+												lte: color.hsv.h+(colorMargins)
 											}
 										}
 									},
 									{
 										range: {
-											'googleVisionColors.color.green': {
-												gte: color.color.green-(colorMargins),
-												lte: color.color.green+(colorMargins)
+											'googleVisionColors.hsv.s': {
+												gte: color.hsv.s-(colorMargins),
+												lte: color.hsv.s+(colorMargins)
 											}
 										}
 									},
+									/*
 									{
 										range: {
-											'googleVisionColors.color.blue': {
-												gte: color.color.blue-(colorMargins),
-												lte: color.color.blue+(colorMargins)
+											'googleVisionColors.hsv.v': {
+												gte: color.hsv.v-(colorMargins),
+												lte: color.hsv.v+(colorMargins)
 											}
 										}
 									},
+									*/
 									{
 										range: {
 											'googleVisionColors.score': {
@@ -1313,6 +1436,11 @@ function getSimilarColorsDocuments(req, res) {
 							ids: {
 								type: 'artwork',
 								values: [req.query.id]
+							}
+						},
+						must: {
+							term: {
+								type: 'konstverk'
 							}
 						},
 						should: nestedColorsQuery
@@ -1894,9 +2022,9 @@ app.get('/exhibitions', getExhibitions);
 app.get('/colormap', getColorMap);
 app.get('/colormatrix', getColorMatrix);
 app.get('/artwork_relations', getArtworkRelations);
-app.get('/similar', getSimilarLabelsDocuments)
-app.get('/_similar/labels', getSimilarLabelsDocuments)
-app.get('/_similar/colors', getSimilarColorsDocuments)
+app.get('/similar', getSimilarDocuments)
+app.get('/similar/labels', getSimilarLabelsDocuments)
+app.get('/similar/colors', getSimilarColorsDocuments)
 
 app.get('/googleVisionLabels', getGoogleVisionLabels);
 
