@@ -393,6 +393,92 @@ function createQuery(req, showUnpublished, showDeleted) {
 	return queryBuilder.queryBody;
 }
 
+function getNextId(req, res) {
+	client.search({
+		index: config.index,
+		type: 'artwork',
+		size: 1,
+		body: {
+			sort: [
+				{
+					"insert_id": {
+						"order": "asc"
+					}
+				}
+			],
+			"query": {
+				"bool": {
+					"must": [
+						{
+							"range": {
+								"insert_id": {
+									"gte": Number(req.params.insert_id)+1
+								}
+							}
+						}
+					]
+				}
+			}
+		}
+	}, function(error, response) {
+		console.log(error)
+	
+		try {
+			res.json({
+				id: response.hits.hits[0]._id,
+				title: response.hits.hits[0]._source.title,
+				insert_id: response.hits.hits[0]._source.insert_id
+			});
+		}
+		catch (e) {
+			res.json({error: 'not found'});
+		}
+	});
+}
+
+function getPrevId(req, res) {
+	client.search({
+		index: config.index,
+		type: 'artwork',
+		size: 1,
+		body: {
+			sort: [
+				{
+					"insert_id": {
+						"order": "desc"
+					}
+				}
+			],
+			"query": {
+				"bool": {
+					"must": [
+						{
+							"range": {
+								"insert_id": {
+									"lte": Number(req.params.insert_id)-1
+								}
+							}
+						}
+					]
+				}
+			}
+		}
+	}, function(error, response) {
+		console.log(error)
+	
+		try {
+			res.json({
+				id: response.hits.hits[0]._id,
+				title: response.hits.hits[0]._source.title,
+				insert_id: response.hits.hits[0]._source.insert_id
+			});
+		}
+		catch (e) {
+			res.json({error: 'not found'});
+		}
+	});
+}
+
 // Search for documents
 function getDocuments(req, res, showUnpublished = false, showDeleted = false) {
 	var colorMargins = req.query.color_margins ? Number(req.query.color_margins) : 15;
@@ -1089,6 +1175,13 @@ function getArtworkRelations(req, res) {
 	});
 }
 
+var labelScoreMargins = 0.2;
+var colorMargins = 5;
+var colorScoreMargins = 0.2;
+
+var minumumLabelScore = 0.7;
+var minimumColorScore = 0.2;
+
 function getSimilarDocuments(req, res) {
 	client.search({
 		index: config.index,
@@ -1100,9 +1193,9 @@ function getSimilarDocuments(req, res) {
 		if (response.hits.hits.length > 0) {
 			var lookupLabels = _.filter(response.hits.hits[0]._source.googleVisionLabels, function(label) {
 				var blacklist = [
-					'painting',
+//					'painting',
 					'art',
-					'illustration',
+//					'illustration',
 					'artwork',
 					'modern',
 					'visual',
@@ -1113,9 +1206,9 @@ function getSimilarDocuments(req, res) {
 				return _.intersection(label.label.split(' '), blacklist) == 0;
 			});
 
-			var scoreMargins = 0.1;
-
-			var nestedLabelsQuery = _.map(lookupLabels, function(label) {
+			var nestedLabelsQuery = _.map(_.filter(lookupLabels, function(label) {
+				return label.score > minumumLabelScore;
+			}), function(label) {
 				return {
 					nested: {
 						path: "googleVisionLabels",
@@ -1132,8 +1225,8 @@ function getSimilarDocuments(req, res) {
 									{
 										range: {
 											"googleVisionLabels.score": {
-												gte: label.score-(scoreMargins),
-												lte: label.score+(scoreMargins)
+												gte: label.score-(labelScoreMargins),
+												lte: label.score+(labelScoreMargins)
 											}
 										}
 									}
@@ -1144,16 +1237,15 @@ function getSimilarDocuments(req, res) {
 				};
 			});
 
-			var colorMargins = 5;
-			var scoreMargins = 0.2;
-
 			var lookupColors = response.hits.hits[0]._source.googleVisionColors.sort(function(a, b) {
 				return a.score-b.score;
 			}).reverse();
 
-			lookupColors = lookupColors.splice(0, Math.round(lookupColors.length/2));
+//			lookupColors = lookupColors.splice(0, Math.round(lookupColors.length/2));
 
-			var nestedColorsQuery = _.map(lookupColors, function(color) {
+			var nestedColorsQuery = _.map(_.filter(lookupColors, function(color) {
+				return color.score > minimumColorScore;
+			}), function(color) {
 				return {
 					nested: {
 						path: "googleVisionColors",
@@ -1189,8 +1281,8 @@ function getSimilarDocuments(req, res) {
 									{
 										range: {
 											'googleVisionColors.score': {
-												gte: color.score-scoreMargins,
-												lte: color.score+scoreMargins
+												gte: color.score-colorScoreMargins,
+												lte: color.score+colorScoreMargins
 											}
 										}
 									}
@@ -1215,7 +1307,7 @@ function getSimilarDocuments(req, res) {
 								values: [req.query.id]
 							}
 						},
-						should: [nestedLabelsQuery, nestedColorsQuery]
+						should: nestedLabelsQuery.concat(nestedColorsQuery)
 					}
 				}
 			};
@@ -1263,9 +1355,9 @@ function getSimilarLabelsDocuments(req, res) {
 		if (response.hits.hits.length > 0) {
 			var lookupLabels = _.filter(response.hits.hits[0]._source.googleVisionLabels, function(label) {
 				var blacklist = [
-					'painting',
+//					'painting',
 					'art',
-					'illustration',
+//					'illustration',
 					'artwork',
 					'modern',
 					'visual',
@@ -1274,11 +1366,12 @@ function getSimilarLabelsDocuments(req, res) {
 				];
 
 				return _.intersection(label.label.split(' '), blacklist) == 0;
+//				return true;
 			});
 
-			var scoreMargins = 0.1;
-
-			var nestedLabelsQuery = _.map(lookupLabels, function(label) {
+			var nestedLabelsQuery = _.map(_.filter(lookupLabels, function(label) {
+				return label.score > minumumLabelScore;
+			}), function(label) {
 				return {
 					nested: {
 						path: "googleVisionLabels",
@@ -1295,8 +1388,8 @@ function getSimilarLabelsDocuments(req, res) {
 									{
 										range: {
 											"googleVisionLabels.score": {
-												gte: label.score-(scoreMargins),
-												lte: label.score+(scoreMargins)
+												gte: label.score-(labelScoreMargins),
+												lte: label.score+(labelScoreMargins)
 											}
 										}
 									}
@@ -1376,7 +1469,9 @@ function getSimilarColorsDocuments(req, res) {
 
 			lookupColors = lookupColors.splice(0, Math.round(lookupColors.length/2));
 
-			var nestedColorsQuery = _.map(lookupColors, function(color) {
+			var nestedColorsQuery = _.map(_.filter(lookupColors, function(color) {
+				return color.score > minimumColorScore;
+			}), function(color) {
 				return {
 					nested: {
 						path: "googleVisionColors",
@@ -2025,6 +2120,9 @@ app.get('/artwork_relations', getArtworkRelations);
 app.get('/similar', getSimilarDocuments)
 app.get('/similar/labels', getSimilarLabelsDocuments)
 app.get('/similar/colors', getSimilarColorsDocuments)
+
+app.get('/next/:insert_id', getNextId);
+app.get('/prev/:insert_id', getPrevId);
 
 app.get('/googleVisionLabels', getGoogleVisionLabels);
 
