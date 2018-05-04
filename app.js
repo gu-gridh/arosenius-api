@@ -881,7 +881,8 @@ function getMaterial(req, res) {
 	}, function(error, response) {
 		res.json(_.map(response.aggregations.material.buckets, function(material) {
 			return {
-				value: material.key
+				value: material.key,
+				doc_count: material.doc_count
 			};
 		}));
 	});
@@ -914,7 +915,8 @@ function getTypes(req, res) {
 			return type.key != '';
 		}), function(type) {
 			return {
-				value: type.key
+				value: type.key,
+				doc_count: type.doc_count
 			};
 		}));
 	});
@@ -945,7 +947,8 @@ function getTags(req, res) {
 	}, function(error, response) {
 		res.json(_.map(response.aggregations.tags.buckets, function(tag) {
 			return {
-				value: tag.key
+				value: tag.key,
+				doc_count: tag.doc_count
 			};
 		}));
 	});
@@ -999,7 +1002,8 @@ function getPersons(req, res) {
 	}, function(error, response) {
 		res.json(_.map(response.aggregations.persons.buckets, function(person) {
 			return {
-				value: person.key
+				value: person.key,
+				doc_count: person.doc_count
 			};
 		}));
 	});
@@ -1030,7 +1034,8 @@ function getPlaces(req, res) {
 	}, function(error, response) {
 		res.json(_.map(response.aggregations.places.buckets, function(place) {
 			return {
-				value: place.key
+				value: place.key,
+				doc_count: place.doc_count
 			};
 		}));
 	});
@@ -1061,7 +1066,8 @@ function getGenres(req, res) {
 	}, function(error, response) {
 		res.json(_.map(response.aggregations.genres.buckets, function(genre) {
 			return {
-				value: genre.key
+				value: genre.key,
+				doc_count: genre.doc_count
 			};
 		}));
 	});
@@ -1182,6 +1188,18 @@ var colorScoreMargins = 0.2;
 var minumumLabelScore = 0.7;
 var minimumColorScore = 0.2;
 
+var googleLabelsBlacklist = [
+//	'painting',
+	'art',
+//	'illustration',
+	'document',
+	'artwork',
+	'modern',
+	'visual',
+	'arts',
+	'black'
+];
+
 function getSimilarDocuments(req, res) {
 	client.search({
 		index: config.index,
@@ -1192,21 +1210,13 @@ function getSimilarDocuments(req, res) {
 	}, function(error, response) {
 		if (response.hits.hits.length > 0) {
 			var lookupLabels = _.filter(response.hits.hits[0]._source.googleVisionLabels, function(label) {
-				var blacklist = [
-//					'painting',
-					'art',
-//					'illustration',
-					'artwork',
-					'modern',
-					'visual',
-					'arts',
-					'black'
-				];
+				var blacklist = googleLabelsBlacklist;
 
 				return _.intersection(label.label.split(' '), blacklist) == 0;
 			});
 
 			var nestedLabelsQuery = _.map(_.filter(lookupLabels, function(label) {
+//				return true;
 				return label.score > minumumLabelScore;
 			}), function(label) {
 				return {
@@ -1238,13 +1248,15 @@ function getSimilarDocuments(req, res) {
 			});
 
 			var lookupColors = response.hits.hits[0]._source.googleVisionColors.sort(function(a, b) {
-				return a.score-b.score;
+				return true;
+//				return a.score-b.score;
 			}).reverse();
 
 //			lookupColors = lookupColors.splice(0, Math.round(lookupColors.length/2));
 
 			var nestedColorsQuery = _.map(_.filter(lookupColors, function(color) {
-				return color.score > minimumColorScore;
+				return true;
+//				return color.score > minimumColorScore;
 			}), function(color) {
 				return {
 					nested: {
@@ -1354,23 +1366,15 @@ function getSimilarLabelsDocuments(req, res) {
 	}, function(error, response) {
 		if (response.hits.hits.length > 0) {
 			var lookupLabels = _.filter(response.hits.hits[0]._source.googleVisionLabels, function(label) {
-				var blacklist = [
-//					'painting',
-					'art',
-//					'illustration',
-					'artwork',
-					'modern',
-					'visual',
-					'arts',
-					'black'
-				];
+				var blacklist =googleLabelsBlacklist;
 
 				return _.intersection(label.label.split(' '), blacklist) == 0;
 //				return true;
 			});
 
 			var nestedLabelsQuery = _.map(_.filter(lookupLabels, function(label) {
-				return label.score > minumumLabelScore;
+				return true;
+//				return label.score > minumumLabelScore;
 			}), function(label) {
 				return {
 					nested: {
@@ -1461,16 +1465,18 @@ function getSimilarColorsDocuments(req, res) {
 	}, function(error, response) {
 		if (response.hits.hits.length > 0) {
 			var colorMargins = 5;
-			var scoreMargins = 0.2;
+			var scoreMargins = 0.5;
 
 			var lookupColors = response.hits.hits[0]._source.googleVisionColors.sort(function(a, b) {
-				return a.score-b.score;
+				return true;
+//				return a.score-b.score;
 			}).reverse();
 
-			lookupColors = lookupColors.splice(0, Math.round(lookupColors.length/2));
+//			lookupColors = lookupColors.splice(0, Math.round(lookupColors.length/2));
 
 			var nestedColorsQuery = _.map(_.filter(lookupColors, function(color) {
-				return color.score > minimumColorScore;
+				return true;
+//				return color.score > minimumColorScore;
 			}), function(color) {
 				return {
 					nested: {
@@ -1481,16 +1487,16 @@ function getSimilarColorsDocuments(req, res) {
 									{
 										range: {
 											'googleVisionColors.hsv.h': {
-												gte: color.hsv.h-(colorMargins),
-												lte: color.hsv.h+(colorMargins)
+												gte: Number(color.hsv.h-(colorMargins)),
+												lte: Number(color.hsv.h+(colorMargins))
 											}
 										}
 									},
 									{
 										range: {
 											'googleVisionColors.hsv.s': {
-												gte: color.hsv.s-(colorMargins),
-												lte: color.hsv.s+(colorMargins)
+												gte: Number(color.hsv.s-(colorMargins)),
+												lte: Number(color.hsv.s+(colorMargins))
 											}
 										}
 									},
@@ -1507,8 +1513,8 @@ function getSimilarColorsDocuments(req, res) {
 									{
 										range: {
 											'googleVisionColors.score': {
-												gte: color.score-scoreMargins,
-												lte: color.score+scoreMargins
+												gte: Number(color.score-scoreMargins),
+												lte: Number(color.score+scoreMargins)
 											}
 										}
 									}
@@ -1538,7 +1544,8 @@ function getSimilarColorsDocuments(req, res) {
 								type: 'konstverk'
 							}
 						},
-						should: nestedColorsQuery
+						should: nestedColorsQuery,
+						minimum_should_match: '75%'
 					}
 				}
 			};
