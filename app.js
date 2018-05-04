@@ -894,7 +894,7 @@ function getTypes(req, res) {
 			"types": {
 				"terms": {
 					"field": "type.raw",
-					"size": 200
+					"size": 5000
 				}
 			}
 		}
@@ -928,7 +928,7 @@ function getTags(req, res) {
 			"tags": {
 				"terms": {
 					"field": "tags.raw",
-					"size": 200
+					"size": 5000
 				}
 			}
 		}
@@ -963,7 +963,7 @@ function getPagetypes(req, res) {
 				"side": {
 					"terms": {
 						"field": "page.side",
-						"size": 200
+						"size": 5000
 					}
 				}
 			}
@@ -983,7 +983,7 @@ function getPersons(req, res) {
 			"persons": {
 				"terms": {
 					"field": "persons.raw",
-					"size": 200
+					"size": 5000
 				}
 			}
 		}
@@ -1015,7 +1015,7 @@ function getPlaces(req, res) {
 			"places": {
 				"terms": {
 					"field": "places.raw",
-					"size": 200
+					"size": 5000
 				}
 			}
 		}
@@ -1047,7 +1047,7 @@ function getGenres(req, res) {
 			"genres": {
 				"terms": {
 					"field": "genre.raw",
-					"size": 200
+					"size": 5000
 				}
 			}
 		}
