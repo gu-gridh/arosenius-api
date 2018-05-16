@@ -487,8 +487,9 @@ function getDocuments(req, res, showUnpublished = false, showDeleted = false) {
 	var query = {};
 
 	if (req.query.ids) {
+		// Do a mget query
 		var docIds = req.query.ids.split(';');
-
+		/*
 		query = {
 			query: {
 				bool: {
@@ -502,39 +503,67 @@ function getDocuments(req, res, showUnpublished = false, showDeleted = false) {
 				}
 			}
 		};
+		*/
+		query = {
+			ids: docIds
+		};
+
+		client.mget({
+			index: config.index,
+			type: 'artwork',
+			body: query
+		}, function(error, response) {
+			res.json({
+				query: req.query.showQuery == 'true' ? query : null,
+				documents: response.docs ? _.map(response.docs, function(item) {
+					var ret = item._source;
+					ret.id = item._id;
+
+					if (ret.images && ret.images.length > 0) {
+						_.each(ret.images, function(image) {
+							if (image.color && image.color.colors) {
+								delete image.color.colors;
+							}
+						})
+					}
+
+					return ret;
+				}) : []
+			});
+		});
 	}
 	else {
 		query = createQuery(req, showUnpublished, showDeleted);
-	}
 
-	// Send the search query to Elasticsearch
-	client.search({
-		index: config.index,
-		type: 'artwork',
-		// pagination
-		size: req.query.showAll && req.query.showAll == 'true' ? 10000 : pageSize,
-		from: req.query.showAll && req.query.showAll == 'true' ? 0 : (req.query.page && req.query.page > 0 ? (req.query.page-1)*pageSize : 0),
-		body: req.query.ids ? query : query
-	}, function(error, response) {
-		res.json({
-			query: req.query.showQuery == 'true' ? query : null,
-			total: response.hits ? response.hits.total : 0,
-			documents: response.hits ? _.map(response.hits.hits, function(item) {
-				var ret = item._source;
-				ret.id = item._id;
+		// Send the search query to Elasticsearch
+		client.search({
+			index: config.index,
+			type: 'artwork',
+			// pagination
+			size: req.query.showAll && req.query.showAll == 'true' ? 10000 : pageSize,
+			from: req.query.showAll && req.query.showAll == 'true' ? 0 : (req.query.page && req.query.page > 0 ? (req.query.page-1)*pageSize : 0),
+			body: req.query.ids ? query : query
+		}, function(error, response) {
+			res.json({
+				query: req.query.showQuery == 'true' ? query : null,
+				total: response.hits ? response.hits.total : 0,
+				documents: response.hits ? _.map(response.hits.hits, function(item) {
+					var ret = item._source;
+					ret.id = item._id;
 
-				if (ret.images && ret.images.length > 0) {
-					_.each(ret.images, function(image) {
-						if (image.color && image.color.colors) {
-							delete image.color.colors;
-						}
-					})
-				}
+					if (ret.images && ret.images.length > 0) {
+						_.each(ret.images, function(image) {
+							if (image.color && image.color.colors) {
+								delete image.color.colors;
+							}
+						})
+					}
 
-				return ret;
-			}) : []
+					return ret;
+				}) : []
+			});
 		});
-	});
+	}
 }
 
 // Deprecated
