@@ -9,9 +9,12 @@
   "author": "Trausti Dagsson/CDH",
   "license": "ISC",
   "dependencies": {
+    "basic-auth": "^2.0.0",
     "body-parser": "^1.15.2",
     "elasticsearch": "^11.0.1",
     "express": "^4.13.4",
+    "imgr": "^0.10.4",
+    "request": "^2.83.0",
     "underscore": "^1.8.3"
   }
 }
