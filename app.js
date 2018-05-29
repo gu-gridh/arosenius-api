@@ -489,21 +489,6 @@ function getDocuments(req, res, showUnpublished = false, showDeleted = false) {
 	if (req.query.ids) {
 		// Do a mget query
 		var docIds = req.query.ids.split(';');
-		/*
-		query = {
-			query: {
-				bool: {
-					should: _.map(docIds, function(docId) {
-						return {
-							term: {
-								_id: docId
-							}
-						};
-					})
-				}
-			}
-		};
-		*/
 		query = {
 			ids: docIds
 		};
