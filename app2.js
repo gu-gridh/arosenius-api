@@ -3,7 +3,6 @@ var bodyParser = require('body-parser');
 var _ = require('underscore');
 var elasticsearch = require('elasticsearch');
 var IMGR = require('imgr').IMGR;
-var request = require('request');
 
 var config = require('./config');
 
@@ -55,9 +54,7 @@ app.use(bodyParser.urlencoded({
 	extended: false
 }));
 
-app.use(bodyParser.json({
-	limit: '2mb'
-}));
+app.use(bodyParser.json());
 
 app.all('*', function(req, res, next) {
 	res.header('Access-Control-Allow-Origin', '*');
@@ -88,7 +85,7 @@ function QueryBuilder(sort, showUnpublished, showDeleted) {
 		var sortObject = [
 			{
 				'_script': {
-                    'script': "if (doc['type.raw'].value=='Konstverk' || doc['type.raw'].values.contains('Konstverk')) return 1-Math.random(); else if (doc['type.raw'].value=='fotografi' || doc['type.raw'].values.contains('fotografi')) return 2; else return 3;",
+                    'script': "if (doc['type.raw'].value=='Konstverk' || doc['type.raw'].values.contains('Konstverk')) return 1; else if (doc['type.raw'].value=='fotografi' || doc['type.raw'].values.contains('fotografi')) return 2; else return 3;",
 					'type': 'number',
 					'order': 'asc'
 				}
@@ -149,9 +146,10 @@ QueryBuilder.prototype.addBool = function(terms, type, caseSensitive, nested, ne
 
 	for (var i = 0; i<terms.length; i++) {
 		if (disableProcessing) {
+			console.log('disableProcessing')
 			boolObj.bool[type].push(terms[i]);
 		}
-		else {
+		else {		
 			var propertyName = terms[i][2] ? terms[i][2] : 'term';
 			var termObj = {};
 			termObj[propertyName] = {}
@@ -184,8 +182,30 @@ function adminGetDocuments(req, res) {
 	getDocuments(req, res, true, true);
 }
 
-function createQuery(req, showUnpublished, showDeleted) {
+// Search for documents
+function getDocuments(req, res, showUnpublished = false, showDeleted = false) {
+	var colorMargins = req.query.color_margins ? Number(req.query.color_margins) : 15;
+	var pageSize = req.query.count || 100;
+
 	var queryBuilder = new QueryBuilder(req.query.sort, req.query.showUnpublished == 'true' || showUnpublished == true, req.query.showDeleted || showDeleted);
+
+	if (req.query.ids) {
+		var docIds = req.query.ids.split(';');
+
+		var query = {
+			query: {
+				bool: {
+					should: _.map(docIds, function(docId) {
+						return {
+							term: {
+								_id: docId
+							}
+						};
+					})
+				}
+			}
+		};
+	}
 
 	// Get documents with insert_id creater than given value
 	if (req.query.insert_id) {
@@ -215,9 +235,55 @@ function createQuery(req, showUnpublished, showDeleted) {
 	// Get documents based on search strings. Searches in various fields listed below
 	if (req.query.search) {
 		var terms = [];
+/*
+		if (req.query.generous || req.query.wildcard) {
+			var searchTerms = req.query.search.replace(/:|-|\/|\\/g, ' ').split(' ');
+
+			var caseSensitiveTerms = [];
+			for (var i = 0; i<searchTerms.length; i++) {
+				var searchTerm = searchTerms[i].toLowerCase();
+
+				if (req.query.wildcard) {
+					terms.push(['title', '*'+searchTerm+'*', 'wildcard']);
+					terms.push(['description', '*'+searchTerm+'*', 'wildcard']);
+					terms.push(['museum_int_id', searchTerms[i]]);
+					terms.push(['material_analyzed', '*'+searchTerms[i]+'*']);
+					terms.push(['type', searchTerm, 'term', true]);
+					terms.push(['collection.museum', '*'+searchTerm+'*', 'wildcard']);
+					terms.push(['places', '*'+searchTerm+'*', 'wildcard', true]);
+					terms.push(['persons', '*'+searchTerm+'*', 'wildcard', true]);
+					terms.push(['tags', '*'+searchTerm+'*', 'wildcard', true]);
+				}
+				else {
+					terms.push(['title', searchTerm, 'term']);
+					terms.push(['description', searchTerm, 'term']);
+					terms.push(['museum_int_id', searchTerms[i]]);
+					terms.push(['material_analyzed', searchTerm+'*']);
+					terms.push(['type', searchTerm, 'term', true]);
+					terms.push(['collection.museum', searchTerm, 'term']);
+					terms.push(['places', searchTerm, 'term', true]);
+					terms.push(['persons', searchTerm, 'term', true]);
+					terms.push(['tags', searchTerm, 'term', true]);
+				}
+			}
+		}
+		else {
+			terms.push(['title', req.query.search, 'term']);
+			terms.push(['description', req.query.search, 'term']);
+			terms.push(['museum_int_id', req.query.search]);
+			terms.push(['material_analyzed', req.query.search]);
+			terms.push(['type', req.query.search, 'term', true]);
+			terms.push(['collection.museum', req.query.search, 'term']);
+			terms.push(['places', req.query.search, 'term', true]);
+			terms.push(['persons', req.query.search, 'term', true]);
+			terms.push(['tags', req.query.search, 'term', true]);
+		}
+
+		terms.push(['collection.museum', req.query.search, 'term', true]);
+*/
 		var textSearchTerm = {
 			'query_string': {
-				'query': req.query.search+'*',
+			'query': req.query.search+'*',
 				'fields': [
 					'title^5',
 					'description^5',
@@ -280,19 +346,6 @@ function createQuery(req, showUnpublished, showDeleted) {
 		}, this));
 	}
 
-	if (req.query.google_label) {
-		var persons = req.query.google_label.split(';');
-
-		_.each(persons, _.bind(function(google_label) {
-			// terms, type, caseSensitive, nested, nestedPath, disableProcessing
-//		queryBuilder.addBool(terms, 'must', false, true, colorPath);
-
-			queryBuilder.addBool([
-				['googleVisionLabels.label', google_label]
-			], 'must', false, true, 'googleVisionLabels');
-		}, this));
-	}
-
 	// Get documents tagged with a specific place/places
 	if (req.query.place) {
 		queryBuilder.addBool([
@@ -306,28 +359,44 @@ function createQuery(req, showUnpublished, showDeleted) {
 			['genre.raw', req.query.genre]
 		], 'should', true);
 	}
-
-	// Get documents of specific genre
-	if (req.query.year) {
-		queryBuilder.addBool([
-			[{
-				'range': {
-					'item_date_string': {
-						'gte': req.query.year+'||/y',
-						'lte': req.query.year+'||/y',
-						'format': 'yyyy'
+/*
+"query": {
+	"bool": {
+		"must": [
+			{
+				"nested": {
+					"path": "images.color.colors.three",
+					"query": {
+						"bool": {
+							"must": [
+								{
+									"range": {
+										"images.color.colors.three.hsv.h": {
+											"from": 31,
+											"to": 61
+										}
+									}
+								}, {
+									"range": {
+										"images.color.colors.three.hsv.s": {
+											"from": 62,
+											"to": 92
+										}
+									}
+								}
+							]
+						}
 					}
+
 				}
-			}]
-		], 'must', false, false, null, true);
-
-		//terms, type, caseSensitive, nested, nestedPath, disableProcessing
+			}
+		]
 	}
-
+}
+*/
 	// Get documents of specific color - rewrite needed
 	if (req.query.hue || req.query.saturation || req.query.lightness) {
-		var colorMargins = 15;
-		var colorPath = 'googleVisionColors';
+		var colorPath = req.query.prominent ? 'color.colors.prominent' : 'color.colors.three';
 
 		var terms = [];
 
@@ -362,15 +431,6 @@ function createQuery(req, showUnpublished, showDeleted) {
 			]);
 		}
 
-		terms.push([
-			colorPath+'.score',
-			{
-				from: 0.2,
-				to: 1
-			},
-			'range'
-		]);
-
 		queryBuilder.addBool(terms, 'must', false, true, colorPath);
 	}
 
@@ -390,165 +450,34 @@ function createQuery(req, showUnpublished, showDeleted) {
 		}
 	}
 
-	return queryBuilder.queryBody;
-}
-
-function getNextId(req, res) {
+	// Send the search query to Elasticsearch
 	client.search({
 		index: config.index,
 		type: 'artwork',
-		size: 1,
-		body: {
-			sort: [
-				{
-					"insert_id": {
-						"order": "asc"
-					}
-				}
-			],
-			"query": {
-				"bool": {
-					"must": [
-						{
-							"range": {
-								"insert_id": {
-									"gte": Number(req.params.insert_id)+1
-								}
-							}
-						}
-					]
-				}
-			}
-		}
+		// pagination
+		size: req.query.showAll && req.query.showAll == 'true' ? 10000 : pageSize,
+		from: req.query.showAll && req.query.showAll == 'true' ? 0 : (req.query.page && req.query.page > 0 ? (req.query.page-1)*pageSize : 0),
+		body: req.query.ids ? query : queryBuilder.queryBody
 	}, function(error, response) {
-		console.log(error)
-	
-		try {
-			res.json({
-				id: response.hits.hits[0]._id,
-				title: response.hits.hits[0]._source.title,
-				insert_id: response.hits.hits[0]._source.insert_id
-			});
-		}
-		catch (e) {
-			res.json({error: 'not found'});
-		}
-	});
-}
+		res.json({
+			query: req.query.showQuery == 'true' ? queryBuilder.queryBody : null,
+			total: response.hits ? response.hits.total : 0,
+			documents: response.hits ? _.map(response.hits.hits, function(item) {
+				var ret = item._source;
+				ret.id = item._id;
 
-function getPrevId(req, res) {
-	client.search({
-		index: config.index,
-		type: 'artwork',
-		size: 1,
-		body: {
-			sort: [
-				{
-					"insert_id": {
-						"order": "desc"
-					}
-				}
-			],
-			"query": {
-				"bool": {
-					"must": [
-						{
-							"range": {
-								"insert_id": {
-									"lte": Number(req.params.insert_id)-1
-								}
-							}
+				if (ret.images && ret.images.length > 0) {
+					_.each(ret.images, function(image) {
+						if (image.color && image.color.colors) {
+							delete image.color.colors;
 						}
-					]
+					})
 				}
-			}
-		}
-	}, function(error, response) {
-		console.log(error)
-	
-		try {
-			res.json({
-				id: response.hits.hits[0]._id,
-				title: response.hits.hits[0]._source.title,
-				insert_id: response.hits.hits[0]._source.insert_id
-			});
-		}
-		catch (e) {
-			res.json({error: 'not found'});
-		}
+
+				return ret;
+			}) : []
+		});
 	});
-}
-
-// Search for documents
-function getDocuments(req, res, showUnpublished = false, showDeleted = false) {
-	var colorMargins = req.query.color_margins ? Number(req.query.color_margins) : 15;
-	var pageSize = req.query.count || 100;
-
-	var query = {};
-
-	if (req.query.ids) {
-		// Do a mget query
-		var docIds = req.query.ids.split(';');
-		query = {
-			ids: docIds
-		};
-
-		client.mget({
-			index: config.index,
-			type: 'artwork',
-			body: query
-		}, function(error, response) {
-			res.json({
-				query: req.query.showQuery == 'true' ? query : null,
-				documents: response.docs ? _.map(response.docs, function(item) {
-					var ret = item._source;
-					ret.id = item._id;
-
-					if (ret.images && ret.images.length > 0) {
-						_.each(ret.images, function(image) {
-							if (image.color && image.color.colors) {
-								delete image.color.colors;
-							}
-						})
-					}
-
-					return ret;
-				}) : []
-			});
-		});
-	}
-	else {
-		query = createQuery(req, showUnpublished, showDeleted);
-
-		// Send the search query to Elasticsearch
-		client.search({
-			index: config.index,
-			type: 'artwork',
-			// pagination
-			size: req.query.showAll && req.query.showAll == 'true' ? 10000 : pageSize,
-			from: req.query.showAll && req.query.showAll == 'true' ? 0 : (req.query.page && req.query.page > 0 ? (req.query.page-1)*pageSize : 0),
-			body: req.query.ids ? query : query
-		}, function(error, response) {
-			res.json({
-				query: req.query.showQuery == 'true' ? query : null,
-				total: response.hits ? response.hits.total : 0,
-				documents: response.hits ? _.map(response.hits.hits, function(item) {
-					var ret = item._source;
-					ret.id = item._id;
-
-					if (ret.images && ret.images.length > 0) {
-						_.each(ret.images, function(image) {
-							if (image.color && image.color.colors) {
-								delete image.color.colors;
-							}
-						})
-					}
-
-					return ret;
-				}) : []
-			});
-		});
-	}
 }
 
 // Deprecated
@@ -589,7 +518,7 @@ function putCombineDocuments(req, res) {
 	}, function(error, response) {
 		if (ids.length != response.hits.total) {
 			res.status(500);
-			res.json({error: 'Unable to combine documents, have they been combined before?'});
+			res.json({error: 'Unable to combine documents, have they been combined before?'});		
 		}
 		else {
 
@@ -643,8 +572,8 @@ function putCombineDocuments(req, res) {
 				var bulkBody = _.map(documentsToDelete, function(document) {
 					return {
 						delete: {
-							_index: config.index,
-							_type: 'artwork',
+							_index: config.index, 
+							_type: 'artwork', 
 							_id: document
 						}
 					}
@@ -653,7 +582,8 @@ function putCombineDocuments(req, res) {
 				client.bulk({
 					body: bulkBody
 				}, function(error, response) {
-					res.json({response: 'post'});
+					console.log(response);
+					res.json({response: 'post'});		
 				});
 			});
 		}
@@ -664,7 +594,7 @@ function putBundle(req, res) {
 	var documents = req.body.documents;
 	delete req.body.documents;
 
-	if (documents.length > 0) {
+	if (documents.length > 0) {	
 		client.create({
 			index: config.index,
 			type: 'bundle',
@@ -706,6 +636,7 @@ function putBundle(req, res) {
 				client.bulk({
 					body: bulkBody
 				}, function(error, response) {
+					console.log(error);
 					res.json({
 						data: {
 							_id: newId
@@ -739,9 +670,12 @@ function postDocument(req, res) {
 	var document = req.body;
 
 	if (document.images && document.images.length > 0) {
+		console.log('sort images');
 		var sortedImages = _.sortBy(document.images, function(image) {
 			return image.page && Number(image.page.order) || 0;
 		});
+
+		console.log(sortedImages);
 
 		document.images = sortedImages;
 	}
@@ -842,27 +776,22 @@ function getBundles(req, res) {
 }
 
 function getTechnic(req, res) {
-	var queryBody = {
-		"aggs": {
-			"technic": {
-				"terms": {
-					"field": "technic.value",
-					"size": 200
-				}
-			}
-		}
-	};
-
-	if (!req.query.sort || req.query.sort != 'doc_count') {
-		queryBody.aggs.technic.terms['order'] = {
-			_term: 'asc'
-		}
-	}
-
 	client.search({
 		index: config.index,
 		type: 'artwork',
-		body: queryBody
+		body: {
+			"aggs": {
+				"technic": {
+					"terms": {
+						"field": "technic.value",
+						"size": 200,
+						"order": {
+							"_term": "asc"
+						}
+					}
+				}
+			}
+		}
 	}, function(error, response) {
 		res.json(_.map(response.aggregations.technic.buckets, function(technic) {
 			return technic.key;
@@ -871,98 +800,80 @@ function getTechnic(req, res) {
 }
 
 function getMaterial(req, res) {
-	var queryBody = {
-		"aggs": {
-			"material": {
-				"terms": {
-					"field": "material",
-					"size": 200
-				}
-			}
-		}
-	};
-
-	if (!req.query.sort || req.query.sort != 'doc_count') {
-		queryBody.aggs.persons.terms['order'] = {
-			_term: 'asc'
-		}
-	}
-
 	client.search({
 		index: config.index,
 		type: 'artwork',
-		body: queryBody
+		body: {
+			"aggs": {
+				"material": {
+					"terms": {
+						"field": "material",
+						"size": 200,
+						"order": {
+							"_term": "asc"
+						}
+					}
+				}
+			}
+		}
 	}, function(error, response) {
 		res.json(_.map(response.aggregations.material.buckets, function(material) {
 			return {
-				value: material.key,
-				doc_count: material.doc_count
+				value: material.key
 			};
 		}));
 	});
 }
 
 function getTypes(req, res) {
-	var queryBody = {
-		"aggs": {
-			"types": {
-				"terms": {
-					"field": "type.raw",
-					"size": 5000
-				}
-			}
-		}
-	};
-
-	if (!req.query.sort || req.query.sort != 'doc_count') {
-		queryBody.aggs.types.terms['order'] = {
-			_term: 'asc'
-		}
-	}
-
 	client.search({
 		index: config.index,
 		type: 'artwork',
-		body: queryBody
+		body: {
+			"aggs": {
+				"types": {
+					"terms": {
+						"field": "type.raw",
+						"size": 200,
+						"order": {
+							"_term": "asc"
+						}
+					}
+				}
+			}
+		}
 	}, function(error, response) {
 		res.json(_.map(_.filter(response.aggregations.types.buckets, function(type) {
 			return type.key != '';
 		}), function(type) {
 			return {
-				value: type.key,
-				doc_count: type.doc_count
+				value: type.key
 			};
 		}));
 	});
 }
 
 function getTags(req, res) {
-	var queryBody = {
-		"aggs": {
-			"tags": {
-				"terms": {
-					"field": "tags.raw",
-					"size": 5000
-				}
-			}
-		}
-	};
-
-	if (!req.query.sort || req.query.sort != 'doc_count') {
-		queryBody.aggs.tags.terms['order'] = {
-			_term: 'asc'
-		}
-	}
-
 	client.search({
 		index: config.index,
 		type: 'artwork',
-		body: queryBody
+		body: {
+			"aggs": {
+				"tags": {
+					"terms": {
+						"field": "tags.raw",
+						"size": 200,
+						"order": {
+							"_term": "asc"
+						}
+					}
+				}
+			}
+		}
 	}, function(error, response) {
 		res.json(_.map(response.aggregations.tags.buckets, function(tag) {
 			return {
-				value: tag.key,
-				doc_count: tag.doc_count
+				value: tag.key
 			};
 		}));
 	});
@@ -977,7 +888,10 @@ function getPagetypes(req, res) {
 				"side": {
 					"terms": {
 						"field": "page.side",
-						"size": 5000
+						"size": 200,
+						"order": {
+							"_term": "asc"
+						}
 					}
 				}
 			}
@@ -992,96 +906,78 @@ function getPagetypes(req, res) {
 }
 
 function getPersons(req, res) {
-	var queryBody = {
-		"aggs": {
-			"persons": {
-				"terms": {
-					"field": "persons.raw",
-					"size": 5000
-				}
-			}
-		}
-	};
-
-	if (!req.query.sort || req.query.sort != 'doc_count') {
-		queryBody.aggs.persons.terms['order'] = {
-			_term: 'asc'
-		}
-	}
-
 	client.search({
 		index: config.index,
 		type: 'artwork',
-		body: queryBody
+		body: {
+			"aggs": {
+				"persons": {
+					"terms": {
+						"field": "persons.raw",
+						"size": 200,
+						"order": {
+							"_term": "asc"
+						}
+					}
+				}
+			}
+		}
 	}, function(error, response) {
 		res.json(_.map(response.aggregations.persons.buckets, function(person) {
 			return {
-				value: person.key,
-				doc_count: person.doc_count
+				value: person.key
 			};
 		}));
 	});
 }
 
 function getPlaces(req, res) {
-	var queryBody = {
-		"aggs": {
-			"places": {
-				"terms": {
-					"field": "places.raw",
-					"size": 5000
-				}
-			}
-		}
-	};
-
-	if (!req.query.sort || req.query.sort != 'doc_count') {
-		queryBody.aggs.places.terms['order'] = {
-			_term: 'asc'
-		}
-	}
-
 	client.search({
 		index: config.index,
 		type: 'artwork',
-		body: queryBody
+		body: {
+			"aggs": {
+				"places": {
+					"terms": {
+						"field": "places.raw",
+						"size": 200,
+						"order": {
+							"_term": "asc"
+						}
+					}
+				}
+			}
+		}
 	}, function(error, response) {
 		res.json(_.map(response.aggregations.places.buckets, function(place) {
 			return {
-				value: place.key,
-				doc_count: place.doc_count
+				value: place.key
 			};
 		}));
 	});
 }
 
 function getGenres(req, res) {
-	var queryBody = {
-		"aggs": {
-			"genres": {
-				"terms": {
-					"field": "genre.raw",
-					"size": 5000
-				}
-			}
-		}
-	};
-
-	if (!req.query.sort || req.query.sort != 'doc_count') {
-		queryBody.aggs.genres.terms['order'] = {
-			_term: 'asc'
-		}
-	}
-
 	client.search({
 		index: config.index,
 		type: 'artwork',
-		body: queryBody
+		body: {
+			"aggs": {
+				"genres": {
+					"terms": {
+						"field": "genre.raw",
+						"size": 200,
+						"order": {
+							"_term": "asc"
+						}
+					}
+				}
+			}
+		}
 	}, function(error, response) {
 		res.json(_.map(response.aggregations.genres.buckets, function(genre) {
 			return {
-				value: genre.key,
-				doc_count: genre.doc_count
+				value: genre.key
 			};
 		}));
 	});
@@ -1113,42 +1009,7 @@ function getExhibitions(req, res) {
 	});
 }
 
-function getGoogleVisionLabels(req, res) {
-	var query = createQuery(req);
-
-	client.search({
-		index: config.index,
-		type: 'artwork',
-		body: {
-			query: query.query,
-			size: 0,
-			aggs: {
-				googleVison: {
-					nested: {
-						path: "googleVisionLabels"
-					},
-					aggs: {
-						labels: {
-							terms: {
-								field: "googleVisionLabels.label",
-								size: 1000
-							}
-						}
-					}
-				}
-			}
-		}
-	}, function(error, response) {
-		res.json(_.map(response.aggregations.googleVison.labels.buckets, function(label) {
-			return {
-				value: label.key,
-				doc_count: label.doc_count
-			}
-		}));
-	});
-}
-
-function getArtworkRelations(req, res) {
+function getPersonRelations(req, res) {
 	client.search({
 		index: config.index,
 		type: 'artwork',
@@ -1162,7 +1023,7 @@ function getArtworkRelations(req, res) {
 		}
 	}, function(error, response) {
 		res.json(_.map(response.hits.hits, function(hit) {
-			var ret = {
+			return {
 				id: hit._id,
 				type: hit._source.type,
 				museum: hit._source.collection ? hit._source.collection.museum : null,
@@ -1170,475 +1031,48 @@ function getArtworkRelations(req, res) {
 				persons: hit._source.persons,
 				genre: hit._source.genre,
 				places: hit._source.places,
-				tags: hit._source.tags,
-				images: _.map(hit._source.images, function(image) {
-					return image.image
-				}),
+				tags: hit._source.tags
 			};
-
-			if (hit._source.images && hit._source.images[0] && hit._source.images[0].color) {
-				ret.dominant_1_h = hit._source.images[0].color.colors.three[0].hsv.h;
-				ret.dominant_1_s = hit._source.images[0].color.colors.three[0].hsv.s;
-				ret.dominant_1_v = hit._source.images[0].color.colors.three[0].hsv.v;
-
-				ret.dominant_2_h = hit._source.images[0].color.colors.three[1].hsv.h;
-				ret.dominant_2_s = hit._source.images[0].color.colors.three[1].hsv.s;
-				ret.dominant_2_v = hit._source.images[0].color.colors.three[1].hsv.v;
-
-				ret.dominant_3_h = hit._source.images[0].color.colors.three[2].hsv.h;
-				ret.dominant_3_s = hit._source.images[0].color.colors.three[2].hsv.s;
-				ret.dominant_3_v = hit._source.images[0].color.colors.three[2].hsv.v;
-			}
-
-			return ret;
 		}));
 	});
 }
 
-var labelScoreMargins = 0.2;
-var colorMargins = 5;
-var colorScoreMargins = 0.2;
-
-var minumumLabelScore = 0.7;
-var minimumColorScore = 0.2;
-
-var googleLabelsBlacklist = [
-//	'painting',
-	'art',
-//	'illustration',
-	'document',
-	'artwork',
-	'modern',
-	'visual',
-	'arts',
-	'black'
-];
-
-function getSimilarDocuments(req, res) {
-	client.search({
-		index: config.index,
-		type: 'artwork',
-		size: 1,
-		from: 0,
-		q: '_id: '+req.query.id
-	}, function(error, response) {
-		if (response.hits.hits.length > 0) {
-			var lookupLabels = _.filter(response.hits.hits[0]._source.googleVisionLabels, function(label) {
-				var blacklist = googleLabelsBlacklist;
-
-				return _.intersection(label.label.split(' '), blacklist) == 0;
-			});
-
-			var nestedLabelsQuery = _.map(_.filter(lookupLabels, function(label) {
-//				return true;
-				return label.score > minumumLabelScore;
-			}), function(label) {
-				return {
-					nested: {
-						path: "googleVisionLabels",
-						query: {
-							bool: {
-								must: [
-									{
-										term: {
-											"googleVisionLabels.label": {
-												value: label.label
-											}
-										}
-									},
-									{
-										range: {
-											"googleVisionLabels.score": {
-												gte: label.score-(labelScoreMargins),
-												lte: label.score+(labelScoreMargins)
-											}
-										}
-									}
-								]
-							}
-						}
-					}
-				};
-			});
-
-			var lookupColors = response.hits.hits[0]._source.googleVisionColors.sort(function(a, b) {
-				return true;
-//				return a.score-b.score;
-			}).reverse();
-
-//			lookupColors = lookupColors.splice(0, Math.round(lookupColors.length/2));
-
-			var nestedColorsQuery = _.map(_.filter(lookupColors, function(color) {
-				return true;
-//				return color.score > minimumColorScore;
-			}), function(color) {
-				return {
-					nested: {
-						path: "googleVisionColors",
-						query: {
-							bool: {
-								must: [
-									{
-										range: {
-											'googleVisionColors.hsv.h': {
-												gte: color.hsv.h-(colorMargins),
-												lte: color.hsv.h+(colorMargins)
-											}
-										}
-									},
-									{
-										range: {
-											'googleVisionColors.hsv.s': {
-												gte: color.hsv.s-(colorMargins),
-												lte: color.hsv.s+(colorMargins)
-											}
-										}
-									},
-									/*
-									{
-										range: {
-											'googleVisionColors.hsv.v': {
-												gte: color.hsv.v-(colorMargins),
-												lte: color.hsv.v+(colorMargins)
-											}
-										}
-									},
-									*/
-									{
-										range: {
-											'googleVisionColors.score': {
-												gte: color.score-colorScoreMargins,
-												lte: color.score+colorScoreMargins
-											}
-										}
-									}
-								]
-							}
-						}
-					}
-				};
-			});
-
-			var query = {
-				query: {
-					bool: {
-						must_not: {
-							/*
-							'term': {
-								'published': 'false'
-							},
-							*/
-							ids: {
-								type: 'artwork',
-								values: [req.query.id]
-							}
-						},
-						should: nestedLabelsQuery.concat(nestedColorsQuery)
-					}
-				}
-			};
-
-			var pageSize = req.query.count || 100;
-
-			client.search({
-				index: config.index,
-				type: 'artwork',
-				size: req.query.showAll && req.query.showAll == 'true' ? 10000 : (req.query.size || pageSize),
-				from: req.query.showAll && req.query.showAll == 'true' ? 0 : (req.query.page && req.query.page > 0 ? (req.query.page-1)*pageSize : 0),
-				body: query
-			}, function(error, response) {
-				res.json({
-					query: req.query.showQuery == 'true' ? query : null,
-					total: response.hits ? response.hits.total : 0,
-					documents: response.hits ? _.map(response.hits.hits, function(item) {
-						var ret = item._source;
-						ret.id = item._id;
-
-						if (ret.images && ret.images.length > 0) {
-							_.each(ret.images, function(image) {
-								if (image.color && image.color.colors) {
-									delete image.color.colors;
-								}
-							})
-						}
-
-						return ret;
-					}) : []
-				});
-			});
-		}
-	});
-}
-
-function getSimilarLabelsDocuments(req, res) {
-	client.search({
-		index: config.index,
-		type: 'artwork',
-		size: 1,
-		from: 0,
-		q: '_id: '+req.query.id
-	}, function(error, response) {
-		if (response.hits.hits.length > 0) {
-			var lookupLabels = _.filter(response.hits.hits[0]._source.googleVisionLabels, function(label) {
-				var blacklist =googleLabelsBlacklist;
-
-				return _.intersection(label.label.split(' '), blacklist) == 0;
-//				return true;
-			});
-
-			var nestedLabelsQuery = _.map(_.filter(lookupLabels, function(label) {
-				return true;
-//				return label.score > minumumLabelScore;
-			}), function(label) {
-				return {
-					nested: {
-						path: "googleVisionLabels",
-						query: {
-							bool: {
-								must: [
-									{
-										term: {
-											"googleVisionLabels.label": {
-												value: label.label
-											}
-										}
-									},
-									{
-										range: {
-											"googleVisionLabels.score": {
-												gte: label.score-(labelScoreMargins),
-												lte: label.score+(labelScoreMargins)
-											}
-										}
-									}
-								]
-							}
-						}
-					}
-				};
-			});
-
-			var query = {
-				query: {
-					bool: {
-						must_not: {
-							/*
-							'term': {
-								'published': 'false'
-							},
-							*/
-							ids: {
-								type: 'artwork',
-								values: [req.query.id]
-							}
-						},
-						should: nestedLabelsQuery
-					}
-				}
-			};
-
-			var pageSize = req.query.count || 100;
-
-			client.search({
-				index: config.index,
-				type: 'artwork',
-				size: req.query.showAll && req.query.showAll == 'true' ? 10000 : (req.query.size || pageSize),
-				from: req.query.showAll && req.query.showAll == 'true' ? 0 : (req.query.page && req.query.page > 0 ? (req.query.page-1)*pageSize : 0),
-				body: query
-			}, function(error, response) {
-				res.json({
-					query: req.query.showQuery == 'true' ? query : null,
-					total: response.hits ? response.hits.total : 0,
-					documents: response.hits ? _.map(response.hits.hits, function(item) {
-						var ret = item._source;
-						ret.id = item._id;
-
-						if (ret.images && ret.images.length > 0) {
-							_.each(ret.images, function(image) {
-								if (image.color && image.color.colors) {
-									delete image.color.colors;
-								}
-							})
-						}
-
-						return ret;
-					}) : []
-				});
-			});
-		}
-	});
-}
-
-function getSimilarColorsDocuments(req, res) {
-	client.search({
-		index: config.index,
-		type: 'artwork',
-		size: 1,
-		from: 0,
-		q: '_id: '+req.query.id
-	}, function(error, response) {
-		if (response.hits.hits.length > 0) {
-			var colorMargins = 5;
-			var scoreMargins = 0.5;
-
-			var lookupColors = response.hits.hits[0]._source.googleVisionColors.sort(function(a, b) {
-				return true;
-//				return a.score-b.score;
-			}).reverse();
-
-//			lookupColors = lookupColors.splice(0, Math.round(lookupColors.length/2));
-
-			var nestedColorsQuery = _.map(_.filter(lookupColors, function(color) {
-				return true;
-//				return color.score > minimumColorScore;
-			}), function(color) {
-				return {
-					nested: {
-						path: "googleVisionColors",
-						query: {
-							bool: {
-								must: [
-									{
-										range: {
-											'googleVisionColors.hsv.h': {
-												gte: Number(color.hsv.h-(colorMargins)),
-												lte: Number(color.hsv.h+(colorMargins))
-											}
-										}
-									},
-									{
-										range: {
-											'googleVisionColors.hsv.s': {
-												gte: Number(color.hsv.s-(colorMargins)),
-												lte: Number(color.hsv.s+(colorMargins))
-											}
-										}
-									},
-									/*
-									{
-										range: {
-											'googleVisionColors.hsv.v': {
-												gte: color.hsv.v-(colorMargins),
-												lte: color.hsv.v+(colorMargins)
-											}
-										}
-									},
-									*/
-									{
-										range: {
-											'googleVisionColors.score': {
-												gte: Number(color.score-scoreMargins),
-												lte: Number(color.score+scoreMargins)
-											}
-										}
-									}
-								]
-							}
-						}
-					}
-				};
-			});
-
-			var query = {
-				query: {
-					bool: {
-						must_not: {
-							/*
-							'term': {
-								'published': 'false'
-							},
-							*/
-							ids: {
-								type: 'artwork',
-								values: [req.query.id]
-							}
-						},
-						must: {
-							term: {
-								type: 'konstverk'
-							}
-						},
-						should: nestedColorsQuery,
-						minimum_should_match: '75%'
-					}
-				}
-			};
-
-			var pageSize = req.query.count || 100;
-
-			client.search({
-				index: config.index,
-				type: 'artwork',
-				size: req.query.showAll && req.query.showAll == 'true' ? 10000 : (req.query.size || pageSize),
-				from: req.query.showAll && req.query.showAll == 'true' ? 0 : (req.query.page && req.query.page > 0 ? (req.query.page-1)*pageSize : 0),
-				body: query
-			}, function(error, response) {
-				res.json({
-					query: req.query.showQuery == 'true' ? query : null,
-					total: response.hits ? response.hits.total : 0,
-					documents: response.hits ? _.map(response.hits.hits, function(item) {
-						var ret = item._source;
-						ret.id = item._id;
-
-						if (ret.images && ret.images.length > 0) {
-							_.each(ret.images, function(image) {
-								if (image.color && image.color.colors) {
-									delete image.color.colors;
-								}
-							})
-						}
-
-						return ret;
-					}) : []
-				});
-			});
-		}
-	});
-}
-
 function getColorMap(req, res) {
-	var nestedPath = 'googleVisionColors';
-	var query = createQuery(req);
+	var nestedPath = req.query.prominent == 'true' ? 'color.colors.prominent' : 'color.colors.three';
 
 	client.search({
 		index: config.index,
 		type: 'artwork',
 		body: {
 			size: 0,
-			query: query,
+			query: {
+				query_string: {
+					query: req.query.query ? req.query.query : '*',
+					analyze_wildcard: true
+				}
+			},
+
 			aggs: {
-				colormap: {
+				hue: {
 					nested: {
 						path: nestedPath
 					},
 					aggs: {
-						filtered: {
-							filter: {
-								range: {
-									"googleVisionColors.score": {
-										gte: 0.2,
-										lte: 1
-									}
+						hue: {
+							terms: {
+								field: nestedPath+'.hsv.h',
+								size: 360,
+								order: {
+									_term: 'asc'
 								}
 							},
 							aggs: {
-								hue: {
+								saturation: {
 									terms: {
-										field: nestedPath+'.hsv.h',
-										size: 360,
+										field: nestedPath+'.hsv.s',
+										size: 100,
 										order: {
 											_term: 'asc'
-										}
-									},
-									aggs: {
-										saturation: {
-											terms: {
-												field: nestedPath+'.hsv.s',
-												size: 100,
-												order: {
-													_term: 'asc'
-												}
-											}
 										}
 									}
 								}
@@ -1647,9 +1081,10 @@ function getColorMap(req, res) {
 					}
 				}
 			}
+			
 		}
 	}, function(error, response) {
-		res.json(_.map(response.aggregations.colormap.filtered.hue.buckets, function(hue) {
+		res.json(_.map(response.aggregations.hue.hue.buckets, function(hue) {
 			return {
 				hue: hue.key,
 				saturation: _.map(hue.saturation.buckets, function(saturation) {
@@ -1659,6 +1094,52 @@ function getColorMap(req, res) {
 		}));
 
 	});
+/*
+	client.search({
+		index: config.index,
+		type: 'artwork',
+		body: {
+			size: 0,
+			query: {
+				query_string: {
+					query: req.query.query ? req.query.query : '*',
+					analyze_wildcard: true
+				}
+			},
+			aggs: {
+				hue: {
+					terms: {
+						field: 'color.dominant.hsv.h',
+						size: 360,
+						order: {
+							_term: "asc"
+						}
+					},
+					aggs: {
+						saturation: {
+							terms: {
+								field: 'color.dominant.hsv.s',
+								size: 100,
+								order: {
+									_term: 'asc'
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}, function(error, response) {
+		res.json(_.map(response.aggregations.hue.buckets, function(hue) {
+			return {
+				hue: hue.key,
+				saturation: _.map(hue.saturation.buckets, function(saturation) {
+					return saturation.key;
+				})
+			};
+		}));
+	});
+*/
 }
 
 function getColorMatrix(req, res) {
@@ -1716,7 +1197,7 @@ function getColorMatrix(req, res) {
 					}
 				}
 			}
-
+			
 		}
 	}, function(error, response) {
 		res.json(_.map(response.aggregations.hue.hue.buckets, function(hue) {
@@ -1735,41 +1216,6 @@ function getColorMatrix(req, res) {
 			};
 		}));
 
-	});
-}
-
-function getYearRange(req, res) {
-	var query = createQuery(req);
-
-	if (query.sort) {
-		delete query.sort;
-	}
-
-	client.search({
-		index: config.index,
-		type: 'artwork',
-		body: {
-			size: 0,
-			query: query,
-			aggs: {
-				years: {
-					date_histogram: {
-						field: "item_date_string",
-						interval: "1y",
-						time_zone: "Europe/Berlin",
-						min_doc_count: 1
-					}
-				}
-			}
-		}
-	}, function(error, response) {
-		res.json(_.map(response.aggregations.years.buckets, function(bucket) {
-			return {
-				year: bucket.key_as_string.split('-')[0],
-				key: bucket.key,
-				doc_count: bucket.doc_count
-			};
-		}));
 	});
 }
 
@@ -2046,68 +1492,7 @@ function getAutoComplete(req, res) {
 
 		res.json(results);
 	});
-}
-
-function getNeo4jArtworkRelations(req, res) {
-	request.post('http://localhost:7474/db/data/cypher', {
-		'auth': {
-			'user': 'neo4j',
-			'pass': 'lcp010xx',
-			'sendImmediately': false
-		},
-		json: true,
-		body: {
-			"query" : "MATCH (n1:Object)-[r1:SHARE_TAG]-(n2:Object) WHERE n1.type = {type} AND n2.type = {type} RETURN n1, r1, n2",
-			"params" : {
-				"type" : "Konstverk"
-			}
-		}
-	}, function(error, response, body) {
-		var getNodeIndex = function(id) {
-			return _.findIndex(output.nodes, function(node) {
-				return node.id == id;
-			});
-		}
-
-		var output = {
-			nodes: [],
-			connections: [],
-			//raw: response
-		};
-
-		_.each(response.body.data, function(item) {
-			_.each(item, function(subItem) {
-
-				if (subItem.metadata.type != 'SHARE_TAG') {
-					var node = subItem.data;
-					node.es_id = subItem.data.id;
-					node.id = subItem.metadata.id;
-					node.label = subItem.metadata.labels[0];
-
-					output.nodes.push(node);
-				}
-			});
-		});
-
-		_.each(response.body.data, function(item) {
-			output.connections.push({
-				source: item[0].metadata.id,
-				target: item[2].metadata.id
-			});
-		});
-
-		output.nodes = _.map(_.uniq(output.nodes, function(node) {
-			return node.id;
-		}), function(item, index) {
-			item.index = index;
-			return item;
-		});
-
-		res.json(output);
-//		res.json(response);
-	});
-}
-
+} 
 var imgr = new IMGR({
 	cache_dir: config.image_temp_path
 });
@@ -2137,21 +1522,8 @@ app.get('/genres', getGenres);
 app.get('/exhibitions', getExhibitions);
 app.get('/colormap', getColorMap);
 app.get('/colormatrix', getColorMatrix);
-app.get('/artwork_relations', getArtworkRelations);
-app.get('/similar', getSimilarDocuments)
-app.get('/similar/labels', getSimilarLabelsDocuments)
-app.get('/similar/colors', getSimilarColorsDocuments)
-
-app.get('/next/:insert_id', getNextId);
-app.get('/prev/:insert_id', getPrevId);
-
-app.get('/googleVisionLabels', getGoogleVisionLabels);
-
-app.get('/neo4j_artwork_relations', getNeo4jArtworkRelations)
-
+app.get('/person_relations', getPersonRelations);
 app.get('/autocomplete', getAutoComplete);
-
-app.get('/year_range', getYearRange);
 
 app.get('/admin/login', adminLogin);
 app.put('/admin/documents/combine', putCombineDocuments);
