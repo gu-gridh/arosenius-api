@@ -73,63 +73,77 @@ function adminLogin(req, res) {
 };
 
 // Helper to build Elasticsearch queries
-function QueryBuilder(sort, showUnpublished, showDeleted) {
+function QueryBuilder(req, sort, showUnpublished, showDeleted) {
+
+	// Initialize the main body of the query
 	if (sort && sort == 'insert_id') {
-		var sortObject = [
-			{
-				'insert_id': {
-					'order': 'asc'
+		// Sort by insert_id
+		this.queryBody = {
+			sort: [
+				{
+					'insert_id': {
+						'order': 'asc'
+					}
+				}
+			],
+			query: {
+				bool: {
+					must: []
 				}
 			}
-		];
+		};
 	}
 	else {
 		// Automatically sort results to that artwork and photographs appear first in the list
-		var sortObject = [
-			{
-				'_script': {
-                    'script': "if (doc['type.raw'].value=='Konstverk' || doc['type.raw'].values.contains('Konstverk')) return 1; else if (doc['type.raw'].value=='fotografi' || doc['type.raw'].values.contains('fotografi')) return 2; else return 3;",
-					'type': 'number',
-					'order': 'asc'
-				}
-			},
-			{
-				'_score': {
-					'order': 'desc'
-				}
-			}
-		];
-	}
-
-	// Initialize the main body of the query
-	this.queryBody = {
-		sort: sortObject
-	};
-
-	if (!this.queryBody['query']) {
-		this.queryBody['query'] = {};
-	}
-	if (!this.queryBody.query['bool']) {
-		this.queryBody.query['bool'] = {};
-	}
-	if (!this.queryBody.query.bool['must'] && !showUnpublished) {
-		this.queryBody.query.bool['must'] = [
-			{
-				'not': {
-					'term': {
-						'published': 'false'
-					}
+		this.queryBody = {
+			query: {
+				function_score: {
+					query: {
+						bool: {
+							must: []
+						}
+					},
+					functions: [
+						{
+							filter: {
+								term: {
+									'type.raw': 'Konstverk'
+								}
+							},
+							weight: 2
+						},
+						{
+							filter: {
+								term: {
+									'type.raw': 'fotografi'
+								}
+							},
+							weight: 1
+						},
+						{
+							random_score: {
+								seed: req.query.seed || (new Date()).toDateString()+(new Date()).getHours()+(new Date().getMinutes())
+							}
+						}
+					],
+					score_mode: 'sum'
 				}
 			}
-		];
+		};
 	}
-	else {
-		this.queryBody.query.bool['must'] = [
-		];
+
+	if (!showUnpublished) {
+		this._queryObj().bool.must.push({
+			'not': {
+				'term': {
+					'published': 'false'
+				}
+			}
+		});
 	}
 
 	if (!showDeleted) {
-		this.queryBody.query.bool.must.push({
+		this._queryObj().bool.must.push({
 			'not': {
 				'term': {
 					'deleted': 'true'
@@ -137,6 +151,11 @@ function QueryBuilder(sort, showUnpublished, showDeleted) {
 			}
 		});
 	}
+}
+
+// Get reference to query object
+QueryBuilder.prototype._queryObj = function() {
+	return this.queryBody.query.function_score ? this.queryBody.query.function_score.query : this.queryBody.query;
 }
 
 // Function to add boolean query to the query body
@@ -168,7 +187,7 @@ QueryBuilder.prototype.addBool = function(terms, type, caseSensitive, nested, ne
 	}
 
 	if (nested) {
-		this.queryBody.query.bool.must.push({
+		this._queryObj().bool.must.push({
 			nested: {
 				path: nestedPath,
 				query: boolObj
@@ -176,7 +195,7 @@ QueryBuilder.prototype.addBool = function(terms, type, caseSensitive, nested, ne
 		});
 	}
 	else {
-		this.queryBody.query.bool.must.push(boolObj);
+		this._queryObj().bool.must.push(boolObj);
 	}
 }
 
@@ -185,7 +204,7 @@ function adminGetDocuments(req, res) {
 }
 
 function createQuery(req, showUnpublished, showDeleted) {
-	var queryBuilder = new QueryBuilder(req.query.sort, req.query.showUnpublished == 'true' || showUnpublished == true, req.query.showDeleted || showDeleted);
+	var queryBuilder = new QueryBuilder(req, req.query.sort, req.query.showUnpublished == 'true' || showUnpublished == true, req.query.showDeleted || showDeleted);
 
 	// Get documents with insert_id creater than given value
 	if (req.query.insert_id) {
