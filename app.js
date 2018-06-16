@@ -520,18 +520,23 @@ function getDocuments(req, res, showUnpublished = false, showDeleted = false) {
 			res.json({
 				query: req.query.showQuery == 'true' ? query : null,
 				documents: response.docs ? _.map(response.docs, function(item) {
-					var ret = item._source;
-					ret.id = item._id;
+					if (item._source) {
+						var ret = item._source;
+						ret.id = item._id;
 
-					if (ret.images && ret.images.length > 0) {
-						_.each(ret.images, function(image) {
-							if (image.color && image.color.colors) {
-								delete image.color.colors;
-							}
-						})
+						if (ret.images && ret.images.length > 0) {
+							_.each(ret.images, function(image) {
+								if (image.color && image.color.colors) {
+									delete image.color.colors;
+								}
+							})
+						}
+
+						return ret;
 					}
-
-					return ret;
+					else {
+						return {};
+					}
 				}) : []
 			});
 		});
