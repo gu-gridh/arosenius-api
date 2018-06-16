@@ -534,9 +534,6 @@ function getDocuments(req, res, showUnpublished = false, showDeleted = false) {
 
 						return ret;
 					}
-					else {
-						return {};
-					}
 				})) : []
 			});
 		});
