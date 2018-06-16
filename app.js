@@ -519,7 +519,7 @@ function getDocuments(req, res, showUnpublished = false, showDeleted = false) {
 		}, function(error, response) {
 			res.json({
 				query: req.query.showQuery == 'true' ? query : null,
-				documents: response.docs ? _.map(response.docs, function(item) {
+				documents: response.docs ? _.compact(_.map(response.docs, function(item) {
 					if (item._source) {
 						var ret = item._source;
 						ret.id = item._id;
@@ -537,7 +537,7 @@ function getDocuments(req, res, showUnpublished = false, showDeleted = false) {
 					else {
 						return {};
 					}
-				}) : []
+				})) : []
 			});
 		});
 	}
