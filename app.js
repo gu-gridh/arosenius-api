@@ -2138,48 +2138,50 @@ imgr.serve(config.image_path)
 	.urlRewrite('/:path/:size/:file.:ext')
 	.using(app);
 
-app.get('/', function(req, res) {
+const urlRoot = config.urlRoot;
+
+app.get(urlRoot+'/', function(req, res) {
 	res.send('Arosenius API');
 });
 
-app.get('/documents', getDocuments);
-app.get('/bundle/:bundle', getBundle);
-app.get('/document/:id', getDocument);
-app.get('/bundles', getBundles);
-app.get('/museums', getMuseums);
-app.get('/technic', getTechnic);
-app.get('/material', getMaterial);
-app.get('/types', getTypes);
-app.get('/tags', getTags);
-app.get('/pagetypes', getPagetypes);
-app.get('/persons', getPersons);
-app.get('/places', getPlaces);
-app.get('/genres', getGenres);
-app.get('/exhibitions', getExhibitions);
-app.get('/colormap', getColorMap);
-app.get('/colormatrix', getColorMatrix);
-app.get('/artwork_relations', getArtworkRelations);
-app.get('/similar', getSimilarDocuments)
-app.get('/similar/labels', getSimilarLabelsDocuments)
-app.get('/similar/colors', getSimilarColorsDocuments)
+app.get(urlRoot+'/documents', getDocuments);
+app.get(urlRoot+'/bundle/:bundle', getBundle);
+app.get(urlRoot+'/document/:id', getDocument);
+app.get(urlRoot+'/bundles', getBundles);
+app.get(urlRoot+'/museums', getMuseums);
+app.get(urlRoot+'/technic', getTechnic);
+app.get(urlRoot+'/material', getMaterial);
+app.get(urlRoot+'/types', getTypes);
+app.get(urlRoot+'/tags', getTags);
+app.get(urlRoot+'/pagetypes', getPagetypes);
+app.get(urlRoot+'/persons', getPersons);
+app.get(urlRoot+'/places', getPlaces);
+app.get(urlRoot+'/genres', getGenres);
+app.get(urlRoot+'/exhibitions', getExhibitions);
+app.get(urlRoot+'/colormap', getColorMap);
+app.get(urlRoot+'/colormatrix', getColorMatrix);
+app.get(urlRoot+'/artwork_relations', getArtworkRelations);
+app.get(urlRoot+'/similar', getSimilarDocuments)
+app.get(urlRoot+'/similar/labels', getSimilarLabelsDocuments)
+app.get(urlRoot+'/similar/colors', getSimilarColorsDocuments)
 
-app.get('/next/:insert_id', getNextId);
-app.get('/prev/:insert_id', getPrevId);
+app.get(urlRoot+'/next/:insert_id', getNextId);
+app.get(urlRoot+'/prev/:insert_id', getPrevId);
 
-app.get('/googleVisionLabels', getGoogleVisionLabels);
+app.get(urlRoot+'/googleVisionLabels', getGoogleVisionLabels);
 
-app.get('/neo4j_artwork_relations', getNeo4jArtworkRelations)
+app.get(urlRoot+'/neo4j_artwork_relations', getNeo4jArtworkRelations)
 
-app.get('/autocomplete', getAutoComplete);
+app.get(urlRoot+'/autocomplete', getAutoComplete);
 
-app.get('/year_range', getYearRange);
+app.get(urlRoot+'/year_range', getYearRange);
 
-app.get('/admin/login', adminLogin);
-app.put('/admin/documents/combine', putCombineDocuments);
-app.get('/admin/documents', adminGetDocuments);
-app.get('/admin/bundle/:bundle', getBundle);
-app.put('/admin/bundle', putBundle);
-app.post('/admin/bundle/:id', postBundle);
+app.get(urlRoot+'/admin/login', adminLogin);
+app.put(urlRoot+'/admin/documents/combine', putCombineDocuments);
+app.get(urlRoot+'/admin/documents', adminGetDocuments);
+app.get(urlRoot+'/admin/bundle/:bundle', getBundle);
+app.put(urlRoot+'/admin/bundle', putBundle);
+app.post(urlRoot+'/admin/bundle/:id', postBundle);
 app.put('/admin/document/:id', putDocument);
 app.post('/admin/document/:id', postDocument);
 app.get('/admin/document/:id', getDocument);
