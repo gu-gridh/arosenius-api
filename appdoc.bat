@@ -1,0 +1,1 @@
+apidoc -i ./ -o documentation/ -f "app.js"

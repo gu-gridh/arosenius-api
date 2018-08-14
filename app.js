@@ -199,7 +199,55 @@ QueryBuilder.prototype.addBool = function(terms, type, caseSensitive, nested, ne
 	}
 }
 
-function adminGetDocuments(req, res) {
+/**
+ * @api {get} /documents?params
+ * @apiName GetDocuments
+ * @apiGroup Documents
+ * @apiDescription  Gets documents based on search params.
+ *
+ * @apiParam insert_id {String} Get documents with insert_id creater than given value
+ * @apiParam museum {String} Get documents from a specific museum
+ * @apiParam bundle {String} Get documents in a specific bundle (deprected)
+ * @apiParam search {String} Get documents based on search strings. Searches in various fields listed below
+ * @apiParam type {String} Get documents of specific type
+ * @apiParam letter_from {String} Get documents based on name of a sender (applies for letters)
+ * @apiParam letter_to {String} Get documents based on name of a receiver (applies for letters)
+ * @apiParam person {String} Get documents tagged with a specific person/persons
+ * @apiParam tags {String} Get documents with a specific tag/tags
+ * @apiParam place {String} Get documents tagged with a specific place/places
+ * @apiParam genre {String} Get documents of specific genre
+ * @apiParam year {String} Get documents of from specific year
+ * @apiParam archivematerial {String} Defines if search should exclusively return artworks and photographs (only) or exclude artworks and photographs (exclude)
+ *
+ *
+ * @apiSuccessExample Success-Response:
+ *     HTTP/1.1 200 OK
+      {
+        "total": 1423,
+        "documents": [
+          {
+            "type": [
+             "Konstverk"
+            ],
+            "title": "Sittande pojke",
+            "title_en": "",
+            "size": {
+              "inner": {
+                "width": 30.5,
+                "height": 38.8
+              }
+            },
+            "collection": {
+              "museum": "Göteborgs konstmuseum"
+            }
+          },
+          [...]
+        ],
+        [...]
+      }
+ *
+ */
+ function adminGetDocuments(req, res) {
 	getDocuments(req, res, true, true);
 }
 
@@ -326,7 +374,7 @@ function createQuery(req, showUnpublished, showDeleted) {
 		], 'should', true);
 	}
 
-	// Get documents of specific genre
+	// Get documents of from specific year
 	if (req.query.year) {
 		queryBuilder.addBool([
 			[{
@@ -779,7 +827,38 @@ function postDocument(req, res) {
 	});
 }
 
-function getDocument(req, res) {
+/**
+ * @api {get} /document/:id
+ * @apiName GetDocument
+ * @apiGroup Document
+ * @apiDescription  Get single document.
+ *
+ * @apiParam {String} id document id
+ *
+ * @apiSuccessExample Success-Response:
+ *     HTTP/1.1 200 OK
+      {
+        "data": {
+          "type": [
+           "Konstverk"
+          ],
+          "title": "Sittande pojke",
+          "title_en": "",
+          "size": {
+            "inner": {
+              "width": 30.5,
+              "height": 38.8
+            }
+          },
+          "collection": {
+            "museum": "Göteborgs konstmuseum"
+          },
+          [...]
+        }
+      }
+ *
+ */
+ function getDocument(req, res) {
 	var query = [];
 	if (req.query.museum) {
 		query.push('collection.museum: "'+req.query.museum+'"');
@@ -2139,10 +2218,13 @@ imgr.serve(config.image_path)
 	.using(app);
 
 const urlRoot = config.urlRoot;
-
+/*
 app.get(urlRoot+'/', function(req, res) {
-	res.send('Arosenius API');
+	res.send(express.static('documentation'));
 });
+*/
+
+app.use(express.static(__dirname + '/documentation'));
 
 app.get(urlRoot+'/documents', getDocuments);
 app.get(urlRoot+'/bundle/:bundle', getBundle);
