@@ -6,6 +6,7 @@ define({ "api": [
     "name": "GetDocument",
     "group": "Document",
     "description": "<p>Get single document.</p>",
+    "version": "1.0.0",
     "parameter": {
       "fields": {
         "Parameter": [
@@ -28,7 +29,6 @@ define({ "api": [
         }
       ]
     },
-    "version": "0.0.0",
     "filename": "./app.js",
     "groupTitle": "Document"
   },
@@ -39,6 +39,7 @@ define({ "api": [
     "name": "GetDocuments",
     "group": "Documents",
     "description": "<p>Gets documents based on search params.</p>",
+    "version": "1.0.0",
     "parameter": {
       "fields": {
         "Parameter": [
@@ -132,7 +133,6 @@ define({ "api": [
         }
       ]
     },
-    "version": "0.0.0",
     "filename": "./app.js",
     "groupTitle": "Documents"
   }

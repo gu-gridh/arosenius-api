@@ -204,6 +204,7 @@ QueryBuilder.prototype.addBool = function(terms, type, caseSensitive, nested, ne
  * @apiName GetDocuments
  * @apiGroup Documents
  * @apiDescription  Gets documents based on search params.
+ * @apiVersion 1.0.0
  *
  * @apiParam insert_id {String} Get documents with insert_id creater than given value
  * @apiParam museum {String} Get documents from a specific museum
@@ -832,6 +833,7 @@ function postDocument(req, res) {
  * @apiName GetDocument
  * @apiGroup Document
  * @apiDescription  Get single document.
+ * @apiVersion 1.0.0
  *
  * @apiParam {String} id document id
  *
