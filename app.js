@@ -642,9 +642,23 @@ function getDocuments(req, res, showUnpublished = false, showDeleted = false) {
 					if (ret.images && ret.images.length > 0) {
 						_.each(ret.images, function(image) {
 							if (image.color && image.color.colors) {
-								delete image.color.colors;
+								delete image.color;
+							}
+							if (image.googleVisionLabels) {
+								delete image.googleVisionLabels;
 							}
 						})
+					}
+
+					if (ret.googleVisionLabels) {
+						delete ret.googleVisionLabels;
+					}
+					if (ret.googleVisionColors) {
+						delete ret.googleVisionColors;
+					}
+
+					if (req.query.simple) {
+						delete ret.images;
 					}
 
 					return ret;
