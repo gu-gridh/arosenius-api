@@ -906,7 +906,7 @@ function getMuseums(req, res) {
 				"museums": {
 					"terms": {
 						"field": "collection.museum.raw",
-						"size": 5,
+						"size": 10,
 						"order": {
 							"_count": "desc"
 						}
