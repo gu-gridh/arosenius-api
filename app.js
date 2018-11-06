@@ -2296,7 +2296,7 @@ function postImageUpload(req, res) {
 	var fstream;
 	req.pipe(req.busboy);
 	req.busboy.on('file', function (fieldname, file, filename) {
-		fstream = fs.createWriteStream(config.image_path+'\\'+filename);
+		fstream = fs.createWriteStream(config.image_path+'/'+filename);
 		file.pipe(fstream);
 		fstream.on('close', function () {    
 			res.json({
