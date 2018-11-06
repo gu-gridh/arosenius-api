@@ -4,11 +4,14 @@ var _ = require('underscore');
 var elasticsearch = require('elasticsearch');
 var IMGR = require('imgr').IMGR;
 var request = require('request');
+var fs = require('fs');
+var path = require('path');
 
 var config = require('./config');
 
 var app = express();
 var auth = require('basic-auth')
+var busboy = require('connect-busboy');
 
 var client = new elasticsearch.Client({
 	host: config.es_host
@@ -29,6 +32,8 @@ function authenticate(user) {
 		return false;
 	}
 }
+
+app.use(busboy());
 
 var auth = require('basic-auth');
 
@@ -547,6 +552,34 @@ function getPrevId(req, res) {
 	});
 }
 
+function getHighestId(req, res) {
+	client.search({
+		index: config.index,
+		type: 'artwork',
+		size: 0,
+		body: {
+			"aggs": {
+				"insert_id": {
+					"max": {
+						"field": "insert_id"
+					}
+				}
+			}
+		}
+	}, function(error, response) {
+		console.log(error)
+	
+		try {
+			res.json({
+				highest_insert_id: response.aggregations.insert_id.value
+			});
+		}
+		catch (e) {
+			res.json({error: 'not found'});
+		}
+	});
+}
+
 // Search for documents
 function getDocuments(req, res, showUnpublished = false, showDeleted = false) {
 	var colorMargins = req.query.color_margins ? Number(req.query.color_margins) : 15;
@@ -816,7 +849,27 @@ function postBundle(req, res) {
 }
 
 function putDocument(req, res) {
-	res.json({response: 'put'});
+//	res.json({response: 'put'});
+
+	var document = req.body;
+
+	if (document.images && document.images.length > 0) {
+		var sortedImages = _.sortBy(document.images, function(image) {
+			return image.page && Number(image.page.order) || 0;
+		});
+
+		document.images = sortedImages;
+	}
+
+	client.create({
+		index: config.index,
+		type: 'artwork',
+		id: req.body.id,
+		body: document
+	}, function(error, response) {
+		res.json(response);
+		//res.json({response: 'post'});
+	});
 }
 
 function postDocument(req, res) {
@@ -2224,6 +2277,36 @@ function getNeo4jArtworkRelations(req, res) {
 	});
 }
 
+function getImageFileList(req, res) {
+	fs.readdir(config.image_path, function(err, files) {
+		var fileList = [];
+		files.forEach(function(file) {
+			if (!fs.lstatSync(path.join(config.image_path, file)).isDirectory()) {
+				fileList.push({
+					file: file
+				});
+			}
+		});
+
+		res.json(fileList);
+	})
+}
+
+function postImageUpload(req, res) {
+	var fstream;
+	req.pipe(req.busboy);
+	req.busboy.on('file', function (fieldname, file, filename) {
+		fstream = fs.createWriteStream(config.image_path+'\\'+filename);
+		file.pipe(fstream);
+		fstream.on('close', function () {    
+			res.json({
+				success: 'file uploaded',
+				filename: filename
+			});
+		});
+	});
+}
+
 var imgr = new IMGR({
 	cache_dir: config.image_temp_path
 });
@@ -2265,6 +2348,7 @@ app.get(urlRoot+'/similar/colors', getSimilarColorsDocuments)
 
 app.get(urlRoot+'/next/:insert_id', getNextId);
 app.get(urlRoot+'/prev/:insert_id', getPrevId);
+app.get(urlRoot+'/highest_insert_id', getHighestId);
 
 app.get(urlRoot+'/googleVisionLabels', getGoogleVisionLabels);
 
@@ -2285,6 +2369,8 @@ app.post('/admin/document/:id', postDocument);
 app.get('/admin/document/:id', getDocument);
 app.get('/admin/bundles', getBundles);
 app.get('/admin/museums', getMuseums);
+app.get('/image_file_list', getImageFileList);
+app.post('/admin/upload', postImageUpload);
 
 app.listen(3010, function () {
   console.log('Arosenius project API');
