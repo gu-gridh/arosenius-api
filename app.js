@@ -858,7 +858,7 @@ function putDocument(req, res) {
 			return image.page && Number(image.page.order) || 0;
 		});
 
-		document.images = sortedImages;
+		document.images = processImages(document.images);
 	}
 
 	client.create({
@@ -872,6 +872,21 @@ function putDocument(req, res) {
 	});
 }
 
+var sizeOf = require('image-size');
+
+function processImages(images) {
+	images = _.sortBy(images, function(image) {
+		return image.page && Number(image.page.order) || 0;
+	});
+
+	images = images.map(function(image) {
+		image.imagesize = sizeOf(config.image_path+'\\'+image.image+'.jpg')
+		return image;
+	});
+
+	return images;
+}
+
 function postDocument(req, res) {
 	var document = req.body;
 
@@ -880,7 +895,7 @@ function postDocument(req, res) {
 			return image.page && Number(image.page.order) || 0;
 		});
 
-		document.images = sortedImages;
+		document.images = processImages(document.images);
 	}
 
 	client.update({
