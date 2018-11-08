@@ -880,7 +880,7 @@ function processImages(images) {
 	});
 
 	images = images.map(function(image) {
-		image.imagesize = sizeOf(config.image_path+'\\'+image.image+'.jpg')
+		image.imagesize = sizeOf(config.image_path+'/'+image.image+'.jpg')
 		return image;
 	});
 
