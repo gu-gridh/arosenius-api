@@ -1315,7 +1315,8 @@ function getGoogleVisionLabels(req, res) {
 						labels: {
 							terms: {
 								field: "googleVisionLabels.label",
-								size: 1000
+								size: 1000,
+								exclude: "font|paper|text|document|art|artwork|drawing|illustration|visual arts|material|handwriting|writing|paper product|painting|black and white|sketch|letter|picture frame|calligraphy|portrait|history|photograph|angle|figure drawing|stock photography|vintage clothing|line|snapshot|paint|watercolor paint|monochrome"
 							}
 						}
 					}
