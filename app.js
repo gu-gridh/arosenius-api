@@ -1152,6 +1152,81 @@ function getTags(req, res) {
 	});
 }
 
+function getTagCloud(req, res) {
+	var queryBody = {
+		"aggs": {
+			"tags": {
+				"terms": {
+					"field": "tags.raw",
+					"size": 5000,
+					"exclude": "GKMs diabildssamling|Skepplandamaterialet"
+				}
+			},
+			"persons": {
+				"terms": {
+					"field": "persons.raw",
+					"size": 5000
+				}
+			},
+			"places": {
+				"terms": {
+					"field": "places.raw",
+					"size": 5000
+				}
+			},
+			"genre": {
+				"terms": {
+					"field": "genre.raw",
+					"size": 5000
+				}
+			}
+		}
+	};
+
+	if (!req.query.sort || req.query.sort != 'doc_count') {
+		queryBody.aggs.tags.terms['order'] = {
+			_term: 'asc'
+		}
+	}
+
+	client.search({
+		index: config.index,
+		type: 'artwork',
+		body: queryBody
+	}, function(error, response) {
+		res.json(_.filter(_.map(response.aggregations.tags.buckets, function(tag) {
+				return {
+					value: tag.key,
+					doc_count: tag.doc_count,
+					type: 'tags'
+				};
+			})
+			.concat(_.map(response.aggregations.persons.buckets, function(tag) {
+				return {
+					value: tag.key,
+					doc_count: tag.doc_count,
+					type: 'person'
+				};
+			}))
+			.concat(_.map(response.aggregations.places.buckets, function(tag) {
+				return {
+					value: tag.key,
+					doc_count: tag.doc_count,
+					type: 'place'
+				};
+			}))
+			.concat(_.map(response.aggregations.genre.buckets, function(tag) {
+				return {
+					value: tag.key,
+					doc_count: tag.doc_count,
+					type: 'genre'
+				};
+			})), function(tag) {
+			return tag.doc_count > 4;
+		}));
+	});
+}
+
 function getPagetypes(req, res) {
 	client.search({
 		index: config.index,
@@ -2350,6 +2425,7 @@ app.get(urlRoot+'/technic', getTechnic);
 app.get(urlRoot+'/material', getMaterial);
 app.get(urlRoot+'/types', getTypes);
 app.get(urlRoot+'/tags', getTags);
+app.get(urlRoot+'/tags/cloud', getTagCloud);
 app.get(urlRoot+'/pagetypes', getPagetypes);
 app.get(urlRoot+'/persons', getPersons);
 app.get(urlRoot+'/places', getPlaces);
