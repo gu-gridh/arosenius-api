@@ -2,7 +2,7 @@
 
 Here is the source code for the API for the Ivar Arosenius online archive (http://aroseniusarkivet.org).
 The frontend can be found here: https://github.com/CDH-DevTeam/arosenius-archive-gui
-The admin system for the database can be found here: https://github.com/CDH-DevTeam/arosenius-archive-gui
+The admin system for the database can be found here: https://github.com/CDH-DevTeam/arosenius-admin
 
 ### Current server specifications
 - Elasticsearch 2.4.6
