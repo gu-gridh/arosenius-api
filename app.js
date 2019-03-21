@@ -1179,6 +1179,12 @@ function getTagCloud(req, res) {
 					"field": "genre.raw",
 					"size": 5000
 				}
+			},
+			"collections": {
+				"terms": {
+					"field": "collection.museum.raw",
+					"size": 5000
+				}
 			}
 		}
 	};
@@ -1215,6 +1221,13 @@ function getTagCloud(req, res) {
 					type: 'place'
 				};
 			}))
+                        .concat(_.map(response.aggregations.collections.buckets, function(tag) {
+                                return {
+                                        value: tag.key,
+                                        doc_count: tag.doc_count,
+                                        type: 'collection'
+                                };
+                        }))
 			.concat(_.map(response.aggregations.genre.buckets, function(tag) {
 				return {
 					value: tag.key,
