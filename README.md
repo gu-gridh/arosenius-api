@@ -31,8 +31,12 @@ The API depends on Elasticsearch installed and running. Documents are stored as 
 
 ## Images
 
-Images are handled through the (https://github.com/sydneystockholm/imgr)[IMGR framework] via Express.js.
+Images are handled through the (IMGR framework)[https://github.com/sydneystockholm/imgr] via Express.js.
 
 The server can serve images in different resolutions which is defined in the url. For example, the image privat_diabilder_1904_007.jpg can be access in full resolution via http://cdh-vir-1.it.gu.se:8004/images/privat_diabilder_1904_007.jpg and in max 1600px resolution via the url http://cdh-vir-1.it.gu.se:8004/images/1600x/privat_diabilder_1904_007.jpg
 
 Images are kept in the `/appl/cdh/arosenius-imagedata` folder on the server. Resized images are kept in the `imgr` subfolder for caching purpose.
+
+## Users
+
+Users are defined in the `users.js` file. All users have the same privileges.
