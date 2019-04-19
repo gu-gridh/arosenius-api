@@ -112,7 +112,15 @@ function QueryBuilder(req, sort, showUnpublished, showDeleted) {
 						{
 							filter: {
 								term: {
-									'type.raw': 'Konstverk'
+									'genre.raw': 'Målning'
+								}
+							},
+							weight: 3
+						},
+						{
+							filter: {
+								term: {
+									'type.raw': 'Teckning'
 								}
 							},
 							weight: 2
@@ -120,7 +128,7 @@ function QueryBuilder(req, sort, showUnpublished, showDeleted) {
 						{
 							filter: {
 								term: {
-									'type.raw': 'fotografi'
+									'type.raw': 'Skiss'
 								}
 							},
 							weight: 1
