@@ -127,7 +127,7 @@ function QueryBuilder(req, sort, showUnpublished, showDeleted) {
 						},
 						{
 							random_score: {
-								seed: req.query.seed || (new Date()).toDateString()+(new Date()).getHours()+(new Date().getMinutes())
+								seed: req.query.seed || (new Date()).toDateString()+(new Date()).getHours()+(Math.ceil(new Date().getMinutes()/20))
 							}
 						}
 					],
