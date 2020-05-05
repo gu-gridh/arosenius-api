@@ -2,3 +2,4 @@ node_modules/elasticsearch/.npmignore
 config.js
 node_modules
 users.js
+imagedata

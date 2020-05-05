@@ -9,6 +9,7 @@ The admin system for the database can be found here: https://github.com/CDH-DevT
 This documentation also addresses server requiremments and server setup.
 
 ### Current server specifications
+
 - Elasticsearch 2.4.6
 - Node.js 8.1.4
 - Express.js 4.13.4
@@ -17,11 +18,15 @@ The API runs on port 3010.
 
 ## Getting started
 
-To run the API, first clone the repository or fork it to your own repository. Then install all JS dependencies and start it with `node app.js`.
-```
+To run the API, first clone the repository or fork it to your own repository. Then install all JS dependencies, create `config.js` and `users.js` and start it with `node app.js`.
+
+```sh
 git clone https://github.com/CDH-DevTeam/arosenius-api.git
 cd arosenius-api
 npm install
+cp config.demo.js config.js
+cp users.demo.js users.js
+# Edit config.js and users.js
 node app.js
 ```
 
@@ -31,7 +36,8 @@ The API depends on Elasticsearch installed and running. Documents are stored as 
 
 ## Images
 
-Images are handled through the (IMGR framework)[https://github.com/sydneystockholm/imgr] via Express.js.
+Images are handled through the [IMGR framework](https://github.com/sydneystockholm/imgr) via Express.js.
+It requires [GraphicsMagick](http://www.graphicsmagick.org/README.html) (`gm`).
 
 The server can serve images in different resolutions which is defined in the url. For example, the image privat_diabilder_1904_007.jpg can be access in full resolution via http://cdh-vir-1.it.gu.se:8004/images/privat_diabilder_1904_007.jpg and in max 1600px resolution via the url http://cdh-vir-1.it.gu.se:8004/images/1600x/privat_diabilder_1904_007.jpg
 
