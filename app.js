@@ -1075,7 +1075,7 @@ function getMaterial(req, res) {
 	};
 
 	if (!req.query.sort || req.query.sort != 'doc_count') {
-		queryBody.aggs.persons.terms['order'] = {
+		queryBody.aggs.material.terms['order'] = {
 			_term: 'asc'
 		}
 	}
