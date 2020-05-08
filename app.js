@@ -896,35 +896,6 @@ function getMuseums(req, res) {
 	});
 }
 
-function getTechnic(req, res) {
-	var queryBody = {
-		"aggs": {
-			"technic": {
-				"terms": {
-					"field": "technic.value",
-					"size": 200
-				}
-			}
-		}
-	};
-
-	if (!req.query.sort || req.query.sort != 'doc_count') {
-		queryBody.aggs.technic.terms['order'] = {
-			_term: 'asc'
-		}
-	}
-
-	client.search({
-		index: config.index,
-		type: 'artwork',
-		body: queryBody
-	}, function(error, response) {
-		res.json(_.map(response.aggregations.technic.buckets, function(technic) {
-			return technic.key;
-		}));
-	});
-}
-
 function getTypes(req, res) {
 	var queryBody = {
 		"aggs": {
@@ -2138,7 +2109,6 @@ app.use(express.static(__dirname + '/documentation'));
 app.get(urlRoot+'/documents', getDocuments);
 app.get(urlRoot+'/document/:id', getDocument);
 app.get(urlRoot+'/museums', getMuseums);
-app.get(urlRoot+'/technic', getTechnic);
 app.get(urlRoot+'/types', getTypes);
 app.get(urlRoot+'/tags', getTags);
 app.get(urlRoot+'/tags/cloud', getTagCloud);
@@ -2158,6 +2128,7 @@ app.get(urlRoot+'/next/:insert_id', getNextId);
 app.get(urlRoot+'/prev/:insert_id', getPrevId);
 app.get(urlRoot+'/highest_insert_id', getHighestId);
 
+// Only used by GoogleVisionLabelsViewer component in frontend which is just a demo
 app.get(urlRoot+'/googleVisionLabels', getGoogleVisionLabels);
 
 app.get(urlRoot+'/autocomplete', getAutoComplete);
