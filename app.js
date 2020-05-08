@@ -590,7 +590,6 @@ function getHighestId(req, res) {
 
 // Search for documents
 function getDocuments(req, res, showUnpublished = false, showDeleted = false) {
-	var colorMargins = req.query.color_margins ? Number(req.query.color_margins) : 15;
 	var pageSize = req.query.count || 100;
 
 	var query = {};
@@ -857,15 +856,9 @@ function postBundle(req, res) {
 }
 
 function putDocument(req, res) {
-//	res.json({response: 'put'});
-
 	var document = req.body;
 
 	if (document.images && document.images.length > 0) {
-		var sortedImages = _.sortBy(document.images, function(image) {
-			return image.page && Number(image.page.order) || 0;
-		});
-
 		document.images = processImages(document.images);
 	}
 
@@ -876,7 +869,6 @@ function putDocument(req, res) {
 		body: document
 	}, function(error, response) {
 		res.json(response);
-		//res.json({response: 'post'});
 	});
 }
 
@@ -899,10 +891,6 @@ function postDocument(req, res) {
 	var document = req.body;
 
 	if (document.images && document.images.length > 0) {
-		var sortedImages = _.sortBy(document.images, function(image) {
-			return image.page && Number(image.page.order) || 0;
-		});
-
 		document.images = processImages(document.images);
 	}
 
@@ -1449,12 +1437,9 @@ var colorMargins = 5;
 var colorScoreMargins = 0.2;
 
 var minumumLabelScore = 0.7;
-var minimumColorScore = 0.2;
 
 var googleLabelsBlacklist = [
-//	'painting',
 	'art',
-//	'illustration',
 	'document',
 	'artwork',
 	'modern',
@@ -1479,7 +1464,6 @@ function getSimilarDocuments(req, res) {
 			});
 
 			var nestedLabelsQuery = _.map(_.filter(lookupLabels, function(label) {
-//				return true;
 				return label.score > minumumLabelScore;
 			}), function(label) {
 				return {
@@ -1512,15 +1496,9 @@ function getSimilarDocuments(req, res) {
 
 			var lookupColors = response.hits.hits[0]._source.googleVisionColors.sort(function(a, b) {
 				return true;
-//				return a.score-b.score;
 			}).reverse();
 
-//			lookupColors = lookupColors.splice(0, Math.round(lookupColors.length/2));
-
-			var nestedColorsQuery = _.map(_.filter(lookupColors, function(color) {
-				return true;
-//				return color.score > minimumColorScore;
-			}), function(color) {
+			var nestedColorsQuery = _.map(lookupColors, function(color) {
 				return {
 					nested: {
 						path: "googleVisionColors",
@@ -1543,16 +1521,6 @@ function getSimilarDocuments(req, res) {
 											}
 										}
 									},
-									/*
-									{
-										range: {
-											'googleVisionColors.hsv.v': {
-												gte: color.hsv.v-(colorMargins),
-												lte: color.hsv.v+(colorMargins)
-											}
-										}
-									},
-									*/
 									{
 										range: {
 											'googleVisionColors.score': {
@@ -1572,11 +1540,6 @@ function getSimilarDocuments(req, res) {
 				query: {
 					bool: {
 						must_not: {
-							/*
-							'term': {
-								'published': 'false'
-							},
-							*/
 							ids: {
 								type: 'artwork',
 								values: [req.query.id]
@@ -1632,13 +1595,9 @@ function getSimilarLabelsDocuments(req, res) {
 				var blacklist =googleLabelsBlacklist;
 
 				return _.intersection(label.label.split(' '), blacklist) == 0;
-//				return true;
 			});
 
-			var nestedLabelsQuery = _.map(_.filter(lookupLabels, function(label) {
-				return true;
-//				return label.score > minumumLabelScore;
-			}), function(label) {
+			var nestedLabelsQuery = _.map(lookupLabels, function(label) {
 				return {
 					nested: {
 						path: "googleVisionLabels",
@@ -1671,11 +1630,6 @@ function getSimilarLabelsDocuments(req, res) {
 				query: {
 					bool: {
 						must_not: {
-							/*
-							'term': {
-								'published': 'false'
-							},
-							*/
 							ids: {
 								type: 'artwork',
 								values: [req.query.id]
@@ -1732,15 +1686,9 @@ function getSimilarColorsDocuments(req, res) {
 
 			var lookupColors = response.hits.hits[0]._source.googleVisionColors.sort(function(a, b) {
 				return true;
-//				return a.score-b.score;
 			}).reverse();
 
-//			lookupColors = lookupColors.splice(0, Math.round(lookupColors.length/2));
-
-			var nestedColorsQuery = _.map(_.filter(lookupColors, function(color) {
-				return true;
-//				return color.score > minimumColorScore;
-			}), function(color) {
+			var nestedColorsQuery = _.map(lookupColors, function(color) {
 				return {
 					nested: {
 						path: "googleVisionColors",
@@ -1763,16 +1711,6 @@ function getSimilarColorsDocuments(req, res) {
 											}
 										}
 									},
-									/*
-									{
-										range: {
-											'googleVisionColors.hsv.v': {
-												gte: color.hsv.v-(colorMargins),
-												lte: color.hsv.v+(colorMargins)
-											}
-										}
-									},
-									*/
 									{
 										range: {
 											'googleVisionColors.score': {
@@ -1792,11 +1730,6 @@ function getSimilarColorsDocuments(req, res) {
 				query: {
 					bool: {
 						must_not: {
-							/*
-							'term': {
-								'published': 'false'
-							},
-							*/
 							ids: {
 								type: 'artwork',
 								values: [req.query.id]
@@ -2041,19 +1974,6 @@ function getAutoComplete(req, res) {
 					})
 				}
 			}
-/*
-			aggs: {
-				titles: {
-					terms: {
-						field: 'title.raw',
-						size: 10,
-						order: {
-							_term: 'asc'
-						}
-					}
-				}
-			}
-*/
 		},
 
 		// Titles aggregation
@@ -2312,16 +2232,9 @@ function getNeo4jArtworkRelations(req, res) {
 			}
 		}
 	}, function(error, response, body) {
-		var getNodeIndex = function(id) {
-			return _.findIndex(output.nodes, function(node) {
-				return node.id == id;
-			});
-		}
-
 		var output = {
 			nodes: [],
 			connections: [],
-			//raw: response
 		};
 
 		_.each(response.body.data, function(item) {
@@ -2353,7 +2266,6 @@ function getNeo4jArtworkRelations(req, res) {
 		});
 
 		res.json(output);
-//		res.json(response);
 	});
 }
 
@@ -2397,11 +2309,6 @@ imgr.serve(config.image_path)
 	.using(app);
 
 const urlRoot = config.urlRoot;
-/*
-app.get(urlRoot+'/', function(req, res) {
-	res.send(express.static('documentation'));
-});
-*/
 
 app.use(express.static(__dirname + '/documentation'));
 
