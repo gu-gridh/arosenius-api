@@ -675,26 +675,6 @@ function getDocuments(req, res, showUnpublished = false, showDeleted = false) {
 	}
 }
 
-// Deprecated
-function getBundle(req, res) {
-	var pageSize = 30;
-
-	var query = [];
-
-	query.push('bundle: "'+req.params.bundle+'"');
-
-	client.search({
-		index: config.index,
-		type: 'bundle',
-		q: 'bundle: "'+req.params.bundle+'"'
-	}, function(error, response) {
-		res.json({
-			data: response.hits.hits[0]._source
-		});
-	});
-
-}
-
 function putCombineDocuments(req, res) {
 	var ids = req.body.documents;
 	var finalDocument = req.body.selectedDocument;
@@ -781,77 +761,6 @@ function putCombineDocuments(req, res) {
 				});
 			});
 		}
-	});
-}
-
-function putBundle(req, res) {
-	var documents = req.body.documents;
-	delete req.body.documents;
-
-	if (documents.length > 0) {
-		client.create({
-			index: config.index,
-			type: 'bundle',
-			body: req.body
-		}, function(error, response) {
-			if (response && response._id) {
-				var newId = response._id;
-
-				var bulkBody = [
-					{
-						update: {
-							_index: config.index,
-							_type: 'bundle',
-							_id: newId
-						}
-					},
-					{
-						doc: {
-							bundle: newId
-						}
-					}
-				];
-
-				_.each(documents, function(document) {
-					bulkBody.push({
-						update: {
-							_index: config.index,
-							_type: 'artwork',
-							_id: document
-						}
-					});
-					bulkBody.push({
-						doc: {
-							bundle: newId
-						}
-					});
-				})
-
-				client.bulk({
-					body: bulkBody
-				}, function(error, response) {
-					res.json({
-						data: {
-							_id: newId
-						}
-					});
-				});
-			}
-		});
-	}
-
-}
-
-function postBundle(req, res) {
-	client.update({
-		index: config.index,
-		type: 'bundle',
-		id: req.body.id,
-		body: {
-			doc: req.body
-		}
-	}, function(error, response) {
-		res.json({response: 'post'});
 	});
 }
 
@@ -984,40 +893,6 @@ function getMuseums(req, res) {
 				value: museum.key
 			};
 		}));
-	});
-}
-
-function getBundles(req, res) {
-	var pageSize = 30;
-
-	var query = [];
-
-	if (req.query.museum) {
-		query.push('collection.museum: "'+req.query.museum+'"');
-	}
-	if (req.query.search) {
-		query.push('(title: "'+req.query.search+'" OR description: "'+req.query.search+'")');
-	}
-
-	client.search({
-		index: config.index,
-		type: 'bundle',
-		size: pageSize,
-		from: req.query.page && req.query.page > 0 ? (req.query.page-1)*pageSize : 0,
-		sort: [
-			'bundle'
-		],
-		q: query.length > 0 ? query.join(' AND ') : null
-	}, function(error, response) {
-		res.json({
-			total: response.hits.total,
-			bundles: _.map(response.hits.hits, function(item) {
-				var ret = item._source;
-				ret.id = item._id;
-				return ret;
-			}),
-			query: query.length > 0 ? query.join(' AND ') : null
-		});
 	});
 }
 
@@ -2313,9 +2188,7 @@ const urlRoot = config.urlRoot;
 app.use(express.static(__dirname + '/documentation'));
 
 app.get(urlRoot+'/documents', getDocuments);
-app.get(urlRoot+'/bundle/:bundle', getBundle);
 app.get(urlRoot+'/document/:id', getDocument);
-app.get(urlRoot+'/bundles', getBundles);
 app.get(urlRoot+'/museums', getMuseums);
 app.get(urlRoot+'/technic', getTechnic);
 app.get(urlRoot+'/types', getTypes);
@@ -2348,13 +2221,9 @@ app.get(urlRoot+'/year_range', getYearRange);
 app.get(urlRoot+'/admin/login', adminLogin);
 app.put(urlRoot+'/admin/documents/combine', putCombineDocuments);
 app.get(urlRoot+'/admin/documents', adminGetDocuments);
-app.get(urlRoot+'/admin/bundle/:bundle', getBundle);
-app.put(urlRoot+'/admin/bundle', putBundle);
-app.post(urlRoot+'/admin/bundle/:id', postBundle);
 app.put('/admin/document/:id', putDocument);
 app.post('/admin/document/:id', postDocument);
 app.get('/admin/document/:id', getDocument);
-app.get('/admin/bundles', getBundles);
 app.get('/admin/museums', getMuseums);
 app.get('/image_file_list', getImageFileList);
 app.post('/admin/upload', postImageUpload);
