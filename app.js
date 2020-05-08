@@ -2092,58 +2092,6 @@ function getAutoComplete(req, res) {
 	});
 }
 
-function getNeo4jArtworkRelations(req, res) {
-	request.post('http://localhost:7474/db/data/cypher', {
-		'auth': {
-			'user': 'neo4j',
-			'pass': 'lcp010xx',
-			'sendImmediately': false
-		},
-		json: true,
-		body: {
-			"query" : "MATCH (n1:Object)-[r1:SHARE_TAG]-(n2:Object) WHERE n1.type = {type} AND n2.type = {type} RETURN n1, r1, n2",
-			"params" : {
-				"type" : "Konstverk"
-			}
-		}
-	}, function(error, response, body) {
-		var output = {
-			nodes: [],
-			connections: [],
-		};
-
-		_.each(response.body.data, function(item) {
-			_.each(item, function(subItem) {
-
-				if (subItem.metadata.type != 'SHARE_TAG') {
-					var node = subItem.data;
-					node.es_id = subItem.data.id;
-					node.id = subItem.metadata.id;
-					node.label = subItem.metadata.labels[0];
-
-					output.nodes.push(node);
-				}
-			});
-		});
-
-		_.each(response.body.data, function(item) {
-			output.connections.push({
-				source: item[0].metadata.id,
-				target: item[2].metadata.id
-			});
-		});
-
-		output.nodes = _.map(_.uniq(output.nodes, function(node) {
-			return node.id;
-		}), function(item, index) {
-			item.index = index;
-			return item;
-		});
-
-		res.json(output);
-	});
-}
-
 function getImageFileList(req, res) {
 	fs.readdir(config.image_path, function(err, files) {
 		var fileList = [];
@@ -2211,8 +2159,6 @@ app.get(urlRoot+'/prev/:insert_id', getPrevId);
 app.get(urlRoot+'/highest_insert_id', getHighestId);
 
 app.get(urlRoot+'/googleVisionLabels', getGoogleVisionLabels);
-
-app.get(urlRoot+'/neo4j_artwork_relations', getNeo4jArtworkRelations)
 
 app.get(urlRoot+'/autocomplete', getAutoComplete);
 
