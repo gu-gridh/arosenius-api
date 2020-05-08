@@ -221,7 +221,7 @@ QueryBuilder.prototype.addBool = function(terms, type, caseSensitive, nested, ne
  *
  * @apiParam insert_id {String} Get documents with insert_id creater than given value
  * @apiParam museum {String} Get documents from a specific museum
- * @apiParam bundle {String} Get documents in a specific bundle (deprected)
+ * @apiParam bundle {String} Get documents in a specific bundle
  * @apiParam search {String} Get documents based on search strings. Searches in various fields listed below
  * @apiParam type {String} Get documents of specific type
  * @apiParam letter_from {String} Get documents based on name of a sender (applies for letters)
