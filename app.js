@@ -1062,38 +1062,6 @@ function getTechnic(req, res) {
 	});
 }
 
-function getMaterial(req, res) {
-	var queryBody = {
-		"aggs": {
-			"material": {
-				"terms": {
-					"field": "material",
-					"size": 200
-				}
-			}
-		}
-	};
-
-	if (!req.query.sort || req.query.sort != 'doc_count') {
-		queryBody.aggs.material.terms['order'] = {
-			_term: 'asc'
-		}
-	}
-
-	client.search({
-		index: config.index,
-		type: 'artwork',
-		body: queryBody
-	}, function(error, response) {
-		res.json(_.map(response.aggregations.material.buckets, function(material) {
-			return {
-				value: material.key,
-				doc_count: material.doc_count
-			};
-		}));
-	});
-}
-
 function getTypes(req, res) {
 	var queryBody = {
 		"aggs": {
@@ -2443,7 +2411,6 @@ app.get(urlRoot+'/document/:id', getDocument);
 app.get(urlRoot+'/bundles', getBundles);
 app.get(urlRoot+'/museums', getMuseums);
 app.get(urlRoot+'/technic', getTechnic);
-app.get(urlRoot+'/material', getMaterial);
 app.get(urlRoot+'/types', getTypes);
 app.get(urlRoot+'/tags', getTags);
 app.get(urlRoot+'/tags/cloud', getTagCloud);
