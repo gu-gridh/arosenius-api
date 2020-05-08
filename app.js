@@ -458,6 +458,34 @@ function createQuery(req, showUnpublished, showDeleted) {
 	return queryBuilder.queryBody;
 }
 
+function aggsUnique(field, additional = {}) {
+	return {
+		"size": 0,
+		"aggs": {
+			"uniq": {
+				// Exclude deleted artworks.
+				"filter": {
+					"bool": {
+						"must_not": {
+							"term": {
+								"deleted": true
+							}
+						}
+					}
+				},
+				"aggs": {
+					"uniq": {
+						"terms": Object.assign({
+							"field": field,
+							"size": 5000,
+						}, additional)
+					}
+				}
+			}
+		}
+	};
+}
+
 function getNextId(req, res) {
 	client.search({
 		index: config.index,
@@ -858,21 +886,9 @@ function getMuseums(req, res) {
 	client.search({
 		index: config.index,
 		type: 'artwork',
-		body: {
-			"aggs": {
-				"museums": {
-					"terms": {
-						"field": "collection.museum.raw",
-						"size": 10,
-						"order": {
-							"_count": "desc"
-						}
-					}
-				}
-			}
-		}
+		body: aggsUnique('collection.museum.raw', {size: 10, order: {_count: "desc"}})
 	}, function(error, response) {
-		res.json(_.map(response.aggregations.museums.buckets, function(museum) {
+		res.json(_.map(response.aggregations.uniq.uniq.buckets, function(museum) {
 			return {
 				value: museum.key
 			};
@@ -881,29 +897,15 @@ function getMuseums(req, res) {
 }
 
 function getTypes(req, res) {
-	var queryBody = {
-		"aggs": {
-			"types": {
-				"terms": {
-					"field": "type.raw",
-					"size": 5000
-				}
-			}
-		}
-	};
-
-	if (!req.query.sort || req.query.sort != 'doc_count') {
-		queryBody.aggs.types.terms['order'] = {
-			_term: 'asc'
-		}
-	}
+	var additional = !req.query.sort || req.query.sort != 'doc_count' ? {order: {_term: 'asc'}} : {}
+	var queryBody = aggsUnique('type.raw', additional)
 
 	client.search({
 		index: config.index,
 		type: 'artwork',
 		body: queryBody
 	}, function(error, response) {
-		res.json(_.map(_.filter(response.aggregations.types.buckets, function(type) {
+		res.json(_.map(_.filter(response.aggregations.uniq.uniq.buckets, function(type) {
 			return type.key != '';
 		}), function(type) {
 			return {
@@ -915,29 +917,15 @@ function getTypes(req, res) {
 }
 
 function getTags(req, res) {
-	var queryBody = {
-		"aggs": {
-			"tags": {
-				"terms": {
-					"field": "tags.raw",
-					"size": 5000
-				}
-			}
-		}
-	};
-
-	if (!req.query.sort || req.query.sort != 'doc_count') {
-		queryBody.aggs.tags.terms['order'] = {
-			_term: 'asc'
-		}
-	}
+	var additional = !req.query.sort || req.query.sort != 'doc_count' ? {order: {_term: 'asc'}} : {}
+	var queryBody = aggsUnique('tags.raw', additional)
 
 	client.search({
 		index: config.index,
 		type: 'artwork',
 		body: queryBody
 	}, function(error, response) {
-		res.json(_.map(response.aggregations.tags.buckets, function(tag) {
+		res.json(_.map(response.aggregations.uniq.uniq.buckets, function(tag) {
 			return {
 				value: tag.key,
 				doc_count: tag.doc_count
@@ -947,47 +935,42 @@ function getTags(req, res) {
 }
 
 function getTagCloud(req, res) {
-	var queryBody = {
-		"aggs": {
-			"tags": {
-				"terms": {
-					"field": "tags.raw",
-					"size": 5000,
-					"exclude": "GKMs diabildssamling|Skepplandamaterialet"
-				}
-			},
-			"persons": {
-				"terms": {
-					"field": "persons.raw",
-					"size": 5000
-				}
-			},
-			"places": {
-				"terms": {
-					"field": "places.raw",
-					"size": 5000
-				}
-			},
-			"genre": {
-				"terms": {
-					"field": "genre.raw",
-					"size": 5000
-				}
-			},
-			"collections": {
-				"terms": {
-					"field": "collection.museum.raw",
-					"size": 5000
-				}
+	var additional = !req.query.sort || req.query.sort != 'doc_count' ? { order: { _term: 'asc' } } : {}
+	// Only use aggsUnique to get the base, then replace `temp` with specific term aggs.
+	var queryBody = aggsUnique('temp', additional)
+	queryBody.aggs.uniq.aggs = {
+		"tags": {
+			"terms": {
+				"field": "tags.raw",
+				"size": 5000,
+				"exclude": "GKMs diabildssamling|Skepplandamaterialet"
+			}
+		},
+		"persons": {
+			"terms": {
+				"field": "persons.raw",
+				"size": 5000
+			}
+		},
+		"places": {
+			"terms": {
+				"field": "places.raw",
+				"size": 5000
+			}
+		},
+		"genre": {
+			"terms": {
+				"field": "genre.raw",
+				"size": 5000
+			}
+		},
+		"collections": {
+			"terms": {
+				"field": "collection.museum.raw",
+				"size": 5000
 			}
 		}
 	};
-
-	if (!req.query.sort || req.query.sort != 'doc_count') {
-		queryBody.aggs.tags.terms['order'] = {
-			_term: 'asc'
-		}
-	}
 
 	client.search({
 		index: config.index,
@@ -1038,18 +1021,9 @@ function getPagetypes(req, res) {
 	client.search({
 		index: config.index,
 		type: 'artwork',
-		body: {
-			"aggs": {
-				"side": {
-					"terms": {
-						"field": "page.side",
-						"size": 5000
-					}
-				}
-			}
-		}
+		body: aggsUnique('page.side')
 	}, function(error, response) {
-		res.json(_.map(response.aggregations.side.buckets, function(side) {
+		res.json(_.map(response.aggregations.uniq.uniq.buckets, function(side) {
 			return {
 				value: side.key
 			};
@@ -1058,29 +1032,15 @@ function getPagetypes(req, res) {
 }
 
 function getPersons(req, res) {
-	var queryBody = {
-		"aggs": {
-			"persons": {
-				"terms": {
-					"field": "persons.raw",
-					"size": 5000
-				}
-			}
-		}
-	};
-
-	if (!req.query.sort || req.query.sort != 'doc_count') {
-		queryBody.aggs.persons.terms['order'] = {
-			_term: 'asc'
-		}
-	}
+	var additional = !req.query.sort || req.query.sort != 'doc_count' ? {order: {_term: 'asc'}} : {}
+	var queryBody = aggsUnique('persons.raw', additional);
 
 	client.search({
 		index: config.index,
 		type: 'artwork',
 		body: queryBody
 	}, function(error, response) {
-		res.json(_.map(response.aggregations.persons.buckets, function(person) {
+		res.json(_.map(response.aggregations.uniq.uniq.buckets, function(person) {
 			return {
 				value: person.key,
 				doc_count: person.doc_count
@@ -1090,29 +1050,15 @@ function getPersons(req, res) {
 }
 
 function getPlaces(req, res) {
-	var queryBody = {
-		"aggs": {
-			"places": {
-				"terms": {
-					"field": "places.raw",
-					"size": 5000
-				}
-			}
-		}
-	};
-
-	if (!req.query.sort || req.query.sort != 'doc_count') {
-		queryBody.aggs.places.terms['order'] = {
-			_term: 'asc'
-		}
-	}
+	var additional = !req.query.sort || req.query.sort != 'doc_count' ? {order: {_term: 'asc'}} : {}
+	var queryBody = aggsUnique('places.raw', additional)
 
 	client.search({
 		index: config.index,
 		type: 'artwork',
 		body: queryBody
 	}, function(error, response) {
-		res.json(_.map(response.aggregations.places.buckets, function(place) {
+		res.json(_.map(response.aggregations.uniq.uniq.buckets, function(place) {
 			return {
 				value: place.key,
 				doc_count: place.doc_count
@@ -1122,29 +1068,15 @@ function getPlaces(req, res) {
 }
 
 function getGenres(req, res) {
-	var queryBody = {
-		"aggs": {
-			"genres": {
-				"terms": {
-					"field": "genre.raw",
-					"size": 5000
-				}
-			}
-		}
-	};
-
-	if (!req.query.sort || req.query.sort != 'doc_count') {
-		queryBody.aggs.genres.terms['order'] = {
-			_term: 'asc'
-		}
-	}
+	var additional = !req.query.sort || req.query.sort != 'doc_count' ? {order: {_term: 'asc'}} : {}
+	var queryBody = aggsUnique('genre.raw', additional)
 
 	client.search({
 		index: config.index,
 		type: 'artwork',
 		body: queryBody
 	}, function(error, response) {
-		res.json(_.map(response.aggregations.genres.buckets, function(genre) {
+		res.json(_.map(response.aggregations.uniq.uniq.buckets, function(genre) {
 			return {
 				value: genre.key,
 				doc_count: genre.doc_count
@@ -1157,21 +1089,9 @@ function getExhibitions(req, res) {
 	client.search({
 		index: config.index,
 		type: 'artwork',
-		body: {
-			"aggs": {
-				"exhibitions": {
-					"terms": {
-						"field": "exhibitions.raw",
-						"size": 200,
-						"order": {
-							"_term": "asc"
-						}
-					}
-				}
-			}
-		}
+		body: aggsUnique('exhibitions.raw', {size: 200, order: {_term: 'asc'}})
 	}, function(error, response) {
-		res.json(_.map(response.aggregations.exhibitions.buckets, function(genre) {
+		res.json(_.map(response.aggregations.uniq.uniq.buckets, function(genre) {
 			return {
 				value: genre.key
 			};
