@@ -2117,7 +2117,9 @@ app.get(urlRoot+'/persons', getPersons);
 app.get(urlRoot+'/places', getPlaces);
 app.get(urlRoot+'/genres', getGenres);
 app.get(urlRoot+'/exhibitions', getExhibitions);
+// uses googleVisionColors
 app.get(urlRoot+'/colormap', getColorMap);
+// only api call that uses color.colors.prominent, also uses color.colors.three
 app.get(urlRoot+'/colormatrix', getColorMatrix);
 app.get(urlRoot+'/artwork_relations', getArtworkRelations);
 app.get(urlRoot+'/similar', getSimilarDocuments)
