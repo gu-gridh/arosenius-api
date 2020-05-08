@@ -221,7 +221,7 @@ QueryBuilder.prototype.addBool = function(terms, type, caseSensitive, nested, ne
  *
  * @apiParam insert_id {String} Get documents with insert_id creater than given value
  * @apiParam museum {String} Get documents from a specific museum
- * @apiParam bundle {String} Get documents in a specific bundle (deprected)
+ * @apiParam bundle {String} Get documents in a specific bundle
  * @apiParam search {String} Get documents based on search strings. Searches in various fields listed below
  * @apiParam type {String} Get documents of specific type
  * @apiParam letter_from {String} Get documents based on name of a sender (applies for letters)
@@ -590,7 +590,6 @@ function getHighestId(req, res) {
 
 // Search for documents
 function getDocuments(req, res, showUnpublished = false, showDeleted = false) {
-	var colorMargins = req.query.color_margins ? Number(req.query.color_margins) : 15;
 	var pageSize = req.query.count || 100;
 
 	var query = {};
@@ -674,26 +673,6 @@ function getDocuments(req, res, showUnpublished = false, showDeleted = false) {
 			});
 		});
 	}
-}
-
-// Deprecated
-function getBundle(req, res) {
-	var pageSize = 30;
-
-	var query = [];
-
-	query.push('bundle: "'+req.params.bundle+'"');
-
-	client.search({
-		index: config.index,
-		type: 'bundle',
-		q: 'bundle: "'+req.params.bundle+'"'
-	}, function(error, response) {
-		res.json({
-			data: response.hits.hits[0]._source
-		});
-	});
-
 }
 
 function putCombineDocuments(req, res) {
@@ -785,87 +764,10 @@ function putCombineDocuments(req, res) {
 	});
 }
 
-function putBundle(req, res) {
-	var documents = req.body.documents;
-	delete req.body.documents;
-
-	if (documents.length > 0) {
-		client.create({
-			index: config.index,
-			type: 'bundle',
-			body: req.body
-		}, function(error, response) {
-			if (response && response._id) {
-				var newId = response._id;
-
-				var bulkBody = [
-					{
-						update: {
-							_index: config.index,
-							_type: 'bundle',
-							_id: newId
-						}
-					},
-					{
-						doc: {
-							bundle: newId
-						}
-					}
-				];
-
-				_.each(documents, function(document) {
-					bulkBody.push({
-						update: {
-							_index: config.index,
-							_type: 'artwork',
-							_id: document
-						}
-					});
-					bulkBody.push({
-						doc: {
-							bundle: newId
-						}
-					});
-				})
-
-				client.bulk({
-					body: bulkBody
-				}, function(error, response) {
-					res.json({
-						data: {
-							_id: newId
-						}
-					});
-				});
-			}
-		});
-	}
-
-}
-
-function postBundle(req, res) {
-	client.update({
-		index: config.index,
-		type: 'bundle',
-		id: req.body.id,
-		body: {
-			doc: req.body
-		}
-	}, function(error, response) {
-		res.json({response: 'post'});
-	});
-}
-
 function putDocument(req, res) {
-//	res.json({response: 'put'});
-
 	var document = req.body;
 
 	if (document.images && document.images.length > 0) {
-		var sortedImages = _.sortBy(document.images, function(image) {
-			return image.page && Number(image.page.order) || 0;
-		});
-
 		document.images = processImages(document.images);
 	}
 
@@ -876,7 +778,6 @@ function putDocument(req, res) {
 		body: document
 	}, function(error, response) {
 		res.json(response);
-		//res.json({response: 'post'});
 	});
 }
 
@@ -899,10 +800,6 @@ function postDocument(req, res) {
 	var document = req.body;
 
 	if (document.images && document.images.length > 0) {
-		var sortedImages = _.sortBy(document.images, function(image) {
-			return image.page && Number(image.page.order) || 0;
-		});
-
 		document.images = processImages(document.images);
 	}
 
@@ -994,101 +891,6 @@ function getMuseums(req, res) {
 		res.json(_.map(response.aggregations.museums.buckets, function(museum) {
 			return {
 				value: museum.key
-			};
-		}));
-	});
-}
-
-function getBundles(req, res) {
-	var pageSize = 30;
-
-	var query = [];
-
-	if (req.query.museum) {
-		query.push('collection.museum: "'+req.query.museum+'"');
-	}
-	if (req.query.search) {
-		query.push('(title: "'+req.query.search+'" OR description: "'+req.query.search+'")');
-	}
-
-	client.search({
-		index: config.index,
-		type: 'bundle',
-		size: pageSize,
-		from: req.query.page && req.query.page > 0 ? (req.query.page-1)*pageSize : 0,
-		sort: [
-			'bundle'
-		],
-		q: query.length > 0 ? query.join(' AND ') : null
-	}, function(error, response) {
-		res.json({
-			total: response.hits.total,
-			bundles: _.map(response.hits.hits, function(item) {
-				var ret = item._source;
-				ret.id = item._id;
-				return ret;
-			}),
-			query: query.length > 0 ? query.join(' AND ') : null
-		});
-	});
-}
-
-function getTechnic(req, res) {
-	var queryBody = {
-		"aggs": {
-			"technic": {
-				"terms": {
-					"field": "technic.value",
-					"size": 200
-				}
-			}
-		}
-	};
-
-	if (!req.query.sort || req.query.sort != 'doc_count') {
-		queryBody.aggs.technic.terms['order'] = {
-			_term: 'asc'
-		}
-	}
-
-	client.search({
-		index: config.index,
-		type: 'artwork',
-		body: queryBody
-	}, function(error, response) {
-		res.json(_.map(response.aggregations.technic.buckets, function(technic) {
-			return technic.key;
-		}));
-	});
-}
-
-function getMaterial(req, res) {
-	var queryBody = {
-		"aggs": {
-			"material": {
-				"terms": {
-					"field": "material",
-					"size": 200
-				}
-			}
-		}
-	};
-
-	if (!req.query.sort || req.query.sort != 'doc_count') {
-		queryBody.aggs.material.terms['order'] = {
-			_term: 'asc'
-		}
-	}
-
-	client.search({
-		index: config.index,
-		type: 'artwork',
-		body: queryBody
-	}, function(error, response) {
-		res.json(_.map(response.aggregations.material.buckets, function(material) {
-			return {
-				value: material.key,
-				doc_count: material.doc_count
 			};
 		}));
 	});
@@ -1429,64 +1231,14 @@ function getGoogleVisionLabels(req, res) {
 	});
 }
 
-function getArtworkRelations(req, res) {
-	client.search({
-		index: config.index,
-		type: 'artwork',
-		body: {
-			size: 10000,
-			query: {
-				query_string: {
-					query: '*'
-				}
-			}
-		}
-	}, function(error, response) {
-		res.json(_.map(response.hits.hits, function(hit) {
-			var ret = {
-				id: hit._id,
-				type: hit._source.type,
-				museum: hit._source.collection ? hit._source.collection.museum : null,
-				title: hit._source.title,
-				persons: hit._source.persons,
-				genre: hit._source.genre,
-				places: hit._source.places,
-				tags: hit._source.tags,
-				images: _.map(hit._source.images, function(image) {
-					return image.image
-				}),
-			};
-
-			if (hit._source.images && hit._source.images[0] && hit._source.images[0].color) {
-				ret.dominant_1_h = hit._source.images[0].color.colors.three[0].hsv.h;
-				ret.dominant_1_s = hit._source.images[0].color.colors.three[0].hsv.s;
-				ret.dominant_1_v = hit._source.images[0].color.colors.three[0].hsv.v;
-
-				ret.dominant_2_h = hit._source.images[0].color.colors.three[1].hsv.h;
-				ret.dominant_2_s = hit._source.images[0].color.colors.three[1].hsv.s;
-				ret.dominant_2_v = hit._source.images[0].color.colors.three[1].hsv.v;
-
-				ret.dominant_3_h = hit._source.images[0].color.colors.three[2].hsv.h;
-				ret.dominant_3_s = hit._source.images[0].color.colors.three[2].hsv.s;
-				ret.dominant_3_v = hit._source.images[0].color.colors.three[2].hsv.v;
-			}
-
-			return ret;
-		}));
-	});
-}
-
 var labelScoreMargins = 0.2;
 var colorMargins = 5;
 var colorScoreMargins = 0.2;
 
 var minumumLabelScore = 0.7;
-var minimumColorScore = 0.2;
 
 var googleLabelsBlacklist = [
-//	'painting',
 	'art',
-//	'illustration',
 	'document',
 	'artwork',
 	'modern',
@@ -1511,7 +1263,6 @@ function getSimilarDocuments(req, res) {
 			});
 
 			var nestedLabelsQuery = _.map(_.filter(lookupLabels, function(label) {
-//				return true;
 				return label.score > minumumLabelScore;
 			}), function(label) {
 				return {
@@ -1544,15 +1295,9 @@ function getSimilarDocuments(req, res) {
 
 			var lookupColors = response.hits.hits[0]._source.googleVisionColors.sort(function(a, b) {
 				return true;
-//				return a.score-b.score;
 			}).reverse();
 
-//			lookupColors = lookupColors.splice(0, Math.round(lookupColors.length/2));
-
-			var nestedColorsQuery = _.map(_.filter(lookupColors, function(color) {
-				return true;
-//				return color.score > minimumColorScore;
-			}), function(color) {
+			var nestedColorsQuery = _.map(lookupColors, function(color) {
 				return {
 					nested: {
 						path: "googleVisionColors",
@@ -1575,16 +1320,6 @@ function getSimilarDocuments(req, res) {
 											}
 										}
 									},
-									/*
-									{
-										range: {
-											'googleVisionColors.hsv.v': {
-												gte: color.hsv.v-(colorMargins),
-												lte: color.hsv.v+(colorMargins)
-											}
-										}
-									},
-									*/
 									{
 										range: {
 											'googleVisionColors.score': {
@@ -1604,11 +1339,6 @@ function getSimilarDocuments(req, res) {
 				query: {
 					bool: {
 						must_not: {
-							/*
-							'term': {
-								'published': 'false'
-							},
-							*/
 							ids: {
 								type: 'artwork',
 								values: [req.query.id]
@@ -1664,13 +1394,9 @@ function getSimilarLabelsDocuments(req, res) {
 				var blacklist =googleLabelsBlacklist;
 
 				return _.intersection(label.label.split(' '), blacklist) == 0;
-//				return true;
 			});
 
-			var nestedLabelsQuery = _.map(_.filter(lookupLabels, function(label) {
-				return true;
-//				return label.score > minumumLabelScore;
-			}), function(label) {
+			var nestedLabelsQuery = _.map(lookupLabels, function(label) {
 				return {
 					nested: {
 						path: "googleVisionLabels",
@@ -1703,11 +1429,6 @@ function getSimilarLabelsDocuments(req, res) {
 				query: {
 					bool: {
 						must_not: {
-							/*
-							'term': {
-								'published': 'false'
-							},
-							*/
 							ids: {
 								type: 'artwork',
 								values: [req.query.id]
@@ -1764,15 +1485,9 @@ function getSimilarColorsDocuments(req, res) {
 
 			var lookupColors = response.hits.hits[0]._source.googleVisionColors.sort(function(a, b) {
 				return true;
-//				return a.score-b.score;
 			}).reverse();
 
-//			lookupColors = lookupColors.splice(0, Math.round(lookupColors.length/2));
-
-			var nestedColorsQuery = _.map(_.filter(lookupColors, function(color) {
-				return true;
-//				return color.score > minimumColorScore;
-			}), function(color) {
+			var nestedColorsQuery = _.map(lookupColors, function(color) {
 				return {
 					nested: {
 						path: "googleVisionColors",
@@ -1795,16 +1510,6 @@ function getSimilarColorsDocuments(req, res) {
 											}
 										}
 									},
-									/*
-									{
-										range: {
-											'googleVisionColors.hsv.v': {
-												gte: color.hsv.v-(colorMargins),
-												lte: color.hsv.v+(colorMargins)
-											}
-										}
-									},
-									*/
 									{
 										range: {
 											'googleVisionColors.score': {
@@ -1824,11 +1529,6 @@ function getSimilarColorsDocuments(req, res) {
 				query: {
 					bool: {
 						must_not: {
-							/*
-							'term': {
-								'published': 'false'
-							},
-							*/
 							ids: {
 								type: 'artwork',
 								values: [req.query.id]
@@ -2073,19 +1773,6 @@ function getAutoComplete(req, res) {
 					})
 				}
 			}
-/*
-			aggs: {
-				titles: {
-					terms: {
-						field: 'title.raw',
-						size: 10,
-						order: {
-							_term: 'asc'
-						}
-					}
-				}
-			}
-*/
 		},
 
 		// Titles aggregation
@@ -2329,66 +2016,6 @@ function getAutoComplete(req, res) {
 	});
 }
 
-function getNeo4jArtworkRelations(req, res) {
-	request.post('http://localhost:7474/db/data/cypher', {
-		'auth': {
-			'user': 'neo4j',
-			'pass': 'lcp010xx',
-			'sendImmediately': false
-		},
-		json: true,
-		body: {
-			"query" : "MATCH (n1:Object)-[r1:SHARE_TAG]-(n2:Object) WHERE n1.type = {type} AND n2.type = {type} RETURN n1, r1, n2",
-			"params" : {
-				"type" : "Konstverk"
-			}
-		}
-	}, function(error, response, body) {
-		var getNodeIndex = function(id) {
-			return _.findIndex(output.nodes, function(node) {
-				return node.id == id;
-			});
-		}
-
-		var output = {
-			nodes: [],
-			connections: [],
-			//raw: response
-		};
-
-		_.each(response.body.data, function(item) {
-			_.each(item, function(subItem) {
-
-				if (subItem.metadata.type != 'SHARE_TAG') {
-					var node = subItem.data;
-					node.es_id = subItem.data.id;
-					node.id = subItem.metadata.id;
-					node.label = subItem.metadata.labels[0];
-
-					output.nodes.push(node);
-				}
-			});
-		});
-
-		_.each(response.body.data, function(item) {
-			output.connections.push({
-				source: item[0].metadata.id,
-				target: item[2].metadata.id
-			});
-		});
-
-		output.nodes = _.map(_.uniq(output.nodes, function(node) {
-			return node.id;
-		}), function(item, index) {
-			item.index = index;
-			return item;
-		});
-
-		res.json(output);
-//		res.json(response);
-	});
-}
-
 function getImageFileList(req, res) {
 	fs.readdir(config.image_path, function(err, files) {
 		var fileList = [];
@@ -2429,21 +2056,12 @@ imgr.serve(config.image_path)
 	.using(app);
 
 const urlRoot = config.urlRoot;
-/*
-app.get(urlRoot+'/', function(req, res) {
-	res.send(express.static('documentation'));
-});
-*/
 
 app.use(express.static(__dirname + '/documentation'));
 
 app.get(urlRoot+'/documents', getDocuments);
-app.get(urlRoot+'/bundle/:bundle', getBundle);
 app.get(urlRoot+'/document/:id', getDocument);
-app.get(urlRoot+'/bundles', getBundles);
 app.get(urlRoot+'/museums', getMuseums);
-app.get(urlRoot+'/technic', getTechnic);
-app.get(urlRoot+'/material', getMaterial);
 app.get(urlRoot+'/types', getTypes);
 app.get(urlRoot+'/tags', getTags);
 app.get(urlRoot+'/tags/cloud', getTagCloud);
@@ -2452,9 +2070,10 @@ app.get(urlRoot+'/persons', getPersons);
 app.get(urlRoot+'/places', getPlaces);
 app.get(urlRoot+'/genres', getGenres);
 app.get(urlRoot+'/exhibitions', getExhibitions);
+// uses googleVisionColors
 app.get(urlRoot+'/colormap', getColorMap);
+// only api call that uses color.colors.prominent, also uses color.colors.three
 app.get(urlRoot+'/colormatrix', getColorMatrix);
-app.get(urlRoot+'/artwork_relations', getArtworkRelations);
 app.get(urlRoot+'/similar', getSimilarDocuments)
 app.get(urlRoot+'/similar/labels', getSimilarLabelsDocuments)
 app.get(urlRoot+'/similar/colors', getSimilarColorsDocuments)
@@ -2463,9 +2082,8 @@ app.get(urlRoot+'/next/:insert_id', getNextId);
 app.get(urlRoot+'/prev/:insert_id', getPrevId);
 app.get(urlRoot+'/highest_insert_id', getHighestId);
 
+// Only used by GoogleVisionLabelsViewer component in frontend which is just a demo
 app.get(urlRoot+'/googleVisionLabels', getGoogleVisionLabels);
-
-app.get(urlRoot+'/neo4j_artwork_relations', getNeo4jArtworkRelations)
 
 app.get(urlRoot+'/autocomplete', getAutoComplete);
 
@@ -2474,13 +2092,9 @@ app.get(urlRoot+'/year_range', getYearRange);
 app.get(urlRoot+'/admin/login', adminLogin);
 app.put(urlRoot+'/admin/documents/combine', putCombineDocuments);
 app.get(urlRoot+'/admin/documents', adminGetDocuments);
-app.get(urlRoot+'/admin/bundle/:bundle', getBundle);
-app.put(urlRoot+'/admin/bundle', putBundle);
-app.post(urlRoot+'/admin/bundle/:id', postBundle);
 app.put('/admin/document/:id', putDocument);
 app.post('/admin/document/:id', postDocument);
 app.get('/admin/document/:id', getDocument);
-app.get('/admin/bundles', getBundles);
 app.get('/admin/museums', getMuseums);
 app.get('/image_file_list', getImageFileList);
 app.post('/admin/upload', postImageUpload);
