@@ -76,18 +76,6 @@
           {
             "group": "Parameter",
             "optional": false,
-            "field": "letter_from",
-            "description": "<p>{String} Get documents based on name of a sender (applies for letters)</p>"
-          },
-          {
-            "group": "Parameter",
-            "optional": false,
-            "field": "letter_to",
-            "description": "<p>{String} Get documents based on name of a receiver (applies for letters)</p>"
-          },
-          {
-            "group": "Parameter",
-            "optional": false,
             "field": "person",
             "description": "<p>{String} Get documents tagged with a specific person/persons</p>"
           },

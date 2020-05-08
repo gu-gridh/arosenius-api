@@ -224,8 +224,6 @@ QueryBuilder.prototype.addBool = function(terms, type, caseSensitive, nested, ne
  * @apiParam bundle {String} Get documents in a specific bundle
  * @apiParam search {String} Get documents based on search strings. Searches in various fields listed below
  * @apiParam type {String} Get documents of specific type
- * @apiParam letter_from {String} Get documents based on name of a sender (applies for letters)
- * @apiParam letter_to {String} Get documents based on name of a receiver (applies for letters)
  * @apiParam person {String} Get documents tagged with a specific person/persons
  * @apiParam tags {String} Get documents with a specific tag/tags
  * @apiParam place {String} Get documents tagged with a specific place/places
@@ -323,20 +321,6 @@ function createQuery(req, showUnpublished, showDeleted) {
 		queryBuilder.addBool([
 			['type.raw', req.query.type]
 		], 'should', true);
-	}
-
-	// Get documents based on name of a sender (applies for letters)
-	if (req.query.letter_from) {
-		queryBuilder.addBool([
-			['sender.name', req.query.letter_from]
-		], 'should');
-	}
-
-	// Get documents based on name of a receiver (applies for letters)
-	if (req.query.letter_to) {
-		queryBuilder.addBool([
-			['sender.recipient', req.query.letter_to]
-		], 'should');
 	}
 
 	// Get documents tagged with a specific person/persons
