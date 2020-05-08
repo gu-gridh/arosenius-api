@@ -59,7 +59,7 @@ define({ "api": [
             "group": "Parameter",
             "optional": false,
             "field": "bundle",
-            "description": "<p>{String} Get documents in a specific bundle (deprected)</p>"
+            "description": "<p>{String} Get documents in a specific bundle</p>"
           },
           {
             "group": "Parameter",
