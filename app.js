@@ -1231,53 +1231,6 @@ function getGoogleVisionLabels(req, res) {
 	});
 }
 
-function getArtworkRelations(req, res) {
-	client.search({
-		index: config.index,
-		type: 'artwork',
-		body: {
-			size: 10000,
-			query: {
-				query_string: {
-					query: '*'
-				}
-			}
-		}
-	}, function(error, response) {
-		res.json(_.map(response.hits.hits, function(hit) {
-			var ret = {
-				id: hit._id,
-				type: hit._source.type,
-				museum: hit._source.collection ? hit._source.collection.museum : null,
-				title: hit._source.title,
-				persons: hit._source.persons,
-				genre: hit._source.genre,
-				places: hit._source.places,
-				tags: hit._source.tags,
-				images: _.map(hit._source.images, function(image) {
-					return image.image
-				}),
-			};
-
-			if (hit._source.images && hit._source.images[0] && hit._source.images[0].color) {
-				ret.dominant_1_h = hit._source.images[0].color.colors.three[0].hsv.h;
-				ret.dominant_1_s = hit._source.images[0].color.colors.three[0].hsv.s;
-				ret.dominant_1_v = hit._source.images[0].color.colors.three[0].hsv.v;
-
-				ret.dominant_2_h = hit._source.images[0].color.colors.three[1].hsv.h;
-				ret.dominant_2_s = hit._source.images[0].color.colors.three[1].hsv.s;
-				ret.dominant_2_v = hit._source.images[0].color.colors.three[1].hsv.v;
-
-				ret.dominant_3_h = hit._source.images[0].color.colors.three[2].hsv.h;
-				ret.dominant_3_s = hit._source.images[0].color.colors.three[2].hsv.s;
-				ret.dominant_3_v = hit._source.images[0].color.colors.three[2].hsv.v;
-			}
-
-			return ret;
-		}));
-	});
-}
-
 var labelScoreMargins = 0.2;
 var colorMargins = 5;
 var colorScoreMargins = 0.2;
@@ -2121,7 +2074,6 @@ app.get(urlRoot+'/exhibitions', getExhibitions);
 app.get(urlRoot+'/colormap', getColorMap);
 // only api call that uses color.colors.prominent, also uses color.colors.three
 app.get(urlRoot+'/colormatrix', getColorMatrix);
-app.get(urlRoot+'/artwork_relations', getArtworkRelations);
 app.get(urlRoot+'/similar', getSimilarDocuments)
 app.get(urlRoot+'/similar/labels', getSimilarLabelsDocuments)
 app.get(urlRoot+'/similar/colors', getSimilarColorsDocuments)
