@@ -20,10 +20,9 @@ const dataReadline = readline.createInterface({
   input: fs.createReadStream("arosenius_v4.json")
 });
 
+let lastChangeTime = Date.now();
+
 sql.query(modelQuery, () => {
-  console.log(
-    "Each dot is a record created. Cancel (Ctrl+C) when no more dots."
-  );
   dataReadline.on("line", line => {
     artwork = JSON.parse(line)._source;
     sql.query(
@@ -42,7 +41,34 @@ sql.query(modelQuery, () => {
           artwork.collection.archive_item &&
           artwork.collection.archive_item.title
       },
-      err => process.stdout.write(".")
+      (error, results) => {
+        lastChangeTime = Date.now();
+        process.stdout.write(".");
+        artwork.tags &&
+          artwork.tags.forEach(tag =>
+            sql.query(
+              "INSERT INTO `keyword` SET ?",
+              {
+                artwork: results.insertId,
+                type: "tag",
+                name: tag
+              },
+              () => {
+                lastChangeTime = Date.now();
+                process.stdout.write("-");
+              }
+            )
+          );
+      }
     );
   });
 });
+
+// Exit 1 s after the last change.
+function checkExit() {
+  setTimeout(
+    () => (Date.now() > lastChangeTime + 1000 ? process.exit() : checkExit()),
+    100
+  );
+}
+checkExit();
