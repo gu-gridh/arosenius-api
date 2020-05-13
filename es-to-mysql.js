@@ -22,45 +22,43 @@ const dataReadline = readline.createInterface({
 
 let lastChangeTime = Date.now();
 
+function insertSet(table, values, char = "", done) {
+  sql.query(`INSERT INTO ${table} SET ?`, values, (error, results) => {
+    if (error) throw error;
+    lastChangeTime = Date.now();
+    process.stdout.write(char);
+    done && done(error, results);
+  });
+}
+
 sql.query(modelQuery, () => {
   dataReadline.on("line", line => {
     artwork = JSON.parse(line)._source;
-    sql.query(
-      "INSERT INTO `artwork` SET ?",
-      {
-        name: artwork.id,
-        title: artwork.title,
-        description: artwork.description,
-        museum: artwork.collection && artwork.collection.museum,
-        archive_physloc:
-          artwork.collection &&
-          artwork.collection.archive_item &&
-          artwork.collection.archive_item.archive_physloc,
-        archive_title:
-          artwork.collection &&
-          artwork.collection.archive_item &&
-          artwork.collection.archive_item.title
-      },
-      (error, results) => {
-        lastChangeTime = Date.now();
-        process.stdout.write(".");
-        artwork.tags &&
-          artwork.tags.forEach(tag =>
-            sql.query(
-              "INSERT INTO `keyword` SET ?",
-              {
-                artwork: results.insertId,
-                type: "tag",
-                name: tag
-              },
-              () => {
-                lastChangeTime = Date.now();
-                process.stdout.write("-");
-              }
-            )
-          );
-      }
-    );
+    const values = {
+      name: artwork.id,
+      title: artwork.title,
+      description: artwork.description,
+      museum: artwork.collection && artwork.collection.museum,
+      archive_physloc:
+        artwork.collection &&
+        artwork.collection.archive_item &&
+        artwork.collection.archive_item.archive_physloc,
+      archive_title:
+        artwork.collection &&
+        artwork.collection.archive_item &&
+        artwork.collection.archive_item.title
+    };
+    insertSet("artwork", values, ".", (error, results) => {
+      artwork.tags &&
+        artwork.tags.forEach(tag => {
+          const values = {
+            artwork: results.insertId,
+            type: "tag",
+            name: tag
+          };
+          insertSet("keyword", values, "-");
+        });
+    });
   });
 });
 
