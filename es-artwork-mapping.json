@@ -5,14 +5,6 @@
         "acquisition": {
           "type": "string"
         },
-        "alt_date1": {
-          "type": "date",
-          "format": "strict_date_optional_time||epoch_millis"
-        },
-        "alt_date2": {
-          "type": "date",
-          "format": "strict_date_optional_time||epoch_millis"
-        },
         "batchnumber": {
           "type": "long"
         },
@@ -31,10 +23,6 @@
                   "type": "string"
                 }
               }
-            },
-            "department": {
-              "type": "string",
-              "index": "not_analyzed"
             },
             "museum": {
               "type": "string",
@@ -168,10 +156,6 @@
         "content": {
           "type": "string"
         },
-        "creation_date": {
-          "type": "date",
-          "format": "strict_date_optional_time||epoch_millis"
-        },
         "creator": {
           "type": "string"
         },
@@ -204,22 +188,6 @@
               "index": "not_analyzed"
             }
           }
-        },
-        "exhibitions_nested": {
-          "type": "nested",
-          "properties": {
-            "place": {
-              "type": "string",
-              "index": "not_analyzed"
-            },
-            "year": {
-              "type": "date",
-              "format": "strict_date_optional_time||epoch_millis"
-            }
-          }
-        },
-        "format": {
-          "type": "object"
         },
         "genre": {
           "type": "string",
@@ -513,9 +481,6 @@
           "type": "date",
           "format": "strict_date_optional_time||epoch_millis"
         },
-        "licence": {
-          "type": "string"
-        },
         "literature": {
           "type": "string"
         },
@@ -589,10 +554,6 @@
             }
           }
         },
-        "receive_date": {
-          "type": "date",
-          "format": "strict_date_optional_time||epoch_millis"
-        },
         "recipient": {
           "properties": {
             "birth_year": {
@@ -619,10 +580,6 @@
         "reproductions": {
           "type": "string"
         },
-        "send_date": {
-          "type": "date",
-          "format": "strict_date_optional_time||epoch_millis"
-        },
         "sender": {
           "properties": {
             "birth_year": {
@@ -645,9 +602,6 @@
               "type": "string"
             }
           }
-        },
-        "serie": {
-          "type": "string"
         },
         "signature": {
           "type": "string"
