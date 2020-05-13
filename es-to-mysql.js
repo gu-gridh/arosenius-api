@@ -53,24 +53,21 @@ async function main() {
         artwork.collection.archive_item.title
     };
     await insertSet("artwork", values, "A").then(async results => {
-      artwork.tags &&
-        artwork.tags.forEach(async tag => {
-          const values = {
-            artwork: results.insertId,
-            type: "tag",
-            name: tag
-          };
-          await insertSet("keyword", values, "t");
-        });
-      artwork.persons &&
-        artwork.persons.forEach(async person => {
-          const values = {
-            artwork: results.insertId,
-            type: "person",
-            name: person
-          };
-          await insertSet("keyword", values, "p");
-        });
+      const insertKeyword = (type, char) =>
+        Promise.all(
+          (Array.isArray(artwork[type]) ? artwork[type] : [artwork[type]])
+            .filter(x => x)
+            .map(async name =>
+              insertSet(
+                "keyword",
+                { artwork: results.insertId, type, name },
+                char
+              )
+            )
+        );
+      await insertKeyword("type", "y");
+      await insertKeyword("tags", "t");
+      await insertKeyword("persons", "p");
     });
   }
 }
