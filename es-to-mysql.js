@@ -39,8 +39,10 @@ async function main() {
   for await (const line of dataReadline) {
     artwork = JSON.parse(line)._source;
     const values = {
+      insert_id: artwork.insert_id,
       name: artwork.id,
       title: artwork.title,
+      subtitle: artwork.subtitle,
       description: artwork.description,
       museum: artwork.collection && artwork.collection.museum,
       archive_physloc:
@@ -50,7 +52,10 @@ async function main() {
       archive_title:
         artwork.collection &&
         artwork.collection.archive_item &&
-        artwork.collection.archive_item.title
+        artwork.collection.archive_item.title,
+      item_date_str: artwork.item_date_str,
+      bundle: artwork.bundle,
+      date_to: artwork.date_to
     };
     await insertSet("artwork", values, "A").then(async results => {
       const insertKeyword = (type, char) =>
@@ -68,6 +73,7 @@ async function main() {
       await insertKeyword("type", "y");
       await insertKeyword("tags", "t");
       await insertKeyword("persons", "p");
+      await insertKeyword("genre", "g");
     });
   }
 }
