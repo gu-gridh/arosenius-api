@@ -1,13 +1,7 @@
-const elasticsearch = require("elasticsearch");
 const mysql = require("mysql");
 const fs = require("fs");
 const readline = require("readline");
-
 const config = require("./config");
-
-const es = new elasticsearch.Client({
-  host: config.es_host
-});
 
 const sql = mysql.createConnection({
   ...config.mysql,
@@ -20,19 +14,29 @@ const dataReadline = readline.createInterface({
   input: fs.createReadStream("arosenius_v4.json")
 });
 
+// sql.query as a promise
+function sqlQuery(query, values) {
+  return new Promise((resolve, reject) =>
+    sql.query(query, values, (error, results) =>
+      error ? reject(error) : resolve(results)
+    )
+  );
+}
+
 let lastChangeTime = Date.now();
 
-function insertSet(table, values, char = "", done) {
-  sql.query(`INSERT INTO ${table} SET ?`, values, (error, results) => {
-    if (error) throw error;
+function insertSet(table, values, char = "") {
+  return sqlQuery(`INSERT INTO ${table} SET ?`, values).then(results => {
     lastChangeTime = Date.now();
     process.stdout.write(char);
-    done && done(error, results);
+    return results;
   });
 }
 
-sql.query(modelQuery, () => {
-  dataReadline.on("line", line => {
+async function main() {
+  await sqlQuery(modelQuery);
+
+  for await (const line of dataReadline) {
     artwork = JSON.parse(line)._source;
     const values = {
       name: artwork.id,
@@ -48,19 +52,30 @@ sql.query(modelQuery, () => {
         artwork.collection.archive_item &&
         artwork.collection.archive_item.title
     };
-    insertSet("artwork", values, ".", (error, results) => {
+    await insertSet("artwork", values, "A").then(async results => {
       artwork.tags &&
-        artwork.tags.forEach(tag => {
+        artwork.tags.forEach(async tag => {
           const values = {
             artwork: results.insertId,
             type: "tag",
             name: tag
           };
-          insertSet("keyword", values, "-");
+          await insertSet("keyword", values, "t");
+        });
+      artwork.persons &&
+        artwork.persons.forEach(async person => {
+          const values = {
+            artwork: results.insertId,
+            type: "person",
+            name: person
+          };
+          await insertSet("keyword", values, "p");
         });
     });
-  });
-});
+  }
+}
+
+main();
 
 // Exit 1 s after the last change.
 function checkExit() {
