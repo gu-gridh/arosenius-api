@@ -543,17 +543,6 @@
         "published": {
           "type": "boolean"
         },
-        "query": {
-          "properties": {
-            "query_string": {
-              "properties": {
-                "query": {
-                  "type": "string"
-                }
-              }
-            }
-          }
-        },
         "recipient": {
           "properties": {
             "birth_year": {
