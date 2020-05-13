@@ -46,3 +46,15 @@ Images are kept in the `/appl/cdh/arosenius-imagedata` folder on the server. Res
 ## Users
 
 Users are defined in the `users.js` file. All users have the same privileges.
+
+## Migrating to MySQL
+
+1. Run `npm install` to get new dependencies
+2. Run `elasticdump` on the server and scp it to `./arosenius_v4.json`
+3. Create a MySQL database locally
+   - Make sure to use `DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_swedish_ci` (see https://mariadb.com/kb/en/setting-character-sets-and-collations/)
+4. Extend `config.js` with the `mysql.*` properties (see `config.demo.js`)
+5. Run `node es-to-mysql.js`
+   - Inspect the MySQL database
+   - Improve the script and `arosenius-model.sql`
+   - Repeat

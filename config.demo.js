@@ -4,6 +4,13 @@ module.exports = {
   pass: "",
   index: "arosenius_v4",
 
+  mysql: {
+    host: "localhost",
+    user: "",
+    password: "",
+    database: "arosenius"
+  },
+
   image_path: "imagedata",
   image_temp_path: "imagedata/imgr",
 
