@@ -21,12 +21,28 @@ const dataReadline = readline.createInterface({
 });
 
 sql.query(modelQuery, () => {
+  console.log(
+    "Each dot is a record created. Cancel (Ctrl+C) when no more dots."
+  );
   dataReadline.on("line", line => {
     artwork = JSON.parse(line)._source;
-    sql.query("INSERT INTO `artwork` SET ?", {
-      title: artwork.title,
-      description: artwork.description
-    });
+    sql.query(
+      "INSERT INTO `artwork` SET ?",
+      {
+        name: artwork.id,
+        title: artwork.title,
+        description: artwork.description,
+        museum: artwork.collection && artwork.collection.museum,
+        archive_physloc:
+          artwork.collection &&
+          artwork.collection.archive_item &&
+          artwork.collection.archive_item.archive_physloc,
+        archive_title:
+          artwork.collection &&
+          artwork.collection.archive_item &&
+          artwork.collection.archive_item.title
+      },
+      err => process.stdout.write(".")
+    );
   });
-  dataReadline.on("close", () => process.exit(0));
 });
