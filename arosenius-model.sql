@@ -30,3 +30,18 @@ CREATE TABLE `keyword` (
 	`name` varchar(50) NOT NULL,
 	KEY (artwork, type, name)
 );
+
+DROP TABLE IF EXISTS `image`;
+CREATE TABLE `image` (
+  `id` int(10) unsigned NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  `artwork` int(10) unsigned NOT NULL,
+  `filename` varchar(100) NOT NULL,
+  `type` varchar(10),
+  `width` int(5) NOT NULL,
+  `height` int(5) NOT NULL,
+  `page` int(1),
+  `pageid` varchar(20),
+  `order` int(1),
+  `side` varchar(20),
+  KEY (`filename`)
+);

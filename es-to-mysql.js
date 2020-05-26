@@ -38,6 +38,7 @@ async function main() {
 
   for await (const line of dataReadline) {
     artwork = JSON.parse(line)._source;
+    if (artwork.id === "PRIV-undefined") continue;
     const values = {
       insert_id: artwork.insert_id,
       name: artwork.id,
@@ -74,11 +75,30 @@ async function main() {
               )
             )
         );
-      await insertKeyword("type", "y");
-      await insertKeyword("tags", "t");
-      await insertKeyword("persons", "p");
-      await insertKeyword("places", "l");
-      await insertKeyword("genre", "g");
+      await Promise.all([
+        insertKeyword("type", "y"),
+        insertKeyword("tags", "t"),
+        insertKeyword("persons", "p"),
+        insertKeyword("places", "l"),
+        insertKeyword("genre", "g"),
+        ...artwork.images.map(image =>
+          insertSet(
+            "image",
+            {
+              artwork: results.insertId,
+              filename: image.image,
+              type: image.imagesize.type,
+              width: image.imagesize.width,
+              height: image.imagesize.height,
+              page: image.page && (image.page.number || undefined),
+              pageid: image.page && image.page.id,
+              order: image.page && (image.page.order || undefined),
+              side: image.page && image.page.side
+            },
+            "I"
+          )
+        )
+      ]);
     });
   }
 }
