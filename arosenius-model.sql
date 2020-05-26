@@ -11,10 +11,12 @@ CREATE TABLE `artwork` (
   `name` varchar(20),
   `title` varchar(200),
   `subtitle` varchar(200),
+  `museum_int_id` varchar(100),
   `description` text,
   `museum` varchar(100),
   `archive_physloc` varchar(50),
   `archive_title` varchar(100),
+  `date` varchar(30),
   `item_date_str` varchar(50),
   `bundle` varchar(50),
   `date_to` varchar(20)

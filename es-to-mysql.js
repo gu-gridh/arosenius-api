@@ -44,6 +44,9 @@ async function main() {
       title: artwork.title,
       subtitle: artwork.subtitle,
       description: artwork.description,
+      museum_int_id: Array.isArray(artwork.museum_int_id)
+        ? artwork.museum_int_id.join("|")
+        : artwork.museum_int_id,
       museum: artwork.collection && artwork.collection.museum,
       archive_physloc:
         artwork.collection &&
@@ -53,6 +56,7 @@ async function main() {
         artwork.collection &&
         artwork.collection.archive_item &&
         artwork.collection.archive_item.title,
+      date: artwork.date && artwork.date.date,
       item_date_str: artwork.item_date_str,
       bundle: artwork.bundle,
       date_to: artwork.date_to
@@ -73,6 +77,7 @@ async function main() {
       await insertKeyword("type", "y");
       await insertKeyword("tags", "t");
       await insertKeyword("persons", "p");
+      await insertKeyword("places", "l");
       await insertKeyword("genre", "g");
     });
   }
