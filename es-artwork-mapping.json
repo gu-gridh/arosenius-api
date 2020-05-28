@@ -5,14 +5,6 @@
         "acquisition": {
           "type": "string"
         },
-        "alt_date1": {
-          "type": "date",
-          "format": "strict_date_optional_time||epoch_millis"
-        },
-        "alt_date2": {
-          "type": "date",
-          "format": "strict_date_optional_time||epoch_millis"
-        },
         "batchnumber": {
           "type": "long"
         },
@@ -31,10 +23,6 @@
                   "type": "string"
                 }
               }
-            },
-            "department": {
-              "type": "string",
-              "index": "not_analyzed"
             },
             "museum": {
               "type": "string",
@@ -168,90 +156,8 @@
         "content": {
           "type": "string"
         },
-        "creation_date": {
-          "type": "date",
-          "format": "strict_date_optional_time||epoch_millis"
-        },
         "creator": {
           "type": "string"
-        },
-        "data": {
-          "properties": {
-            "acquisition": {
-              "type": "string"
-            },
-            "batchnumber": {
-              "type": "long"
-            },
-            "collection": {
-              "properties": {
-                "museum": {
-                  "type": "string"
-                }
-              }
-            },
-            "description": {
-              "type": "string"
-            },
-            "genre": {
-              "type": "string"
-            },
-            "id": {
-              "type": "string"
-            },
-            "images": {
-              "properties": {
-                "image": {
-                  "type": "string"
-                },
-                "page": {
-                  "type": "object"
-                }
-              }
-            },
-            "inscription": {
-              "type": "string"
-            },
-            "insert_id": {
-              "type": "long"
-            },
-            "item_date_str": {
-              "type": "string"
-            },
-            "museum_int_id": {
-              "type": "string"
-            },
-            "published": {
-              "type": "boolean"
-            },
-            "recipient": {
-              "type": "object"
-            },
-            "sender": {
-              "type": "object"
-            },
-            "serie": {
-              "type": "string"
-            },
-            "signature": {
-              "type": "string"
-            },
-            "size": {
-              "type": "object"
-            },
-            "technique_material": {
-              "type": "string"
-            },
-            "title": {
-              "type": "string"
-            },
-            "title_en": {
-              "type": "string"
-            },
-            "type": {
-              "type": "string"
-            }
-          }
         },
         "date": {
           "properties": {
@@ -282,22 +188,6 @@
               "index": "not_analyzed"
             }
           }
-        },
-        "exhibitions_nested": {
-          "type": "nested",
-          "properties": {
-            "place": {
-              "type": "string",
-              "index": "not_analyzed"
-            },
-            "year": {
-              "type": "date",
-              "format": "strict_date_optional_time||epoch_millis"
-            }
-          }
-        },
-        "format": {
-          "type": "object"
         },
         "genre": {
           "type": "string",
@@ -591,9 +481,6 @@
           "type": "date",
           "format": "strict_date_optional_time||epoch_millis"
         },
-        "licence": {
-          "type": "string"
-        },
         "literature": {
           "type": "string"
         },
@@ -656,21 +543,6 @@
         "published": {
           "type": "boolean"
         },
-        "query": {
-          "properties": {
-            "query_string": {
-              "properties": {
-                "query": {
-                  "type": "string"
-                }
-              }
-            }
-          }
-        },
-        "receive_date": {
-          "type": "date",
-          "format": "strict_date_optional_time||epoch_millis"
-        },
         "recipient": {
           "properties": {
             "birth_year": {
@@ -697,10 +569,6 @@
         "reproductions": {
           "type": "string"
         },
-        "send_date": {
-          "type": "date",
-          "format": "strict_date_optional_time||epoch_millis"
-        },
         "sender": {
           "properties": {
             "birth_year": {
@@ -723,9 +591,6 @@
               "type": "string"
             }
           }
-        },
-        "serie": {
-          "type": "string"
         },
         "signature": {
           "type": "string"
