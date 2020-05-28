@@ -235,18 +235,6 @@
             }
           }
         },
-        "googleVisionLabels": {
-          "type": "nested",
-          "properties": {
-            "label": {
-              "type": "string",
-              "index": "not_analyzed"
-            },
-            "score": {
-              "type": "double"
-            }
-          }
-        },
         "id": {
           "type": "string"
         },
@@ -404,16 +392,6 @@
                 },
                 "pixelFraction": {
                   "type": "double"
-                },
-                "score": {
-                  "type": "double"
-                }
-              }
-            },
-            "googleVisionLabels": {
-              "properties": {
-                "label": {
-                  "type": "string"
                 },
                 "score": {
                   "type": "double"

@@ -345,19 +345,6 @@ function createQuery(req, showUnpublished, showDeleted) {
 		}, this));
 	}
 
-	if (req.query.google_label) {
-		var persons = req.query.google_label.split(';');
-
-		_.each(persons, _.bind(function(google_label) {
-			// terms, type, caseSensitive, nested, nestedPath, disableProcessing
-//		queryBuilder.addBool(terms, 'must', false, true, colorPath);
-
-			queryBuilder.addBool([
-				['googleVisionLabels.label', google_label]
-			], 'must', false, true, 'googleVisionLabels');
-		}, this));
-	}
-
 	// Get documents tagged with a specific place/places
 	if (req.query.place) {
 		queryBuilder.addBool([
@@ -663,15 +650,9 @@ function getDocuments(req, res, showUnpublished = false, showDeleted = false) {
 							if (image.color && image.color.colors) {
 								delete image.color;
 							}
-							if (image.googleVisionLabels) {
-								delete image.googleVisionLabels;
-							}
 						})
 					}
 
-					if (ret.googleVisionLabels) {
-						delete ret.googleVisionLabels;
-					}
 					if (ret.googleVisionColors) {
 						delete ret.googleVisionColors;
 					}
@@ -1095,42 +1076,6 @@ function getExhibitions(req, res) {
 			return {
 				value: genre.key
 			};
-		}));
-	});
-}
-
-function getGoogleVisionLabels(req, res) {
-	var query = createQuery(req);
-
-	client.search({
-		index: config.index,
-		type: 'artwork',
-		body: {
-			query: query.query,
-			size: 0,
-			aggs: {
-				googleVison: {
-					nested: {
-						path: "googleVisionLabels"
-					},
-					aggs: {
-						labels: {
-							terms: {
-								field: "googleVisionLabels.label",
-								size: 1000,
-								exclude: "font|paper|text|document|art|artwork|drawing|illustration|visual arts|material|handwriting|writing|paper product|painting|black and white|sketch|letter|picture frame|calligraphy|portrait|history|photograph|angle|figure drawing|stock photography|vintage clothing|line|snapshot|paint|watercolor paint|monochrome"
-							}
-						}
-					}
-				}
-			}
-		}
-	}, function(error, response) {
-		res.json(_.map(response.aggregations.googleVison.labels.buckets, function(label) {
-			return {
-				value: label.key,
-				doc_count: label.doc_count
-			}
 		}));
 	});
 }
@@ -1636,9 +1581,6 @@ app.get(urlRoot+'/colormatrix', getColorMatrix);
 app.get(urlRoot+'/next/:insert_id', getNextId);
 app.get(urlRoot+'/prev/:insert_id', getPrevId);
 app.get(urlRoot+'/highest_insert_id', getHighestId);
-
-// Only used by GoogleVisionLabelsViewer component in frontend which is just a demo
-app.get(urlRoot+'/googleVisionLabels', getGoogleVisionLabels);
 
 app.get(urlRoot+'/autocomplete', getAutoComplete);
 
