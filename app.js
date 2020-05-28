@@ -1080,71 +1080,6 @@ function getExhibitions(req, res) {
 	});
 }
 
-function getColorMap(req, res) {
-	var nestedPath = 'googleVisionColors';
-	var query = createQuery(req);
-
-	client.search({
-		index: config.index,
-		type: 'artwork',
-		body: {
-			size: 0,
-			query: query,
-			aggs: {
-				colormap: {
-					nested: {
-						path: nestedPath
-					},
-					aggs: {
-						filtered: {
-							filter: {
-								range: {
-									"googleVisionColors.score": {
-										gte: 0.2,
-										lte: 1
-									}
-								}
-							},
-							aggs: {
-								hue: {
-									terms: {
-										field: nestedPath+'.hsv.h',
-										size: 360,
-										order: {
-											_term: 'asc'
-										}
-									},
-									aggs: {
-										saturation: {
-											terms: {
-												field: nestedPath+'.hsv.s',
-												size: 100,
-												order: {
-													_term: 'asc'
-												}
-											}
-										}
-									}
-								}
-							}
-						}
-					}
-				}
-			}
-		}
-	}, function(error, response) {
-		res.json(_.map(response.aggregations.colormap.filtered.hue.buckets, function(hue) {
-			return {
-				hue: hue.key,
-				saturation: _.map(hue.saturation.buckets, function(saturation) {
-					return saturation.key;
-				})
-			};
-		}));
-
-	});
-}
-
 function getColorMatrix(req, res) {
 	var nestedPath = req.query.prominent == 'true' ? 'color.colors.prominent' : 'color.colors.three';
 
@@ -1573,8 +1508,6 @@ app.get(urlRoot+'/persons', getPersons);
 app.get(urlRoot+'/places', getPlaces);
 app.get(urlRoot+'/genres', getGenres);
 app.get(urlRoot+'/exhibitions', getExhibitions);
-// uses googleVisionColors
-app.get(urlRoot+'/colormap', getColorMap);
 // only api call that uses color.colors.prominent, also uses color.colors.three
 app.get(urlRoot+'/colormatrix', getColorMatrix);
 
