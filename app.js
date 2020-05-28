@@ -1080,83 +1080,6 @@ function getExhibitions(req, res) {
 	});
 }
 
-function getColorMatrix(req, res) {
-	var nestedPath = req.query.prominent == 'true' ? 'color.colors.prominent' : 'color.colors.three';
-
-	client.search({
-		index: config.index,
-		type: 'artwork',
-		body: {
-			size: 0,
-			query: {
-				query_string: {
-					query: req.query.query ? req.query.query : '*',
-					analyze_wildcard: true
-				}
-			},
-
-			aggs: {
-				hue: {
-					nested: {
-						path: nestedPath
-					},
-					aggs: {
-						hue: {
-							terms: {
-								field: nestedPath+'.hsv.h',
-								size: 360,
-								order: {
-									_term: 'asc'
-								}
-							},
-							aggs: {
-								saturation: {
-									terms: {
-										field: nestedPath+'.hsv.s',
-										size: 100,
-										order: {
-											_term: 'asc'
-										}
-									},
-									aggs: {
-										lightness: {
-											terms: {
-												field: nestedPath+'.hsv.v',
-												size: 100,
-												order: {
-													_term: 'asc'
-												}
-											}
-										}
-									}
-								}
-							}
-						}
-					}
-				}
-			}
-
-		}
-	}, function(error, response) {
-		res.json(_.map(response.aggregations.hue.hue.buckets, function(hue) {
-			return {
-				hue: hue.key,
-				saturation: _.map(hue.saturation.buckets, function(saturation) {
-					return {
-						saturation: saturation.key,
-						lightness: _.map(saturation.lightness.buckets, function(lightnessObj) {
-							return {
-								lightness: lightnessObj.key
-							}
-						})
-					};
-				})
-			};
-		}));
-
-	});
-}
-
 function getYearRange(req, res) {
 	var query = createQuery(req);
 
@@ -1508,8 +1431,6 @@ app.get(urlRoot+'/persons', getPersons);
 app.get(urlRoot+'/places', getPlaces);
 app.get(urlRoot+'/genres', getGenres);
 app.get(urlRoot+'/exhibitions', getExhibitions);
-// only api call that uses color.colors.prominent, also uses color.colors.three
-app.get(urlRoot+'/colormatrix', getColorMatrix);
 
 app.get(urlRoot+'/next/:insert_id', getNextId);
 app.get(urlRoot+'/prev/:insert_id', getPrevId);
