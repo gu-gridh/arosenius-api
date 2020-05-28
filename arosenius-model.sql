@@ -16,10 +16,11 @@ CREATE TABLE `artwork` (
   `museum` varchar(100),
   `archive_physloc` varchar(50),
   `archive_title` varchar(100),
-  `date` varchar(30),
-  `item_date_str` varchar(50),
-  `bundle` varchar(50),
-  `date_to` varchar(20)
+  `date_human` varchar(20),
+  `date` varchar(10), -- Using the DATE type for unspecific dates would require certain server configuration.
+  `size` varchar(200), -- JSON
+  `acquisition` varchar(200),
+  `bundle` varchar(50)
 );
 
 DROP TABLE IF EXISTS `keyword`;

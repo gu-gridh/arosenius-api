@@ -38,6 +38,7 @@ async function main() {
 
   for await (const line of dataReadline) {
     artwork = JSON.parse(line)._source;
+    // One particular document is very incomplete.
     if (artwork.id === "PRIV-undefined") continue;
     const values = {
       insert_id: artwork.insert_id,
@@ -57,10 +58,11 @@ async function main() {
         artwork.collection &&
         artwork.collection.archive_item &&
         artwork.collection.archive_item.title,
-      date: artwork.date && artwork.date.date,
-      item_date_str: artwork.item_date_str,
-      bundle: artwork.bundle,
-      date_to: artwork.date_to
+      date_human: artwork.item_date_str,
+      date: artwork.item_date_string,
+      size: artwork.size ? JSON.stringify(artwork.size) : undefined,
+      acquisition: artwork.acquisition || undefined,
+      bundle: artwork.bundle
     };
     await insertSet("artwork", values, "A").then(async results => {
       const insertKeyword = (type, char) =>
