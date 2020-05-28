@@ -11,6 +11,7 @@ CREATE TABLE `artwork` (
   `name` varchar(20),
   `title` varchar(200),
   `subtitle` varchar(200),
+  `deleted` boolean,
   `museum_int_id` varchar(100),
   `description` text,
   `museum` varchar(100),
@@ -20,7 +21,12 @@ CREATE TABLE `artwork` (
   `date` varchar(10), -- Using the DATE type for unspecific dates would require certain server configuration.
   `size` varchar(200), -- JSON
   `acquisition` varchar(200),
-  `bundle` varchar(50)
+  `content` text,
+  `inscription` text,
+  `creator` varchar(100),
+  `literature` varchar(300),
+  `bundle` varchar(50),
+  UNIQUE KEY (`name`)
 );
 
 DROP TABLE IF EXISTS `keyword`;
@@ -29,7 +35,7 @@ CREATE TABLE `keyword` (
 	`artwork` int(10) unsigned NOT NULL,
 	`type` varchar(50) NOT NULL,
 	`name` varchar(50) NOT NULL,
-	KEY (artwork, type, name)
+	UNIQUE KEY (`artwork`, `type`, `name`)
 );
 
 DROP TABLE IF EXISTS `image`;
@@ -43,6 +49,14 @@ CREATE TABLE `image` (
   `page` int(1),
   `pageid` varchar(20),
   `order` int(1),
-  `side` varchar(20),
-  KEY (`filename`)
+  `side` varchar(20)
 );
+
+DROP TABLE IF EXISTS `exhibition`;
+CREATE TABLE `exhibition` (
+  `id` int(3) UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  `artwork` int(6) UNSIGNED NOT NULL,
+  `location` varchar(100) NOT NULL,
+  `year` int(4) NOT NULL,
+  UNIQUE KEY (`artwork`, `location`, `year`)
+)

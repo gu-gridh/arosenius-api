@@ -25,12 +25,17 @@ function sqlQuery(query, values) {
 
 let lastChangeTime = Date.now();
 
-function insertSet(table, values, char = "") {
-  return sqlQuery(`INSERT INTO ${table} SET ?`, values).then(results => {
-    lastChangeTime = Date.now();
-    process.stdout.write(char);
-    return results;
-  });
+function insertSet(table, values, char = "", ignoreDuplicate = false) {
+  return sqlQuery(`INSERT INTO ${table} SET ?`, values)
+    .catch(
+      err =>
+        (err.code === "ER_DUP_ENTRY" && ignoreDuplicate) || Promise.reject(err)
+    )
+    .then(results => {
+      lastChangeTime = Date.now();
+      process.stdout.write(char);
+      return results;
+    });
 }
 
 async function main() {
@@ -45,6 +50,7 @@ async function main() {
       name: artwork.id,
       title: artwork.title,
       subtitle: artwork.subtitle,
+      deleted: artwork.deleted,
       description: artwork.description,
       museum_int_id: Array.isArray(artwork.museum_int_id)
         ? artwork.museum_int_id.join("|")
@@ -62,6 +68,10 @@ async function main() {
       date: artwork.item_date_string,
       size: artwork.size ? JSON.stringify(artwork.size) : undefined,
       acquisition: artwork.acquisition || undefined,
+      content: artwork.content,
+      inscription: artwork.inscription,
+      creator: artwork.creator,
+      literature: artwork.literature,
       bundle: artwork.bundle
     };
     await insertSet("artwork", values, "A").then(async results => {
@@ -99,7 +109,18 @@ async function main() {
             },
             "I"
           )
-        )
+        ),
+        ...(artwork.exhibitions || [])
+          .filter(s => s)
+          .map(s => {
+            // "<location>|<year>" or "<location> <year>"
+            const match = s.match(/(.*).(\d{4})/);
+            insertSet(
+              "exhibition",
+              { artwork: results.insertId, location: match[1], year: match[2] },
+              "x"
+            );
+          })
       ]);
     });
   }
@@ -107,11 +128,15 @@ async function main() {
 
 main();
 
-// Exit 1 s after the last change.
+// Exit after the last change.
 function checkExit() {
   setTimeout(
-    () => (Date.now() > lastChangeTime + 1000 ? process.exit() : checkExit()),
+    () =>
+      Date.now() > lastChangeTime + 500
+        ? console.log() || process.exit()
+        : checkExit(),
     100
   );
 }
-checkExit();
+// Allow longer time for the initial queries.
+setTimeout(checkExit, 3000);
