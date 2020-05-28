@@ -376,56 +376,6 @@ function createQuery(req, showUnpublished, showDeleted) {
 		//terms, type, caseSensitive, nested, nestedPath, disableProcessing
 	}
 
-	// Get documents of specific color - rewrite needed
-	if (req.query.hue || req.query.saturation || req.query.lightness) {
-		var colorMargins = 15;
-		var colorPath = 'googleVisionColors';
-
-		var terms = [];
-
-		if (req.query.hue) {
-			terms.push([
-				colorPath+'.hsv.h',
-				{
-					from: Number(req.query.hue)-colorMargins,
-					to: Number(req.query.hue)+colorMargins
-				},
-				'range'
-			]);
-		}
-		if (req.query.saturation) {
-			terms.push([
-				colorPath+'.hsv.s',
-				{
-					from: Number(req.query.saturation)-colorMargins,
-					to: Number(req.query.saturation)+colorMargins
-				},
-				'range'
-			]);
-		}
-		if (req.query.lightness) {
-			terms.push([
-				colorPath+'.hsv.v',
-				{
-					from: Number(req.query.lightness)-colorMargins,
-					to: Number(req.query.lightness)+colorMargins
-				},
-				'range'
-			]);
-		}
-
-		terms.push([
-			colorPath+'.score',
-			{
-				from: 0.2,
-				to: 1
-			},
-			'range'
-		]);
-
-		queryBuilder.addBool(terms, 'must', false, true, colorPath);
-	}
-
 	// Defines if search should exclusively return artworks and photographs (images) or exclude artworks and photographs
 	if (req.query.archivematerial) {
 		if (req.query.archivematerial == 'only') {
