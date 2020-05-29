@@ -42,52 +42,6 @@
                 "five": {
                   "type": "nested",
                   "properties": {
-                    "hex": {
-                      "type": "string"
-                    },
-                    "hsv": {
-                      "properties": {
-                        "h": {
-                          "type": "long"
-                        },
-                        "s": {
-                          "type": "long"
-                        },
-                        "v": {
-                          "type": "long"
-                        }
-                      }
-                    },
-                    "rgb": {
-                      "type": "long"
-                    },
-                    "temperature": {
-                      "type": "long"
-                    }
-                  }
-                },
-                "prominent": {
-                  "type": "nested",
-                  "properties": {
-                    "hex": {
-                      "type": "string"
-                    },
-                    "hsv": {
-                      "properties": {
-                        "h": {
-                          "type": "long"
-                        },
-                        "s": {
-                          "type": "long"
-                        },
-                        "v": {
-                          "type": "long"
-                        }
-                      }
-                    },
-                    "population": {
-                      "type": "long"
-                    },
                     "rgb": {
                       "type": "long"
                     },
@@ -99,22 +53,6 @@
                 "three": {
                   "type": "nested",
                   "properties": {
-                    "hex": {
-                      "type": "string"
-                    },
-                    "hsv": {
-                      "properties": {
-                        "h": {
-                          "type": "long"
-                        },
-                        "s": {
-                          "type": "long"
-                        },
-                        "v": {
-                          "type": "long"
-                        }
-                      }
-                    },
                     "rgb": {
                       "type": "long"
                     },
@@ -122,32 +60,6 @@
                       "type": "long"
                     }
                   }
-                }
-              }
-            },
-            "dominant": {
-              "properties": {
-                "hex": {
-                  "type": "string"
-                },
-                "hsv": {
-                  "properties": {
-                    "h": {
-                      "type": "long"
-                    },
-                    "s": {
-                      "type": "long"
-                    },
-                    "v": {
-                      "type": "long"
-                    }
-                  }
-                },
-                "rgb": {
-                  "type": "long"
-                },
-                "temperature": {
-                  "type": "long"
                 }
               }
             }
@@ -198,43 +110,6 @@
             }
           }
         },
-        "googleVisionColors": {
-          "type": "nested",
-          "properties": {
-            "color": {
-              "properties": {
-                "blue": {
-                  "type": "long"
-                },
-                "green": {
-                  "type": "long"
-                },
-                "red": {
-                  "type": "long"
-                }
-              }
-            },
-            "hsv": {
-              "properties": {
-                "h": {
-                  "type": "long"
-                },
-                "s": {
-                  "type": "long"
-                },
-                "v": {
-                  "type": "long"
-                }
-              }
-            },
-            "pixelFraction": {
-              "type": "double"
-            },
-            "score": {
-              "type": "double"
-            }
-          }
-        },
         "id": {
           "type": "string"
         },
@@ -251,52 +126,6 @@
                     "five": {
                       "type": "nested",
                       "properties": {
-                        "hex": {
-                          "type": "string"
-                        },
-                        "hsv": {
-                          "properties": {
-                            "h": {
-                              "type": "long"
-                            },
-                            "s": {
-                              "type": "long"
-                            },
-                            "v": {
-                              "type": "long"
-                            }
-                          }
-                        },
-                        "rgb": {
-                          "type": "long"
-                        },
-                        "temperature": {
-                          "type": "long"
-                        }
-                      }
-                    },
-                    "prominent": {
-                      "type": "nested",
-                      "properties": {
-                        "hex": {
-                          "type": "string"
-                        },
-                        "hsv": {
-                          "properties": {
-                            "h": {
-                              "type": "long"
-                            },
-                            "s": {
-                              "type": "long"
-                            },
-                            "v": {
-                              "type": "long"
-                            }
-                          }
-                        },
-                        "population": {
-                          "type": "long"
-                        },
                         "rgb": {
                           "type": "long"
                         },
@@ -308,22 +137,6 @@
                     "three": {
                       "type": "nested",
                       "properties": {
-                        "hex": {
-                          "type": "string"
-                        },
-                        "hsv": {
-                          "properties": {
-                            "h": {
-                              "type": "long"
-                            },
-                            "s": {
-                              "type": "long"
-                            },
-                            "v": {
-                              "type": "long"
-                            }
-                          }
-                        },
                         "rgb": {
                           "type": "long"
                         },
@@ -331,32 +144,6 @@
                           "type": "long"
                         }
                       }
-                    }
-                  }
-                },
-                "dominant": {
-                  "properties": {
-                    "hex": {
-                      "type": "string"
-                    },
-                    "hsv": {
-                      "properties": {
-                        "h": {
-                          "type": "long"
-                        },
-                        "s": {
-                          "type": "long"
-                        },
-                        "v": {
-                          "type": "long"
-                        }
-                      }
-                    },
-                    "rgb": {
-                      "type": "long"
-                    },
-                    "temperature": {
-                      "type": "long"
                     }
                   }
                 }
@@ -376,22 +163,6 @@
                       "type": "long"
                     }
                   }
-                },
-                "hsv": {
-                  "properties": {
-                    "h": {
-                      "type": "long"
-                    },
-                    "s": {
-                      "type": "long"
-                    },
-                    "v": {
-                      "type": "long"
-                    }
-                  }
-                },
-                "pixelFraction": {
-                  "type": "double"
                 },
                 "score": {
                   "type": "double"
