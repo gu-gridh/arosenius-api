@@ -99,9 +99,9 @@ async function main() {
     }
 
     await insertSet("artwork", values, "A").then(async results => {
-      const insertKeyword = (type, char) =>
+      const insertKeyword = (field, type, char) =>
         Promise.all(
-          (Array.isArray(artwork[type]) ? artwork[type] : [artwork[type]])
+          (Array.isArray(artwork[field]) ? artwork[field] : [artwork[field]])
             .filter(x => x)
             .map(async name =>
               insertSet(
@@ -112,11 +112,11 @@ async function main() {
             )
         );
       await Promise.all([
-        insertKeyword("type", "y"),
-        insertKeyword("tags", "t"),
-        insertKeyword("persons", "p"),
-        insertKeyword("places", "l"),
-        insertKeyword("genre", "g"),
+        insertKeyword("type", "type", "y"),
+        insertKeyword("tags", "tag", "t"),
+        insertKeyword("persons", "person", "p"),
+        insertKeyword("places", "place", "l"),
+        insertKeyword("genre", "genre", "g"),
         ...artwork.images.map(image =>
           insertSet(
             "image",

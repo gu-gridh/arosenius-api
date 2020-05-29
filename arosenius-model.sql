@@ -4,7 +4,21 @@
  * WARNING: Executing this will drop existing data.
  */
 
+/* Drop child tables before parent tables to respect foreign key constraints. */
+DROP TABLE IF EXISTS `exhibition`;
+DROP TABLE IF EXISTS `image`;
+DROP TABLE IF EXISTS `keyword`;
 DROP TABLE IF EXISTS `artwork`;
+DROP TABLE IF EXISTS `person`;
+
+CREATE TABLE `person` (
+  `id` int(3) UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  `name` VARCHAR(200) NOT NULL,
+  `birth_year` VARCHAR(4),
+  `death_year` VARCHAR(4),
+  UNIQUE KEY (`name`)
+);
+
 CREATE TABLE `artwork` (
   `id` int(10) unsigned NOT NULL AUTO_INCREMENT PRIMARY KEY,
   `insert_id` int(10),
@@ -27,32 +41,24 @@ CREATE TABLE `artwork` (
   `inscription` text,
   `material` varchar(300),
   `creator` varchar(100),
-  `sender` int(3),
-  `recipient` int(3),
+  `sender` int(3) UNSIGNED,
+  `recipient` int(3) UNSIGNED,
   `literature` varchar(300),
   `bundle` varchar(50),
+  FOREIGN KEY (`sender`) REFERENCES `person` (`id`),
+  FOREIGN KEY (`recipient`) REFERENCES `person` (`id`),
   UNIQUE KEY (`name`)
 );
 
-DROP TABLE IF EXISTS `keyword`;
 CREATE TABLE `keyword` (
 	`id` int(10) unsigned NOT NULL AUTO_INCREMENT PRIMARY KEY,
 	`artwork` int(10) unsigned NOT NULL,
 	`type` varchar(50) NOT NULL,
 	`name` varchar(50) NOT NULL,
+  FOREIGN KEY (`artwork`) REFERENCES `artwork` (`id`),
 	UNIQUE KEY (`artwork`, `type`, `name`)
 );
 
-DROP TABLE IF EXISTS `person`;
-CREATE TABLE `person` (
-  `id` int(3) UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-  `name` VARCHAR(200) NOT NULL,
-  `birth_year` VARCHAR(4),
-  `death_year` VARCHAR(4),
-  UNIQUE KEY (`name`)
-);
-
-DROP TABLE IF EXISTS `image`;
 CREATE TABLE `image` (
   `id` int(10) unsigned NOT NULL AUTO_INCREMENT PRIMARY KEY,
   `artwork` int(10) unsigned NOT NULL,
@@ -63,14 +69,15 @@ CREATE TABLE `image` (
   `page` int(1),
   `pageid` varchar(20),
   `order` int(1),
-  `side` varchar(20)
+  `side` varchar(20),
+  FOREIGN KEY (`artwork`) REFERENCES `artwork` (`id`)
 );
 
-DROP TABLE IF EXISTS `exhibition`;
 CREATE TABLE `exhibition` (
   `id` int(3) UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
   `artwork` int(6) UNSIGNED NOT NULL,
   `location` varchar(100) NOT NULL,
   `year` int(4) NOT NULL,
+  FOREIGN KEY (`artwork`) REFERENCES `artwork` (`id`),
   UNIQUE KEY (`artwork`, `location`, `year`)
 )
