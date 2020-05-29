@@ -49,6 +49,7 @@ async function main() {
       insert_id: artwork.insert_id,
       name: artwork.id,
       title: artwork.title,
+      title_en: artwork.title_en,
       subtitle: artwork.subtitle,
       deleted: artwork.deleted || false,
       published: artwork.published || false,
@@ -69,6 +70,7 @@ async function main() {
       date_human: artwork.item_date_str,
       date: artwork.item_date_string,
       size: artwork.size ? JSON.stringify(artwork.size) : undefined,
+      technique_material: artwork.technique_material,
       acquisition: artwork.acquisition || undefined,
       content: artwork.content,
       inscription: artwork.inscription,
@@ -76,7 +78,11 @@ async function main() {
         ? artwork.material.pop()
         : undefined,
       creator: artwork.creator,
+      signature: artwork.signature,
+      // sender set below
+      // recipient set below
       literature: artwork.literature,
+      reproductions: artwork.reproductions,
       bundle: artwork.bundle
     };
 
