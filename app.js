@@ -2,6 +2,7 @@ var express = require('express');
 var bodyParser = require('body-parser');
 var _ = require('underscore');
 var elasticsearch = require('elasticsearch');
+var mysql = require('mysql');
 var IMGR = require('imgr').IMGR;
 var request = require('request');
 var fs = require('fs');
@@ -17,6 +18,8 @@ var client = new elasticsearch.Client({
 	host: config.es_host
 //	log: 'trace'
 });
+
+const sql = mysql.createConnection({ ...config.mysql });
 
 function authenticate(user) {
 	var users = require('./users').users;
@@ -883,55 +886,31 @@ function postDocument(req, res) {
 }
 
 function getMuseums(req, res) {
-	client.search({
-		index: config.index,
-		type: 'artwork',
-		body: aggsUnique('collection.museum.raw', {size: 10, order: {_count: "desc"}})
-	}, function(error, response) {
-		res.json(_.map(response.aggregations.uniq.uniq.buckets, function(museum) {
-			return {
-				value: museum.key
-			};
-		}));
-	});
+  sql.query(
+    "SELECT museum FROM artwork WHERE NOT deleted AND museum <> '' GROUP BY museum ORDER BY COUNT(id) DESC",
+    (err, results) => res.json(results.map(row => ({ value: row.museum })))
+  );
+}
+
+/** Build SQL query for listing the keywords of a given type. */
+function keywordListQuery(req, type) {
+	return `SELECT keyword.name, count(keyword.id) as count FROM keyword
+    JOIN artwork ON keyword.artwork = artwork.id
+    WHERE NOT artwork.deleted AND keyword.type = "${type}"
+    GROUP BY keyword.name ORDER BY
+		${req.query.sort === "doc_count" ? "count DESC" : "keyword.name ASC"}`;
 }
 
 function getTypes(req, res) {
-	var additional = !req.query.sort || req.query.sort != 'doc_count' ? {order: {_term: 'asc'}} : {}
-	var queryBody = aggsUnique('type.raw', additional)
-
-	client.search({
-		index: config.index,
-		type: 'artwork',
-		body: queryBody
-	}, function(error, response) {
-		res.json(_.map(_.filter(response.aggregations.uniq.uniq.buckets, function(type) {
-			return type.key != '';
-		}), function(type) {
-			return {
-				value: type.key,
-				doc_count: type.doc_count
-			};
-		}));
-	});
+	sql.query(keywordListQuery(req, "type"), (err, results) =>
+    res.json(results.map(row => ({ value: row.name, doc_count: row.count })))
+  );
 }
 
 function getTags(req, res) {
-	var additional = !req.query.sort || req.query.sort != 'doc_count' ? {order: {_term: 'asc'}} : {}
-	var queryBody = aggsUnique('tags.raw', additional)
-
-	client.search({
-		index: config.index,
-		type: 'artwork',
-		body: queryBody
-	}, function(error, response) {
-		res.json(_.map(response.aggregations.uniq.uniq.buckets, function(tag) {
-			return {
-				value: tag.key,
-				doc_count: tag.doc_count
-			};
-		}));
-	});
+	sql.query(keywordListQuery(req, "tag"), (err, results) =>
+    res.json(results.map(row => ({ value: row.name, doc_count: row.count })))
+  );
 }
 
 function getTagCloud(req, res) {
@@ -1032,57 +1011,21 @@ function getPagetypes(req, res) {
 }
 
 function getPersons(req, res) {
-	var additional = !req.query.sort || req.query.sort != 'doc_count' ? {order: {_term: 'asc'}} : {}
-	var queryBody = aggsUnique('persons.raw', additional);
-
-	client.search({
-		index: config.index,
-		type: 'artwork',
-		body: queryBody
-	}, function(error, response) {
-		res.json(_.map(response.aggregations.uniq.uniq.buckets, function(person) {
-			return {
-				value: person.key,
-				doc_count: person.doc_count
-			};
-		}));
-	});
+	sql.query(keywordListQuery(req, "person"), (err, results) =>
+    res.json(results.map(row => ({ value: row.name, doc_count: row.count })))
+  );
 }
 
 function getPlaces(req, res) {
-	var additional = !req.query.sort || req.query.sort != 'doc_count' ? {order: {_term: 'asc'}} : {}
-	var queryBody = aggsUnique('places.raw', additional)
-
-	client.search({
-		index: config.index,
-		type: 'artwork',
-		body: queryBody
-	}, function(error, response) {
-		res.json(_.map(response.aggregations.uniq.uniq.buckets, function(place) {
-			return {
-				value: place.key,
-				doc_count: place.doc_count
-			};
-		}));
-	});
+  sql.query(keywordListQuery(req, "place"), (err, results) =>
+    res.json(results.map(row => ({ value: row.name, doc_count: row.count })))
+  );
 }
 
 function getGenres(req, res) {
-	var additional = !req.query.sort || req.query.sort != 'doc_count' ? {order: {_term: 'asc'}} : {}
-	var queryBody = aggsUnique('genre.raw', additional)
-
-	client.search({
-		index: config.index,
-		type: 'artwork',
-		body: queryBody
-	}, function(error, response) {
-		res.json(_.map(response.aggregations.uniq.uniq.buckets, function(genre) {
-			return {
-				value: genre.key,
-				doc_count: genre.doc_count
-			};
-		}));
-	});
+  sql.query(keywordListQuery(req, "genre"), (err, results) =>
+    res.json(results.map(row => ({ value: row.name, doc_count: row.count })))
+  );
 }
 
 function getExhibitions(req, res) {

@@ -39,7 +39,8 @@ function insertSet(table, values, char = "", ignoreDuplicate = false) {
 }
 
 async function main() {
-  await sqlQuery(modelQuery);
+  // TODO This call seems to cause the for-loop to miss a lot of documents. Run the sql file directly in mysql instead.
+  // await sqlQuery(modelQuery);
 
   for await (const line of dataReadline) {
     artwork = JSON.parse(line)._source;
