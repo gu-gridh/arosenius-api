@@ -50,7 +50,8 @@ async function main() {
       name: artwork.id,
       title: artwork.title,
       subtitle: artwork.subtitle,
-      deleted: artwork.deleted,
+      deleted: artwork.deleted || false,
+      published: artwork.published || false,
       description: artwork.description,
       museum_int_id: Array.isArray(artwork.museum_int_id)
         ? artwork.museum_int_id.join("|")
@@ -64,16 +65,39 @@ async function main() {
         artwork.collection &&
         artwork.collection.archive_item &&
         artwork.collection.archive_item.title,
+      museum_url: artwork.museumLink,
       date_human: artwork.item_date_str,
       date: artwork.item_date_string,
       size: artwork.size ? JSON.stringify(artwork.size) : undefined,
       acquisition: artwork.acquisition || undefined,
       content: artwork.content,
       inscription: artwork.inscription,
+      material: Array.isArray(artwork.material)
+        ? artwork.material.pop()
+        : undefined,
       creator: artwork.creator,
       literature: artwork.literature,
       bundle: artwork.bundle
     };
+
+    // Insert persons to reference them.
+    for (const f of ["sender", "recipient"].filter(
+      f => artwork[f] && (artwork[f].surname || artwork[f].name)
+    )) {
+      await insertSet(
+        "person",
+        {
+          name: artwork[f].surname
+            ? `${artwork[f].firstname} ${artwork[f].surname}`
+            : artwork[f].name,
+          birth_year: artwork[f].birth_year,
+          death_year: artwork[f].death_year
+        },
+        "P",
+        true
+      ).then(results => (values[f] = results.insertId));
+    }
+
     await insertSet("artwork", values, "A").then(async results => {
       const insertKeyword = (type, char) =>
         Promise.all(
@@ -117,7 +141,11 @@ async function main() {
             const match = s.match(/(.*).(\d{4})/);
             insertSet(
               "exhibition",
-              { artwork: results.insertId, location: match[1], year: match[2] },
+              {
+                artwork: results.insertId,
+                location: match[1],
+                year: match[2]
+              },
               "x"
             );
           })
