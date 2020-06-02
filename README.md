@@ -54,7 +54,9 @@ Users are defined in the `users.js` file. All users have the same privileges.
 3. Create a MySQL database locally
    - Make sure to use `DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_swedish_ci` (see https://mariadb.com/kb/en/setting-character-sets-and-collations/)
 4. Extend `config.js` with the `mysql.*` properties (see `config.demo.js`)
-5. Run `node es-to-mysql.js`
+5. Run the data migration:
+   - Run the SQL commands in `arosenius-model.sql` to delete (!) and create necessary tables.
+   - Run `node es-to-mysql.js`
    - Inspect the MySQL database
    - Improve the script and `arosenius-model.sql`
    - Repeat

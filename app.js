@@ -1710,6 +1710,6 @@ app.get('/admin/museums', getMuseums);
 app.get('/image_file_list', getImageFileList);
 app.post('/admin/upload', postImageUpload);
 
-app.listen(3010, function () {
+app.listen(config.port || 3010, function () {
   console.log('Arosenius project API');
 });

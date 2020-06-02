@@ -14,5 +14,6 @@ module.exports = {
   image_path: "imagedata",
   image_temp_path: "imagedata/imgr",
 
+  port: 3010,
   urlRoot: ""
 };
