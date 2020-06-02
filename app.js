@@ -21,6 +21,15 @@ var client = new elasticsearch.Client({
 
 const sql = mysql.createConnection({ ...config.mysql });
 
+// Wrap sql.query as a promise
+function sqlQuery(query, values) {
+  return new Promise((resolve, reject) =>
+    sql.query(query, values, (error, results) =>
+      error ? reject(error) : resolve(results)
+    )
+  );
+}
+
 function authenticate(user) {
 	var users = require('./users').users;
 
@@ -862,27 +871,113 @@ function postDocument(req, res) {
       }
  *
  */
- function getDocument(req, res) {
+function getDocument(req, res) {
 	var query = [];
 	if (req.query.museum) {
 		query.push('collection.museum: "'+req.query.museum+'"');
 	}
+	
+	loadDocuments([req.params.id, 'foo']).then(docs => res.json({
+		data: docs.length ? formatDocument(docs[0]) : undefined
+	}))
+}
 
-	client.search({
-		index: config.index,
-		type: 'artwork',
-		size: 1,
-		from: 0,
-		q: '_id: '+req.params.id
-	}, function(error, response) {
-		res.json({
-			data: _.map(response.hits.hits, function(item) {
-				var ret = item._source;
-				ret.id = item._id;
-				return ret;
-			})[0]
-		});
-	});
+/** Load a document from the database and format it. */
+async function loadDocuments(ids) {
+  const results = await sqlQuery(
+    "SELECT * FROM artwork WHERE name IN (?) LIMIT 1",
+    [ids]
+  );
+  const documents = [];
+  for (const artwork of results) {
+    // No point in making queries in parallel because MySQL is sequential.
+    const images = await sqlQuery(
+      "SELECT * FROM image WHERE artwork = ?",
+      artwork.id
+    );
+    const keywords = await sqlQuery(
+      "SELECT * FROM keyword WHERE artwork = ?",
+      artwork.id
+		)
+		// Group keywords by type.
+		const keywordsByType = {}
+		keywords.forEach(row => {
+			keywordsByType[row.type] = keywordsByType[row.type] || []
+			keywordsByType[row.type].push(row.name)
+		})
+    const exhibitions = await sqlQuery(
+      "SELECT * FROM exhibition WHERE artwork = ?",
+      artwork.id
+    );
+    const sender =
+      artwork.sender &&
+      (await sqlQuery("SELECT * FROM person WHERE id = ?", artwork.sender));
+    const recipient =
+      artwork.recipient &&
+      (await sqlQuery("SELECT * FROM person WHERE id = ?", artwork.recipient));
+    documents.push({
+      artwork,
+      images,
+      keywords: keywordsByType,
+      exhibitions,
+      sender,
+      recipient
+    });
+  }
+  return documents;
+}
+
+function formatDocument({ artwork, images, keywords, exhibitions, sender, recipient }) {
+	return {
+    insert_id: artwork.insert_id,
+    id: artwork.name,
+    title: artwork.title,
+    title_en: artwork.title_en,
+    subtitle: artwork.subtitle,
+    deleted: artwork.deleted,
+    published: artwork.published,
+    description: artwork.description,
+    museum_int_id: artwork.museum_int_id.split("|"),
+    collection: {
+      museum: artwork.museum
+    },
+    museumLink: artwork.museum_url,
+    item_date_str: artwork.date_human,
+    item_date_string: artwork.date,
+    size: artwork.size && JSON.parse(artwork.size),
+    technique_material: artwork.technique_material,
+    acquisition: artwork.acquisition,
+    content: artwork.content,
+    inscription: artwork.inscription,
+    material: artwork.material,
+    creator: artwork.creator,
+    signature: artwork.signature,
+    literature: artwork.literature,
+    reproductions: artwork.reproductions,
+    bundle: artwork.bundle,
+    images: images.map(image => ({
+      image: image.filename,
+      imagesize: {
+        width: image.width,
+        height: image.height,
+        type: image.type || undefined
+      },
+      page: {
+        number: image.page,
+        order: image.order,
+        side: image.side,
+        id: image.pageid || undefined
+      }
+    })),
+    type: keywords.type,
+    tags: keywords.tag,
+    persons: keywords.person,
+    places: keywords.place,
+    genre: keywords.genre,
+    exhibitions: exhibitions.length ? exhibitions.map(({ location, year }) => `${location}|${year}`) : undefined,
+    sender: { ...sender },
+    recipient: { ...recipient }
+  };
 }
 
 function getMuseums(req, res) {

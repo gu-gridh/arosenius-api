@@ -31,8 +31,6 @@ CREATE TABLE `artwork` (
   `museum_int_id` VARCHAR(100),
   `description` TEXT,
   `museum` VARCHAR(100),
-  `archive_physloc` VARCHAR(50),
-  `archive_title` VARCHAR(100),
   `museum_url` VARCHAR(300),
   `date_human` VARCHAR(20),
   `date` VARCHAR(10), -- Using the DATE type for unspecific dates would require certain server configuration.

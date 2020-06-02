@@ -59,14 +59,6 @@ async function main() {
         ? artwork.museum_int_id.join("|")
         : artwork.museum_int_id,
       museum: artwork.collection && artwork.collection.museum,
-      archive_physloc:
-        artwork.collection &&
-        artwork.collection.archive_item &&
-        artwork.collection.archive_item.archive_physloc,
-      archive_title:
-        artwork.collection &&
-        artwork.collection.archive_item &&
-        artwork.collection.archive_item.title,
       museum_url: artwork.museumLink,
       date_human: artwork.item_date_str,
       date: artwork.item_date_string,
