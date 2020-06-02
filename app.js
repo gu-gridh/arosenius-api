@@ -499,6 +499,7 @@ function aggsUnique(field, additional = {}) {
 }
 
 function getNextId(req, res) {
+	throw new Error("Not implemented in MySQL yet.");
 	client.search({
 		index: config.index,
 		type: 'artwork',
@@ -542,6 +543,7 @@ function getNextId(req, res) {
 }
 
 function getPrevId(req, res) {
+	throw new Error("Not implemented in MySQL yet.");
 	client.search({
 		index: config.index,
 		type: 'artwork',
@@ -585,6 +587,7 @@ function getPrevId(req, res) {
 }
 
 function getHighestId(req, res) {
+	throw new Error("Not implemented in MySQL yet.");
 	client.search({
 		index: config.index,
 		type: 'artwork',
@@ -625,6 +628,7 @@ function getDocuments(req, res, showUnpublished = false, showDeleted = false) {
 			ids: docIds
 		};
 
+		throw new Error("Not implemented in MySQL yet.");
 		client.mget({
 			index: config.index,
 			type: 'artwork',
@@ -655,6 +659,7 @@ function getDocuments(req, res, showUnpublished = false, showDeleted = false) {
 		query = createQuery(req, showUnpublished, showDeleted);
 
 		// Send the search query to Elasticsearch
+		throw new Error("Not implemented in MySQL yet.");
 		client.search({
 			index: config.index,
 			type: 'artwork',
@@ -703,6 +708,7 @@ function putCombineDocuments(req, res) {
 	var ids = req.body.documents;
 	var finalDocument = req.body.selectedDocument;
 
+	throw new Error("Not implemented in MySQL yet.");
 	client.search({
 		index: config.index,
 		type: 'artwork',
@@ -755,6 +761,7 @@ function putCombineDocuments(req, res) {
 				return image.page.order || 0;
 			});
 
+			throw new Error("Not implemented in MySQL yet.");
 			client.update({
 				index: config.index,
 				type: 'artwork',
@@ -778,6 +785,7 @@ function putCombineDocuments(req, res) {
 					}
 				});
 
+				throw new Error("Not implemented in MySQL yet.");
 				client.bulk({
 					body: bulkBody
 				}, function(error, response) {
@@ -795,6 +803,7 @@ function putDocument(req, res) {
 		document.images = processImages(document.images);
 	}
 
+	throw new Error("Not implemented in MySQL yet.");
 	client.create({
 		index: config.index,
 		type: 'artwork',
@@ -827,6 +836,7 @@ function postDocument(req, res) {
 		document.images = processImages(document.images);
 	}
 
+	throw new Error("Not implemented in MySQL yet.");
 	client.update({
 		index: config.index,
 		type: 'artwork',
@@ -1046,6 +1056,7 @@ function getTagCloud(req, res) {
 		}
 	};
 
+	throw new Error("Not implemented in MySQL yet.");
 	client.search({
 		index: config.index,
 		type: 'artwork',
@@ -1092,6 +1103,7 @@ function getTagCloud(req, res) {
 }
 
 function getPagetypes(req, res) {
+	throw new Error("Not implemented in MySQL yet.");
 	client.search({
 		index: config.index,
 		type: 'artwork',
@@ -1124,6 +1136,7 @@ function getGenres(req, res) {
 }
 
 function getExhibitions(req, res) {
+	throw new Error("Not implemented in MySQL yet.");
 	client.search({
 		index: config.index,
 		type: 'artwork',
@@ -1140,6 +1153,7 @@ function getExhibitions(req, res) {
 function getGoogleVisionLabels(req, res) {
 	var query = createQuery(req);
 
+	throw new Error("Not implemented in MySQL yet.");
 	client.search({
 		index: config.index,
 		type: 'artwork',
@@ -1177,6 +1191,7 @@ function getColorMap(req, res) {
 	var nestedPath = 'googleVisionColors';
 	var query = createQuery(req);
 
+	throw new Error("Not implemented in MySQL yet.");
 	client.search({
 		index: config.index,
 		type: 'artwork',
@@ -1241,6 +1256,7 @@ function getColorMap(req, res) {
 function getColorMatrix(req, res) {
 	var nestedPath = req.query.prominent == 'true' ? 'color.colors.prominent' : 'color.colors.three';
 
+	throw new Error("Not implemented in MySQL yet.");
 	client.search({
 		index: config.index,
 		type: 'artwork',
@@ -1322,6 +1338,7 @@ function getYearRange(req, res) {
 		delete query.sort;
 	}
 
+	throw new Error("Not implemented in MySQL yet.");
 	client.search({
 		index: config.index,
 		type: 'artwork',
@@ -1568,6 +1585,7 @@ function getAutoComplete(req, res) {
 		}
 	];
 
+	throw new Error("Not implemented in MySQL yet.");
 	client.msearch({
 		body: query
 	}, function(error, response) {
