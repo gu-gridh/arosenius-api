@@ -983,7 +983,7 @@ function getTagCloud(req, res) {
                                 return {
                                         value: tag.key,
                                         doc_count: tag.doc_count,
-                                        type: 'collection'
+                                        type: 'museum'
                                 };
                         }))
 			.concat(_.map(response.aggregations.genre.buckets, function(tag) {
