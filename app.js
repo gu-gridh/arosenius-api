@@ -19,7 +19,7 @@ var client = new elasticsearch.Client({
 //	log: 'trace'
 });
 
-const sql = mysql.createConnection({ ...config.mysql });
+const sql = mysql.createConnection(config.mysql);
 
 // Wrap sql.query as a promise
 function sqlQuery(query, values) {
@@ -985,8 +985,8 @@ function formatDocument({ artwork, images, keywords, exhibitions, sender, recipi
     places: keywords.place,
     genre: keywords.genre,
     exhibitions: exhibitions.length ? exhibitions.map(({ location, year }) => `${location}|${year}`) : undefined,
-    sender: { ...sender },
-    recipient: { ...recipient }
+    sender: sender ? { name: sender.name, birth_year: sender.birth_year, death_year: sender.death_year } : {},
+    recipient: recipient ? { name: recipientname, birth_year: recipient.birth_year, death_year: recipient.death_year } : {},
   };
 }
 

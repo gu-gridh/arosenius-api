@@ -49,6 +49,9 @@ Users are defined in the `users.js` file. All users have the same privileges.
 
 ## Migrating to MySQL
 
+Note that the migration script `es-to-mysql.js` is not written with the server Node version in mind.
+Instead, perform the migration locally (using a newer version of Node) and then transfer to server via `mysqldump`.
+
 1. Run `npm install` to get new dependencies
 2. Run `elasticdump` on the server and scp it to `./arosenius_v4.json`
 3. Create a MySQL database locally
