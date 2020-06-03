@@ -19,7 +19,9 @@ var client = new elasticsearch.Client({
 //	log: 'trace'
 });
 
-const sql = mysql.createConnection(config.mysql);
+const mysqlConfig = config.mysql
+// mysqlConfig.debug = ["ComQueryPacket"];
+const sql = mysql.createConnection(mysqlConfig);
 
 // Wrap sql.query as a promise
 function sqlQuery(query, values) {
@@ -275,6 +277,26 @@ QueryBuilder.prototype.addBool = function(terms, type, caseSensitive, nested, ne
 	getDocuments(req, res, true, true);
 }
 
+// Sort by insert_id (asc) if sort == 'insert_id',
+// Otherwise sort by the sum of:
+// - genre = Målning: 3
+// - type = Teckning: 2
+// - type = Skiss: 1
+// - a random score (between 0 and 1?)
+// showUnpublished and showDeleted default to false
+// Params (AND) req.query[param]:
+// - insert_id: require insert_id >=
+// - museum
+// - bundle
+// - search: begins with, check various fields and related tables, see code
+// - type
+// - person: split by ';', use AND
+// - tags: split by ';', use AND
+// - place
+// - genre
+// - year
+// - hue, saturation, lightness: require to be within given value +/- 15 if the color score is >= 0.2
+// - archivematerial: if 'only': require `type` neither 'fotografi' or 'konstverk'; if 'exclude': opposite
 function createQuery(req, showUnpublished, showDeleted) {
 	var queryBuilder = new QueryBuilder(req, req.query.sort, req.query.showUnpublished == 'true' || showUnpublished == true, req.query.showDeleted || showDeleted);
 
@@ -470,6 +492,29 @@ function createQuery(req, showUnpublished, showDeleted) {
 	return queryBuilder.queryBody;
 }
 
+/** Get the names of artworks matching a range of parameters. */
+function search(params, showUnpublished, showDeleted) {
+	const conds = [];
+	const values = [];
+
+	function cond(cond, ...vals) {
+		conds.push(cond);
+		values.push(...vals);
+	}
+
+	if (params.museum) {
+		cond("museum LIKE ?", `${params.museum}%`);
+	}
+
+	const size = params.showAll ? 10000 : params.count || 100;
+	const from =
+		!params.showAll && params.page > 0 ? (params.page - 1) * size : 0;
+	return sqlQuery(
+		`SELECT name FROM artwork WHERE ${conds.join(" AND ")} LIMIT ?, ?`,
+		[].concat(...values, from, size)
+	).then(rows => rows.map(row => row.name));
+}
+
 function aggsUnique(field, additional = {}) {
 	return {
 		"size": 0,
@@ -617,10 +662,6 @@ function getHighestId(req, res) {
 
 // Search for documents
 function getDocuments(req, res, showUnpublished = false, showDeleted = false) {
-	var pageSize = req.query.count || 100;
-
-	var query = {};
-
 	if (req.query.ids) {
 		// Get specific documents.
 		loadDocuments(req.query.ids.split(";")).then(docs =>
@@ -628,54 +669,19 @@ function getDocuments(req, res, showUnpublished = false, showDeleted = false) {
 				data: docs.length ? docs.map(formatDocument) : undefined
 			})
 		);
-	}
-	else {
+	} else {
 		// Perform search.
-		query = createQuery(req, showUnpublished, showDeleted);
-
-		// Send the search query to Elasticsearch
-		throw new Error("Not implemented in MySQL yet.");
-		client.search({
-			index: config.index,
-			type: 'artwork',
-			// pagination
-			size: req.query.showAll && req.query.showAll == 'true' ? 10000 : pageSize,
-			from: req.query.showAll && req.query.showAll == 'true' ? 0 : (req.query.page && req.query.page > 0 ? (req.query.page-1)*pageSize : 0),
-			body: req.query.ids ? query : query
-		}, function(error, response) {
-			res.json({
-				query: req.query.showQuery == 'true' ? query : null,
-				total: response.hits ? response.hits.total : 0,
-				documents: response.hits ? _.map(response.hits.hits, function(item) {
-					var ret = item._source;
-					ret.id = item._id;
-
-					if (ret.images && ret.images.length > 0) {
-						_.each(ret.images, function(image) {
-							if (image.color && image.color.colors) {
-								delete image.color;
-							}
-							if (image.googleVisionLabels) {
-								delete image.googleVisionLabels;
-							}
-						})
-					}
-
-					if (ret.googleVisionLabels) {
-						delete ret.googleVisionLabels;
-					}
-					if (ret.googleVisionColors) {
-						delete ret.googleVisionColors;
-					}
-
-					if (req.query.simple) {
-						delete ret.images;
-					}
-
-					return ret;
-				}) : []
-			});
-		});
+		search(req.query, showUnpublished, showDeleted).then(ids =>
+			loadDocuments(ids).then(docs =>
+				res.json({
+					total: docs.length,
+					documents: docs.map(doc => {
+						if (req.query.simple) doc.images = undefined;
+						return formatDocument(doc);
+					})
+				})
+			)
+		);
 	}
 }
 
@@ -911,6 +917,7 @@ async function loadDocuments(ids) {
 	return documents;
 }
 
+/** Combine rows related to an object into a single structured object. */
 function formatDocument({ artwork, images, keywords, exhibitions, sender, recipient }) {
 	return {
 		insert_id: artwork.insert_id,
@@ -939,7 +946,7 @@ function formatDocument({ artwork, images, keywords, exhibitions, sender, recipi
 		literature: artwork.literature,
 		reproductions: artwork.reproductions,
 		bundle: artwork.bundle,
-		images: images.map(image => ({
+		images: images && images.map(image => ({
 			image: image.filename,
 			imagesize: {
 				width: image.width,
