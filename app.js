@@ -14,6 +14,11 @@ var app = express();
 var auth = require('basic-auth')
 var busboy = require('connect-busboy');
 
+var knex = require('knex')({
+	client: 'mysql',
+	connection: config.mysql,
+})
+
 var client = new elasticsearch.Client({
 	host: config.es_host
 //	log: 'trace'
@@ -979,24 +984,42 @@ function getMuseums(req, res) {
 }
 
 /** Build SQL query for listing the keywords of a given type. */
-function keywordListQuery(req, type) {
-	return `SELECT keyword.name, count(keyword.id) as count FROM keyword
-		JOIN artwork ON keyword.artwork = artwork.id
-		WHERE NOT artwork.deleted AND keyword.type = "${type}"
-		GROUP BY keyword.name ORDER BY
-		${req.query.sort === "doc_count" ? "count DESC" : "keyword.name ASC"}`;
+function keywordList(req, res, type) {
+	return knex("keyword")
+		.select("keyword.name")
+		.count({ count: "keyword.id" })
+		.join("artwork", "keyword.artwork", "=", "artwork.id")
+		.where("keyword.type", type)
+		.whereNot("artwork.deleted", 1)
+		.groupBy("keyword.name")
+		.orderBy([
+			req.query.sort === "doc_count"
+				? { column: "count", order: "desc" }
+				: { column: "keyword.name", order: "asc" }
+		])
+		.then(rows =>
+			res.json(rows.map(row => ({ value: row.name, doc_count: row.count })))
+		);
 }
 
 function getTypes(req, res) {
-	sql.query(keywordListQuery(req, "type"), (err, results) =>
-		res.json(results.map(row => ({ value: row.name, doc_count: row.count })))
-	);
+	keywordList(req, res, "type");
 }
 
 function getTags(req, res) {
-	sql.query(keywordListQuery(req, "tag"), (err, results) =>
-		res.json(results.map(row => ({ value: row.name, doc_count: row.count })))
-	);
+	keywordList(req, res, "tag");
+}
+
+function getPersons(req, res) {
+	keywordList(req, res, "person");
+}
+
+function getPlaces(req, res) {
+	keywordList(req, res, "place");
+}
+
+function getGenres(req, res) {
+	keywordList(req, res, "genre");
 }
 
 function getTagCloud(req, res) {
@@ -1096,24 +1119,6 @@ function getPagetypes(req, res) {
 			};
 		}));
 	});
-}
-
-function getPersons(req, res) {
-	sql.query(keywordListQuery(req, "person"), (err, results) =>
-		res.json(results.map(row => ({ value: row.name, doc_count: row.count })))
-	);
-}
-
-function getPlaces(req, res) {
-	sql.query(keywordListQuery(req, "place"), (err, results) =>
-		res.json(results.map(row => ({ value: row.name, doc_count: row.count })))
-	);
-}
-
-function getGenres(req, res) {
-	sql.query(keywordListQuery(req, "genre"), (err, results) =>
-		res.json(results.map(row => ({ value: row.name, doc_count: row.count })))
-	);
 }
 
 function getExhibitions(req, res) {
