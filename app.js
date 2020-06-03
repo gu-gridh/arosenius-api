@@ -622,40 +622,15 @@ function getDocuments(req, res, showUnpublished = false, showDeleted = false) {
 	var query = {};
 
 	if (req.query.ids) {
-		// Do a mget query
-		var docIds = req.query.ids.split(';');
-		query = {
-			ids: docIds
-		};
-
-		throw new Error("Not implemented in MySQL yet.");
-		client.mget({
-			index: config.index,
-			type: 'artwork',
-			body: query
-		}, function(error, response) {
+		// Get specific documents.
+		loadDocuments(req.query.ids.split(";")).then(docs =>
 			res.json({
-				query: req.query.showQuery == 'true' ? query : null,
-				documents: response.docs ? _.compact(_.map(response.docs, function(item) {
-					if (item._source) {
-						var ret = item._source;
-						ret.id = item._id;
-
-						if (ret.images && ret.images.length > 0) {
-							_.each(ret.images, function(image) {
-								if (image.color && image.color.colors) {
-									delete image.color.colors;
-								}
-							})
-						}
-
-						return ret;
-					}
-				})) : []
-			});
-		});
+        data: docs.length ? docs.map(formatDocument) : undefined
+			})
+		);
 	}
-	else {
+  else {
+    // Perform search.
 		query = createQuery(req, showUnpublished, showDeleted);
 
 		// Send the search query to Elasticsearch
@@ -887,17 +862,17 @@ function getDocument(req, res) {
 		query.push('collection.museum: "'+req.query.museum+'"');
 	}
 	
-	loadDocuments([req.params.id, 'foo']).then(docs => res.json({
+	loadDocuments([req.params.id]).then(docs => res.json({
 		data: docs.length ? formatDocument(docs[0]) : undefined
 	}))
 }
 
 /** Load a document from the database and format it. */
 async function loadDocuments(ids) {
-  const results = await sqlQuery(
-    "SELECT * FROM artwork WHERE name IN (?) LIMIT 1",
-    [ids]
-  );
+	const results = await sqlQuery(
+		"SELECT * FROM artwork WHERE name IN (?)",
+		[ids],
+	);
   const documents = [];
   for (const artwork of results) {
     // No point in making queries in parallel because MySQL is sequential.
