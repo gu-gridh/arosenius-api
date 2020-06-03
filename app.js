@@ -2,7 +2,6 @@ var express = require('express');
 var bodyParser = require('body-parser');
 var _ = require('underscore');
 var elasticsearch = require('elasticsearch');
-var mysql = require('mysql');
 var IMGR = require('imgr').IMGR;
 var request = require('request');
 var fs = require('fs');
@@ -24,19 +23,6 @@ var client = new elasticsearch.Client({
 	host: config.es_host
 //	log: 'trace'
 });
-
-const mysqlConfig = config.mysql
-// mysqlConfig.debug = ["ComQueryPacket"];
-const sql = mysql.createConnection(mysqlConfig);
-
-// Wrap sql.query as a promise
-function sqlQuery(query, values) {
-	return new Promise((resolve, reject) =>
-		sql.query(query, values, (error, results) =>
-			error ? reject(error) : resolve(results)
-		)
-	);
-}
 
 function authenticate(user) {
 	var users = require('./users').users;
@@ -875,36 +861,24 @@ function getDocument(req, res) {
 
 /** Load a document from the database and format it. */
 async function loadDocuments(ids) {
-	const results = await sqlQuery("SELECT * FROM artwork WHERE name IN (?)", [
-		ids
-	]);
+	const results = await knex("artwork").where("name", "in", ids);
 	const documents = [];
 	for (const artwork of results) {
 		// No point in making queries in parallel because MySQL is sequential.
-		const images = await sqlQuery(
-			"SELECT * FROM image WHERE artwork = ?",
-			artwork.id
-		);
-		const keywords = await sqlQuery(
-			"SELECT * FROM keyword WHERE artwork = ?",
-			artwork.id
-		);
+		const images = await knex("image").where("artwork", artwork.id);
+		const keywords = await knex("keyword").where("artwork", artwork.id);
 		// Group keywords by type.
 		const keywordsByType = {};
 		keywords.forEach(row => {
 			keywordsByType[row.type] = keywordsByType[row.type] || [];
 			keywordsByType[row.type].push(row.name);
 		});
-		const exhibitions = await sqlQuery(
-			"SELECT * FROM exhibition WHERE artwork = ?",
-			artwork.id
-		);
+		const exhibitions = await knex("exhibition").where("artwork", artwork.id);
 		const sender =
-			artwork.sender &&
-			(await sqlQuery("SELECT * FROM person WHERE id = ?", artwork.sender));
+			artwork.sender && (await knex("person").where("id", artwork.sender));
 		const recipient =
 			artwork.recipient &&
-			(await sqlQuery("SELECT * FROM person WHERE id = ?", artwork.recipient));
+			(await knex("person").where("id", artwork.recipient));
 		documents.push({
 			artwork,
 			images,
