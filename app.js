@@ -23,11 +23,11 @@ const sql = mysql.createConnection(config.mysql);
 
 // Wrap sql.query as a promise
 function sqlQuery(query, values) {
-  return new Promise((resolve, reject) =>
-    sql.query(query, values, (error, results) =>
-      error ? reject(error) : resolve(results)
-    )
-  );
+	return new Promise((resolve, reject) =>
+		sql.query(query, values, (error, results) =>
+			error ? reject(error) : resolve(results)
+		)
+	);
 }
 
 function authenticate(user) {
@@ -625,12 +625,12 @@ function getDocuments(req, res, showUnpublished = false, showDeleted = false) {
 		// Get specific documents.
 		loadDocuments(req.query.ids.split(";")).then(docs =>
 			res.json({
-        data: docs.length ? docs.map(formatDocument) : undefined
+				data: docs.length ? docs.map(formatDocument) : undefined
 			})
 		);
 	}
-  else {
-    // Perform search.
+	else {
+		// Perform search.
 		query = createQuery(req, showUnpublished, showDeleted);
 
 		// Send the search query to Elasticsearch
@@ -869,128 +869,127 @@ function getDocument(req, res) {
 
 /** Load a document from the database and format it. */
 async function loadDocuments(ids) {
-	const results = await sqlQuery(
-		"SELECT * FROM artwork WHERE name IN (?)",
-		[ids],
-	);
-  const documents = [];
-  for (const artwork of results) {
-    // No point in making queries in parallel because MySQL is sequential.
-    const images = await sqlQuery(
-      "SELECT * FROM image WHERE artwork = ?",
-      artwork.id
-    );
-    const keywords = await sqlQuery(
-      "SELECT * FROM keyword WHERE artwork = ?",
-      artwork.id
-		)
+	const results = await sqlQuery("SELECT * FROM artwork WHERE name IN (?)", [
+		ids
+	]);
+	const documents = [];
+	for (const artwork of results) {
+		// No point in making queries in parallel because MySQL is sequential.
+		const images = await sqlQuery(
+			"SELECT * FROM image WHERE artwork = ?",
+			artwork.id
+		);
+		const keywords = await sqlQuery(
+			"SELECT * FROM keyword WHERE artwork = ?",
+			artwork.id
+		);
 		// Group keywords by type.
-		const keywordsByType = {}
+		const keywordsByType = {};
 		keywords.forEach(row => {
-			keywordsByType[row.type] = keywordsByType[row.type] || []
-			keywordsByType[row.type].push(row.name)
-		})
-    const exhibitions = await sqlQuery(
-      "SELECT * FROM exhibition WHERE artwork = ?",
-      artwork.id
-    );
-    const sender =
-      artwork.sender &&
-      (await sqlQuery("SELECT * FROM person WHERE id = ?", artwork.sender));
-    const recipient =
-      artwork.recipient &&
-      (await sqlQuery("SELECT * FROM person WHERE id = ?", artwork.recipient));
-    documents.push({
-      artwork,
-      images,
-      keywords: keywordsByType,
-      exhibitions,
-      sender,
-      recipient
-    });
-  }
-  return documents;
+			keywordsByType[row.type] = keywordsByType[row.type] || [];
+			keywordsByType[row.type].push(row.name);
+		});
+		const exhibitions = await sqlQuery(
+			"SELECT * FROM exhibition WHERE artwork = ?",
+			artwork.id
+		);
+		const sender =
+			artwork.sender &&
+			(await sqlQuery("SELECT * FROM person WHERE id = ?", artwork.sender));
+		const recipient =
+			artwork.recipient &&
+			(await sqlQuery("SELECT * FROM person WHERE id = ?", artwork.recipient));
+		documents.push({
+			artwork,
+			images,
+			keywords: keywordsByType,
+			exhibitions,
+			sender,
+			recipient
+		});
+	}
+	return documents;
 }
 
 function formatDocument({ artwork, images, keywords, exhibitions, sender, recipient }) {
 	return {
-    insert_id: artwork.insert_id,
-    id: artwork.name,
-    title: artwork.title,
-    title_en: artwork.title_en,
-    subtitle: artwork.subtitle,
-    deleted: artwork.deleted,
-    published: artwork.published,
-    description: artwork.description,
-    museum_int_id: artwork.museum_int_id.split("|"),
-    collection: {
-      museum: artwork.museum
-    },
-    museumLink: artwork.museum_url,
-    item_date_str: artwork.date_human,
-    item_date_string: artwork.date,
-    size: artwork.size && JSON.parse(artwork.size),
-    technique_material: artwork.technique_material,
-    acquisition: artwork.acquisition,
-    content: artwork.content,
-    inscription: artwork.inscription,
-    material: artwork.material,
-    creator: artwork.creator,
-    signature: artwork.signature,
-    literature: artwork.literature,
-    reproductions: artwork.reproductions,
-    bundle: artwork.bundle,
-    images: images.map(image => ({
-      image: image.filename,
-      imagesize: {
-        width: image.width,
-        height: image.height,
-        type: image.type || undefined
-      },
-      page: {
-        number: image.page,
-        order: image.order,
-        side: image.side,
-        id: image.pageid || undefined
-      }
-    })),
-    type: keywords.type,
-    tags: keywords.tag,
-    persons: keywords.person,
-    places: keywords.place,
-    genre: keywords.genre,
-    exhibitions: exhibitions.length ? exhibitions.map(({ location, year }) => `${location}|${year}`) : undefined,
-    sender: sender ? { name: sender.name, birth_year: sender.birth_year, death_year: sender.death_year } : {},
-    recipient: recipient ? { name: recipientname, birth_year: recipient.birth_year, death_year: recipient.death_year } : {},
-  };
+		insert_id: artwork.insert_id,
+		id: artwork.name,
+		title: artwork.title,
+		title_en: artwork.title_en,
+		subtitle: artwork.subtitle,
+		deleted: artwork.deleted,
+		published: artwork.published,
+		description: artwork.description,
+		museum_int_id: artwork.museum_int_id.split("|"),
+		collection: {
+			museum: artwork.museum
+		},
+		museumLink: artwork.museum_url,
+		item_date_str: artwork.date_human,
+		item_date_string: artwork.date,
+		size: artwork.size && JSON.parse(artwork.size),
+		technique_material: artwork.technique_material,
+		acquisition: artwork.acquisition,
+		content: artwork.content,
+		inscription: artwork.inscription,
+		material: artwork.material,
+		creator: artwork.creator,
+		signature: artwork.signature,
+		literature: artwork.literature,
+		reproductions: artwork.reproductions,
+		bundle: artwork.bundle,
+		images: images.map(image => ({
+			image: image.filename,
+			imagesize: {
+				width: image.width,
+				height: image.height,
+				type: image.type || undefined
+			},
+			page: {
+				number: image.page,
+				order: image.order,
+				side: image.side,
+				id: image.pageid || undefined
+			}
+		})),
+		type: keywords.type,
+		tags: keywords.tag,
+		persons: keywords.person,
+		places: keywords.place,
+		genre: keywords.genre,
+		exhibitions: exhibitions.length ? exhibitions.map(({ location, year }) => `${location}|${year}`) : undefined,
+		sender: sender ? { name: sender.name, birth_year: sender.birth_year, death_year: sender.death_year } : {},
+		recipient: recipient ? { name: recipientname, birth_year: recipient.birth_year, death_year: recipient.death_year } : {},
+	};
 }
 
 function getMuseums(req, res) {
-  sql.query(
-    "SELECT museum FROM artwork WHERE NOT deleted AND museum <> '' GROUP BY museum ORDER BY COUNT(id) DESC",
-    (err, results) => res.json(results.map(row => ({ value: row.museum })))
-  );
+	sql.query(
+		"SELECT museum FROM artwork WHERE NOT deleted AND museum <> '' GROUP BY museum ORDER BY COUNT(id) DESC",
+		(err, results) => res.json(results.map(row => ({ value: row.museum })))
+	);
 }
 
 /** Build SQL query for listing the keywords of a given type. */
 function keywordListQuery(req, type) {
 	return `SELECT keyword.name, count(keyword.id) as count FROM keyword
-    JOIN artwork ON keyword.artwork = artwork.id
-    WHERE NOT artwork.deleted AND keyword.type = "${type}"
-    GROUP BY keyword.name ORDER BY
+		JOIN artwork ON keyword.artwork = artwork.id
+		WHERE NOT artwork.deleted AND keyword.type = "${type}"
+		GROUP BY keyword.name ORDER BY
 		${req.query.sort === "doc_count" ? "count DESC" : "keyword.name ASC"}`;
 }
 
 function getTypes(req, res) {
 	sql.query(keywordListQuery(req, "type"), (err, results) =>
-    res.json(results.map(row => ({ value: row.name, doc_count: row.count })))
-  );
+		res.json(results.map(row => ({ value: row.name, doc_count: row.count })))
+	);
 }
 
 function getTags(req, res) {
 	sql.query(keywordListQuery(req, "tag"), (err, results) =>
-    res.json(results.map(row => ({ value: row.name, doc_count: row.count })))
-  );
+		res.json(results.map(row => ({ value: row.name, doc_count: row.count })))
+	);
 }
 
 function getTagCloud(req, res) {
@@ -1058,13 +1057,13 @@ function getTagCloud(req, res) {
 					type: 'place'
 				};
 			}))
-                        .concat(_.map(response.aggregations.collections.buckets, function(tag) {
-                                return {
-                                        value: tag.key,
-                                        doc_count: tag.doc_count,
-                                        type: 'collection'
-                                };
-                        }))
+			.concat(_.map(response.aggregations.collections.buckets, function(tag) {
+				return {
+					value: tag.key,
+					doc_count: tag.doc_count,
+					type: 'collection'
+				};
+			}))
 			.concat(_.map(response.aggregations.genre.buckets, function(tag) {
 				return {
 					value: tag.key,
@@ -1094,20 +1093,20 @@ function getPagetypes(req, res) {
 
 function getPersons(req, res) {
 	sql.query(keywordListQuery(req, "person"), (err, results) =>
-    res.json(results.map(row => ({ value: row.name, doc_count: row.count })))
-  );
+		res.json(results.map(row => ({ value: row.name, doc_count: row.count })))
+	);
 }
 
 function getPlaces(req, res) {
-  sql.query(keywordListQuery(req, "place"), (err, results) =>
-    res.json(results.map(row => ({ value: row.name, doc_count: row.count })))
-  );
+	sql.query(keywordListQuery(req, "place"), (err, results) =>
+		res.json(results.map(row => ({ value: row.name, doc_count: row.count })))
+	);
 }
 
 function getGenres(req, res) {
-  sql.query(keywordListQuery(req, "genre"), (err, results) =>
-    res.json(results.map(row => ({ value: row.name, doc_count: row.count })))
-  );
+	sql.query(keywordListQuery(req, "genre"), (err, results) =>
+		res.json(results.map(row => ({ value: row.name, doc_count: row.count })))
+	);
 }
 
 function getExhibitions(req, res) {
