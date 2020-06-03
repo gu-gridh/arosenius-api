@@ -16,6 +16,7 @@ var busboy = require('connect-busboy');
 
 var knex = require('knex')({
 	client: 'mysql',
+	debug: true,
 	connection: config.mysql,
 })
 
@@ -499,25 +500,19 @@ function createQuery(req, showUnpublished, showDeleted) {
 
 /** Get the names of artworks matching a range of parameters. */
 function search(params, showUnpublished, showDeleted) {
-	const conds = [];
-	const values = [];
-
-	function cond(cond, ...vals) {
-		conds.push(cond);
-		values.push(...vals);
-	}
-
-	if (params.museum) {
-		cond("museum LIKE ?", `${params.museum}%`);
-	}
-
 	const size = params.showAll ? 10000 : params.count || 100;
 	const from =
 		!params.showAll && params.page > 0 ? (params.page - 1) * size : 0;
-	return sqlQuery(
-		`SELECT name FROM artwork WHERE ${conds.join(" AND ")} LIMIT ?, ?`,
-		[].concat(...values, from, size)
-	).then(rows => rows.map(row => row.name));
+
+	const query = knex("artwork").select("name").limit(size).offset(from);
+
+	if (params.museum) {
+		query.where("museum", "like", `${params.museum}%`);
+	}
+
+	// TODO More params...
+
+	return query.then(rows => rows.map(row => row.name));
 }
 
 function aggsUnique(field, additional = {}) {
@@ -977,10 +972,13 @@ function formatDocument({ artwork, images, keywords, exhibitions, sender, recipi
 }
 
 function getMuseums(req, res) {
-	sql.query(
-		"SELECT museum FROM artwork WHERE NOT deleted AND museum <> '' GROUP BY museum ORDER BY COUNT(id) DESC",
-		(err, results) => res.json(results.map(row => ({ value: row.museum })))
-	);
+	knex("artwork")
+		.select("museum")
+		.whereNot("deleted", 1)
+		.whereNot("museum", "")
+		.groupBy("museum")
+		.orderByRaw("count(id) desc")
+		.then(rows => res.json(rows.map(row => ({ value: row.museum }))));
 }
 
 /** Build SQL query for listing the keywords of a given type. */
