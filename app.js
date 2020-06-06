@@ -488,7 +488,17 @@ function createQuery(req, showUnpublished, showDeleted) {
 
 /** Get the names of artworks matching a range of parameters. */
 async function search(params) {
-	const query = knex("artwork").select("name");
+	const query = knex("artwork").select("artwork.name");
+
+	joinKeyword = (query, type) =>
+		query.leftJoin(
+			{ [`kw${type}`]: "keyword" },
+			{
+				[`kw${type}.type`]: knex.raw(`'${type}'`),
+				[`kw${type}.artwork`]: "artwork.id"
+			}
+		);
+	joinKeyword(query, "genre");
 
 	if (params.museum) {
 		query.where("museum", "like", `${params.museum}%`);
@@ -499,18 +509,42 @@ async function search(params) {
 	if (!params.showDeleted) {
 		query.where("deleted", 0);
 	}
+	// The genre keyword is always joined, for sorting.
+	if (params.genre) {
+		query.where("kwgenre.name", params.genre);
+	}
+	// For other keyword types, join if necessary.
+	["type", "tag", "person", "place"].forEach(keywordType => {
+		if (params[keywordType]) {
+			joinKeyword(query, keywordType);
+			query.where(`kw${keywordType}.name`, params[keywordType]);
+		}
+	});
 	// TODO More params...
 
+	// Determine sorting.
+	if (params.sort === "insert_id") {
+		query.orderBy("insert_id", "asc");
+	} else {
+		query.select({
+			score: knex.raw(`IF(kwgenre.name = 'Målning', 1, 0) + RAND() * 1.1`)
+		});
+		query.orderBy("score", "desc");
+	}
+
 	// Count before applying limit.
-	const total = (await query.clone().count({ count: "id" }))[0].count
+	const total = (await query.clone().count({ count: "artwork.id" }))[0].count;
 	// Apply limit and execute.
 	const size = params.showAll ? 10000 : params.count || 100;
 	const from =
 		!params.showAll && params.page > 0 ? (params.page - 1) * size : 0;
-	return query.limit(size).offset(from).then(rows => ({
-		total,
-		ids: rows.map(row => row.name)
-	}));
+	return query
+		.limit(size)
+		.offset(from)
+		.then(rows => ({
+			total,
+			ids: rows.map(row => row.name)
+		}));
 }
 
 function aggsUnique(field, additional = {}) {

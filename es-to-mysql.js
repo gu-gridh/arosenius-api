@@ -112,10 +112,10 @@ async function main() {
         );
       await Promise.all([
         insertKeyword("type", "type", "y"),
+        insertKeyword("genre", "genre", "g"),
         insertKeyword("tags", "tag", "t"),
         insertKeyword("persons", "person", "p"),
         insertKeyword("places", "place", "l"),
-        insertKeyword("genre", "genre", "g"),
         ...artwork.images.map(image =>
           insertSet(
             "image",
