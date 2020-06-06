@@ -265,8 +265,10 @@ QueryBuilder.prototype.addBool = function(terms, type, caseSensitive, nested, ne
       }
  *
  */
- function adminGetDocuments(req, res) {
-	getDocuments(req, res, true, true);
+function adminGetDocuments(req, res) {
+	req.query.showUnpublished = true
+	req.query.showDeleted = true
+	getDocuments(req, res);
 }
 
 // Sort by insert_id (asc) if sort == 'insert_id',
@@ -485,20 +487,30 @@ function createQuery(req, showUnpublished, showDeleted) {
 }
 
 /** Get the names of artworks matching a range of parameters. */
-function search(params, showUnpublished, showDeleted) {
-	const size = params.showAll ? 10000 : params.count || 100;
-	const from =
-		!params.showAll && params.page > 0 ? (params.page - 1) * size : 0;
-
-	const query = knex("artwork").select("name").limit(size).offset(from);
+async function search(params) {
+	const query = knex("artwork").select("name");
 
 	if (params.museum) {
 		query.where("museum", "like", `${params.museum}%`);
 	}
-
+	if (!params.showUnpublished) {
+		query.where("published", 1);
+	}
+	if (!params.showDeleted) {
+		query.where("deleted", 0);
+	}
 	// TODO More params...
 
-	return query.then(rows => rows.map(row => row.name));
+	// Count before applying limit.
+	const total = (await query.clone().count({ count: "id" }))[0].count
+	// Apply limit and execute.
+	const size = params.showAll ? 10000 : params.count || 100;
+	const from =
+		!params.showAll && params.page > 0 ? (params.page - 1) * size : 0;
+	return query.limit(size).offset(from).then(rows => ({
+		total,
+		ids: rows.map(row => row.name)
+	}));
 }
 
 function aggsUnique(field, additional = {}) {
@@ -647,7 +659,7 @@ function getHighestId(req, res) {
 }
 
 // Search for documents
-function getDocuments(req, res, showUnpublished = false, showDeleted = false) {
+function getDocuments(req, res) {
 	if (req.query.ids) {
 		// Get specific documents.
 		loadDocuments(req.query.ids.split(";")).then(docs =>
@@ -657,10 +669,10 @@ function getDocuments(req, res, showUnpublished = false, showDeleted = false) {
 		);
 	} else {
 		// Perform search.
-		search(req.query, showUnpublished, showDeleted).then(ids =>
-			loadDocuments(ids).then(docs =>
+		search(req.query).then(result =>
+			loadDocuments(result.ids).then(docs =>
 				res.json({
-					total: docs.length,
+					total: result.total,
 					documents: docs.map(doc => {
 						if (req.query.simple) doc.images = undefined;
 						return formatDocument(doc);
