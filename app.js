@@ -539,13 +539,22 @@ async function search(params) {
 			query.whereNotNull("archive_keyword.id");
 		}
 	}
-	// TODO More params...
+	if (params.search) {
+		query.where(function () {
+			// Match by begins-with. Use regexp for multi-word fields.
+			this.where("title", "like", knex.raw("?", [`${params.search}%`]))
+				.orWhere("description", "regexp", knex.raw("?", [`\\b${params.search}`]))
+				.orWhere("museum", "like", knex.raw("?", [`${params.search}%`]))
+				.orWhere("museum_int_id", "regexp", knex.raw("?", [`\\b${params.search}`]))
+				.orWhere("material", "regexp", knex.raw("?", [`\\b${params.search}`]));
+			// TODO Match keywords
+		});
+	}
 
 	// Determine sorting.
 	if (params.sort === "insert_id") {
 		query.orderBy("insert_id", "asc");
 	} else {
-		// TODO Målning: 3, Teckning: 2, Skiss: 1
 		const sortGenres = ["Målning", "Teckning", "Skiss"];
 		sortGenres.forEach((genre, i) =>
 			query.leftJoin(
@@ -560,6 +569,7 @@ async function search(params) {
 		const scores = sortGenres.map(
 			(_, i) => `IF(sort${i}.id, ${sortGenres.length - i}, 0)`
 		);
+		// TODO Add search match to score: 0.1 per field, 0.5 for title & description, 1.0 for type & genre.
 		query.select({
 			score: knex.raw(`${scores.join(" + ")} + RAND() * 1.1`)
 		});
