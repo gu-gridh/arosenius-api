@@ -1021,7 +1021,7 @@ function formatDocument({ artwork, images, keywords, exhibitions, sender, recipi
 		genre: keywords.genre,
 		exhibitions: exhibitions.length ? exhibitions.map(({ location, year }) => `${location}|${year}`) : undefined,
 		sender: sender ? { name: sender.name, birth_year: sender.birth_year, death_year: sender.death_year } : {},
-		recipient: recipient ? { name: recipientname, birth_year: recipient.birth_year, death_year: recipient.death_year } : {},
+		recipient: recipient ? { name: recipient.name, birth_year: recipient.birth_year, death_year: recipient.death_year } : {},
 	};
 }
 
