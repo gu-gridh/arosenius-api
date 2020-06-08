@@ -274,8 +274,8 @@ function adminGetDocuments(req, res) {
 // Sort by insert_id (asc) if sort == 'insert_id',
 // Otherwise sort by the sum of:
 // - genre = Målning: 3
-// - type = Teckning: 2
-// - type = Skiss: 1
+// - genre = Teckning: 2
+// - genre = Skiss: 1
 // - a random score (between 0 and 1?)
 // showUnpublished and showDeleted default to false
 // Params (AND) req.query[param]:
@@ -500,9 +500,6 @@ async function search(params) {
 		);
 	joinKeyword(query, "genre");
 
-	if (params.museum) {
-		query.where("museum", "like", `${params.museum}%`);
-	}
 	if (!params.showUnpublished) {
 		query.where("published", 1);
 	}
@@ -520,12 +517,40 @@ async function search(params) {
 			query.where(`kw${keywordType}.name`, params[keywordType]);
 		}
 	});
+	if (params.museum) {
+		query.where("museum", "like", `${params.museum}%`);
+	}
+	if (params.bundle) {
+		query.where("bundle", "like", `${params.bundle}%`);
+	}
+	if (params.year) {
+		query.where(knex.raw("substring(date, 1, 4) = ?", [params.year]))
+	}
+	if (params.archivematerial) {
+		// Join with the keyword table to find out if type has either Fotografi or Konstverk.
+		query.leftJoin({ archive_keyword: "keyword" }, function () {
+			this.on("archive_keyword.type", knex.raw("?", ["type"]))
+				.on("archive_keyword.artwork", "artwork.id")
+				.on(function () {
+					this.on("archive_keyword.name", knex.raw("?", ["Fotografi"]));
+					this.orOn("archive_keyword.name", knex.raw("?", ["Konstverk"]));
+				});
+		});
+		if (params.archivematerial == "only") {
+			// Require that both Fotografi and Konstverk are missing from type.
+			query.whereNull("archive_keyword.id");
+		} else if (params.archivematerial == "exclude") {
+			// Require that type has either Fotografi and Konstverk.
+			query.whereNotNull("archive_keyword.id");
+		}
+	}
 	// TODO More params...
 
 	// Determine sorting.
 	if (params.sort === "insert_id") {
 		query.orderBy("insert_id", "asc");
 	} else {
+		// TODO Målning: 3, Teckning: 2, Skiss: 1
 		query.select({
 			score: knex.raw(`IF(kwgenre.name = 'Målning', 1, 0) + RAND() * 1.1`)
 		});
