@@ -35,36 +35,6 @@
             }
           }
         },
-        "color": {
-          "properties": {
-            "colors": {
-              "properties": {
-                "five": {
-                  "type": "nested",
-                  "properties": {
-                    "rgb": {
-                      "type": "long"
-                    },
-                    "temperature": {
-                      "type": "long"
-                    }
-                  }
-                },
-                "three": {
-                  "type": "nested",
-                  "properties": {
-                    "rgb": {
-                      "type": "long"
-                    },
-                    "temperature": {
-                      "type": "long"
-                    }
-                  }
-                }
-              }
-            }
-          }
-        },
         "content": {
           "type": "string"
         },
@@ -119,36 +89,6 @@
         "images": {
           "type": "nested",
           "properties": {
-            "color": {
-              "properties": {
-                "colors": {
-                  "properties": {
-                    "five": {
-                      "type": "nested",
-                      "properties": {
-                        "rgb": {
-                          "type": "long"
-                        },
-                        "temperature": {
-                          "type": "long"
-                        }
-                      }
-                    },
-                    "three": {
-                      "type": "nested",
-                      "properties": {
-                        "rgb": {
-                          "type": "long"
-                        },
-                        "temperature": {
-                          "type": "long"
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            },
             "googleVisionColors": {
               "properties": {
                 "color": {
