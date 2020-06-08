@@ -498,25 +498,20 @@ async function search(params) {
 				[`kw${type}.artwork`]: "artwork.id"
 			}
 		);
-	joinKeyword(query, "genre");
 
+	// For other keyword types, join if necessary.
+	["type", 'genre', "tag", "person", "place"].forEach(keywordType => {
+		if (params[keywordType]) {
+			joinKeyword(query, keywordType);
+			query.where(`kw${keywordType}.name`, params[keywordType]);
+		}
+	});
 	if (!params.showUnpublished) {
 		query.where("published", 1);
 	}
 	if (!params.showDeleted) {
 		query.where("deleted", 0);
 	}
-	// The genre keyword is always joined, for sorting.
-	if (params.genre) {
-		query.where("kwgenre.name", params.genre);
-	}
-	// For other keyword types, join if necessary.
-	["type", "tag", "person", "place"].forEach(keywordType => {
-		if (params[keywordType]) {
-			joinKeyword(query, keywordType);
-			query.where(`kw${keywordType}.name`, params[keywordType]);
-		}
-	});
 	if (params.museum) {
 		query.where("museum", "like", `${params.museum}%`);
 	}
@@ -551,8 +546,22 @@ async function search(params) {
 		query.orderBy("insert_id", "asc");
 	} else {
 		// TODO Målning: 3, Teckning: 2, Skiss: 1
+		const sortGenres = ["Målning", "Teckning", "Skiss"];
+		sortGenres.forEach((genre, i) =>
+			query.leftJoin(
+				{ [`sort${i}`]: "keyword" },
+				{
+					[`sort${i}.type`]: knex.raw("?", ["genre"]),
+					[`sort${i}.artwork`]: "artwork.id",
+					[`sort${i}.name`]: knex.raw("?", [genre])
+				}
+			)
+		);
+		const scores = sortGenres.map(
+			(_, i) => `IF(sort${i}.id, ${sortGenres.length - i}, 0)`
+		);
 		query.select({
-			score: knex.raw(`IF(kwgenre.name = 'Målning', 1, 0) + RAND() * 1.1`)
+			score: knex.raw(`${scores.join(" + ")} + RAND() * 1.1`)
 		});
 		query.orderBy("score", "desc");
 	}
