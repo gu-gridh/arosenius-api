@@ -490,19 +490,26 @@ function createQuery(req, showUnpublished, showDeleted) {
 async function search(params) {
 	const query = knex("artwork").select("artwork.name");
 
-	joinKeyword = (query, type) =>
+	// Ensure a table join for a keyword type.
+	const keywordsJoined = [];
+	const joinKeyword = (type) => {
+		console.log('joining', type, keywordsJoined)
+		if (keywordsJoined.includes(type)) return;
 		query.leftJoin(
 			{ [`kw${type}`]: "keyword" },
 			{
 				[`kw${type}.type`]: knex.raw(`'${type}'`),
 				[`kw${type}.artwork`]: "artwork.id"
 			}
-		);
+		)
+		keywordsJoined.push(type)
+	};
 
 	// For other keyword types, join if necessary.
-	["type", 'genre', "tag", "person", "place"].forEach(keywordType => {
+	const keywordTypes = ["type", "genre", "tag", "person", "place"];
+	keywordTypes.forEach(keywordType => {
 		if (params[keywordType]) {
-			joinKeyword(query, keywordType);
+			joinKeyword(keywordType);
 			query.where(`kw${keywordType}.name`, params[keywordType]);
 		}
 	});
@@ -542,14 +549,22 @@ async function search(params) {
 	if (params.search) {
 		query.where(function () {
 			// Match by begins-with. Use regexp for multi-word fields.
-			this.where("title", "like", knex.raw("?", [`${params.search}%`]))
-				.orWhere("description", "regexp", knex.raw("?", [`\\b${params.search}`]))
-				.orWhere("museum", "like", knex.raw("?", [`${params.search}%`]))
-				.orWhere("museum_int_id", "regexp", knex.raw("?", [`\\b${params.search}`]))
-				.orWhere("material", "regexp", knex.raw("?", [`\\b${params.search}`]));
-			// TODO Match keywords
+			const beginsWith = knex.raw("?", [`${params.search}%`]);
+			const wordBeginsWith = knex.raw("?", [`\\b${params.search}`]);
+			this.where("title", "like", beginsWith)
+				.orWhere("description", "regexp", wordBeginsWith)
+				.orWhere("museum", "like", beginsWith)
+				.orWhere("museum_int_id", "regexp", wordBeginsWith)
+				.orWhere("material", "regexp", wordBeginsWith);
+			keywordTypes.forEach(keywordType => {
+				joinKeyword(keywordType);
+				this.orWhere(`kw${keywordType}.name`, "like", beginsWith);
+			});
 		});
 	}
+	
+	// TODO The kw* joins are missing if I remove this line???
+	query.toString();
 
 	// Determine sorting.
 	if (params.sort === "insert_id") {
