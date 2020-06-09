@@ -424,12 +424,11 @@ function createQuery(req, showUnpublished, showDeleted) {
 
 /** Get the names of artworks matching a range of parameters. */
 async function search(params) {
-	const query = knex("artwork").select("artwork.name");
+	const query = knex("artwork").distinct("artwork.name");
 
 	// Ensure a table join for a keyword type.
 	const keywordsJoined = [];
 	const joinKeyword = (type) => {
-		console.log('joining', type, keywordsJoined)
 		if (keywordsJoined.includes(type)) return;
 		query.leftJoin(
 			{ [`kw${type}`]: "keyword" },
@@ -552,23 +551,13 @@ async function search(params) {
 			)
 		});
 		// The random factor "smudges out" the boundaries between sections.
-		query.orderBy(knex.raw(`sort_score + search_score + RAND() * 1.1`), "desc");
+		query.orderBy(
+			knex.raw(`sort_score + search_score + RAND(NOW() DIV 2000) * 1.1`),
+			"desc"
+		);
 	}
 
-	// Count before applying limit.
-	const total = (await query.clone().count({ count: "artwork.id" }))[0].count;
-	// Apply limit and execute.
-	const size = params.showAll ? 10000 : params.count || 100;
-	const from =
-		!params.showAll && params.page > 0 ? (params.page - 1) * size : 0;
-	return query
-		.limit(size)
-		.offset(from)
-		.debug(true)
-		.then(rows => ({
-			total,
-			ids: rows.map(row => row.name)
-		}));
+	return query.then(rows => rows.map(row => row.name));
 }
 
 function aggsUnique(field, additional = {}) {
@@ -727,17 +716,22 @@ function getDocuments(req, res) {
 		);
 	} else {
 		// Perform search.
-		search(req.query).then(result =>
-			loadDocuments(result.ids).then(docs =>
+		search(req.query).then(names => {
+			const size = req.query.showAll ? 10000 : req.query.count || 100;
+			const from =
+				!req.query.showAll && req.query.page > 0
+					? (req.query.page - 1) * size
+					: 0;
+			loadDocuments(names.slice(from, from + size)).then(docs =>
 				res.json({
-					total: result.total,
+					total: names.length,
 					documents: docs.map(doc => {
 						if (req.query.simple) doc.images = undefined;
 						return formatDocument(doc);
 					})
 				})
 			)
-		);
+		});
 	}
 }
 
