@@ -443,9 +443,11 @@ async function search(params) {
 	// For other keyword types, join if necessary.
 	const keywordTypes = ["type", "genre", "tag", "person", "place"];
 	keywordTypes.forEach(keywordType => {
-		if (params[keywordType]) {
+		// Interpret "tags" like "tag".
+		const value = params[keywordType] || params[`${keywordType}s`]
+		if (value) {
 			joinKeyword(keywordType);
-			query.where(`kw${keywordType}.name`, params[keywordType]);
+			query.where(`kw${keywordType}.name`, value);
 		}
 	});
 	if (!params.showUnpublished) {
@@ -482,6 +484,7 @@ async function search(params) {
 		}
 	}
 	if (params.search) {
+		// TODO Check if this matches keywords correctly. Won't it just check one of the keywords per type?
 		// Boost fields differently.
 		const colScores = {
 			title: 0.5,
@@ -498,9 +501,9 @@ async function search(params) {
 
 		// Build expressions for scoring by regexp.
 		const searchExprs = Object.keys(colScores).map(col =>
-			knex.raw("IF(?? REGEXP ?, ?, 0)", [
+			knex.raw("IF(?? LIKE ?, ?, 0)", [
 				col,
-				`\\b${params.search}`,
+				`${params.search}%`,
 				colScores[col]
 			])
 		);
