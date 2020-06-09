@@ -72,6 +72,7 @@ CREATE TABLE `image` (
   `pageid` VARCHAR(20),
   `order` INT(1),
   `side` VARCHAR(20),
+  `color` VARCHAR(50),
   FOREIGN KEY (`artwork`) REFERENCES `artwork` (`id`)
 );
 

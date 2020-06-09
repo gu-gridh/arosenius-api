@@ -289,7 +289,6 @@ function adminGetDocuments(req, res) {
 // - place
 // - genre
 // - year
-// - hue, saturation, lightness: require to be within given value +/- 15 if the color score is >= 0.2
 // - archivematerial: if 'only': require `type` neither 'fotografi' or 'konstverk'; if 'exclude': opposite
 function createQuery(req, showUnpublished, showDeleted) {
 	var queryBuilder = new QueryBuilder(req, req.query.sort, req.query.showUnpublished == 'true' || showUnpublished == true, req.query.showDeleted || showDeleted);
@@ -970,7 +969,11 @@ function formatDocument({ artwork, images, keywords, exhibitions, sender, recipi
 				order: image.order,
 				side: image.side,
 				id: image.pageid || undefined
-			}
+			},
+			googleVisionColors: image.color ? [{
+				color: JSON.parse(image.color),
+				score: 1,
+			}] : undefined,
 		})),
 		type: keywords.type,
 		tags: keywords.tag,
