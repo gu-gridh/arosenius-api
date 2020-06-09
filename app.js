@@ -1,9 +1,7 @@
 var express = require('express');
 var bodyParser = require('body-parser');
 var _ = require('underscore');
-var elasticsearch = require('elasticsearch');
 var IMGR = require('imgr').IMGR;
-var request = require('request');
 var fs = require('fs');
 var path = require('path');
 
@@ -19,10 +17,7 @@ var knex = require('knex')({
 	connection: config.mysql,
 })
 
-var client = new elasticsearch.Client({
-	host: config.es_host
-//	log: 'trace'
-});
+var client = null
 
 function authenticate(user) {
 	var users = require('./users').users;
