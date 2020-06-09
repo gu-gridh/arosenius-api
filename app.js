@@ -15,7 +15,7 @@ var busboy = require('connect-busboy');
 
 var knex = require('knex')({
 	client: 'mysql',
-	debug: true,
+	// debug: true,
 	connection: config.mysql,
 })
 
@@ -483,30 +483,57 @@ async function search(params) {
 		}
 	}
 	if (params.search) {
-		query.where(function () {
-			// Match by begins-with. Use regexp for multi-word fields.
-			const beginsWith = knex.raw("?", [`${params.search}%`]);
-			const wordBeginsWith = knex.raw("?", [`\\b${params.search}`]);
-			this.where("title", "like", beginsWith)
-				.orWhere("description", "regexp", wordBeginsWith)
-				.orWhere("museum", "like", beginsWith)
-				.orWhere("museum_int_id", "regexp", wordBeginsWith)
-				.orWhere("material", "regexp", wordBeginsWith);
-			keywordTypes.forEach(keywordType => {
-				joinKeyword(keywordType);
-				this.orWhere(`kw${keywordType}.name`, "like", beginsWith);
-			});
+		// Boost fields differently.
+		const colScores = {
+			title: 0.5,
+			description: 0.5,
+			museum: 0.1,
+			museum_int_id: 0.1,
+			material: 0.1,
+			"kwtype.name": 1.0,
+			"kwgenre.name": 1.0,
+			"kwtag.name": 0.1,
+			"kwplace.name": 0.1,
+			"kwperson.name": 0.1
+		};
+
+		// Build expressions for scoring by regexp.
+		const searchExprs = Object.keys(colScores).map(col =>
+			knex.raw("IF(?? REGEXP ?, ?, 0)", [
+				col,
+				`\\b${params.search}`,
+				colScores[col]
+			])
+		);
+
+		// Join all keyword types.
+		keywordTypes.forEach(keywordType => {
+			joinKeyword(keywordType);
 		});
+
+		// Group conditions with OR: require a match in at least one of the fields.
+		query.where(function () {
+			searchExprs.forEach(expr => this.orWhere(expr, ">", 0));
+		});
+
+		// Sum up the score for sorting.
+		// Unfortunately, this alias cannot be re-used in the where-clause above, so the query gets very long.
+		query.select({
+			search_score: knex.raw(
+				searchExprs.map(() => "?").join(" + "),
+				searchExprs
+			)
+		});
+	} else {
+		query.select({ search_score: 0 });
 	}
 	
-	// TODO The kw* joins are missing if I remove this line???
-	query.toString();
-
 	// Determine sorting.
 	if (params.sort === "insert_id") {
 		query.orderBy("insert_id", "asc");
 	} else {
 		const sortGenres = ["Målning", "Teckning", "Skiss"];
+		// Join the keyword table (again) specifically to find out whether these keywords are present.
 		sortGenres.forEach((genre, i) =>
 			query.leftJoin(
 				{ [`sort${i}`]: "keyword" },
@@ -517,14 +544,15 @@ async function search(params) {
 				}
 			)
 		);
-		const scores = sortGenres.map(
-			(_, i) => `IF(sort${i}.id, ${sortGenres.length - i}, 0)`
-		);
-		// TODO Add search match to score: 0.1 per field, 0.5 for title & description, 1.0 for type & genre.
 		query.select({
-			score: knex.raw(`${scores.join(" + ")} + RAND() * 1.1`)
+			sort_score: knex.raw(
+				sortGenres
+					.map((_, i) => `IF(sort${i}.id, ${sortGenres.length - i}, 0)`)
+					.join(" + ")
+			)
 		});
-		query.orderBy("score", "desc");
+		// The random factor "smudges out" the boundaries between sections.
+		query.orderBy(knex.raw(`sort_score + search_score + RAND() * 1.1`), "desc");
 	}
 
 	// Count before applying limit.
@@ -536,6 +564,7 @@ async function search(params) {
 	return query
 		.limit(size)
 		.offset(from)
+		.debug(true)
 		.then(rows => ({
 			total,
 			ids: rows.map(row => row.name)
