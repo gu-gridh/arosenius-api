@@ -544,12 +544,13 @@ async function search(params) {
 				}
 			)
 		);
+		// Build an "else if" expression using recursion.
+		const scoreExpr = (i = 0) =>
+			i < sortGenres.length
+				? `IF(sort${i}.id, ${sortGenres.length - i}, ${scoreExpr(i + 1)})`
+				: 0;
 		query.select({
-			sort_score: knex.raw(
-				sortGenres
-					.map((_, i) => `IF(sort${i}.id, ${sortGenres.length - i}, 0)`)
-					.join(" + ")
-			)
+			sort_score: knex.raw(scoreExpr())
 		});
 		// The random factor "smudges out" the boundaries between sections.
 		query.orderBy(
