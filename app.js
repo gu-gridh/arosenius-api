@@ -561,15 +561,6 @@ function getDocuments(req, res, showUnpublished = false, showDeleted = false) {
 					if (item._source) {
 						var ret = item._source;
 						ret.id = item._id;
-
-						if (ret.images && ret.images.length > 0) {
-							_.each(ret.images, function(image) {
-								if (image.color && image.color.colors) {
-									delete image.color.colors;
-								}
-							})
-						}
-
 						return ret;
 					}
 				})) : []
@@ -594,19 +585,6 @@ function getDocuments(req, res, showUnpublished = false, showDeleted = false) {
 				documents: response.hits ? _.map(response.hits.hits, function(item) {
 					var ret = item._source;
 					ret.id = item._id;
-
-					if (ret.images && ret.images.length > 0) {
-						_.each(ret.images, function(image) {
-							if (image.color && image.color.colors) {
-								delete image.color;
-							}
-						})
-					}
-
-					if (ret.googleVisionColors) {
-						delete ret.googleVisionColors;
-					}
-
 					if (req.query.simple) {
 						delete ret.images;
 					}
@@ -651,9 +629,6 @@ function putCombineDocuments(req, res) {
 					if (document._source.page) {
 						imageMetadata.page = document._source.page;
 					}
-					if (document._source.color) {
-						imageMetadata.color = document._source.color;
-					}
 					if (document._source.imagesize) {
 						imageMetadata.imagesize = document._source.imagesize;
 					}
@@ -681,7 +656,6 @@ function putCombineDocuments(req, res) {
 				body: {
 					doc: {
 						images: imageMetadataArray,
-						color: null
 					}
 				}
 			}, function(error, response) {
