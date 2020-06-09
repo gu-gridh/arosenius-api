@@ -57,8 +57,9 @@ CREATE TABLE `keyword` (
 	`artwork` INT(6) UNSIGNED NOT NULL,
 	`type` VARCHAR(50) NOT NULL,
 	`name` VARCHAR(50) NOT NULL,
-  FOREIGN KEY (`artwork`) REFERENCES `artwork` (`id`),
-	UNIQUE KEY (`artwork`, `type`, `name`)
+	FOREIGN KEY (`artwork`) REFERENCES `artwork` (`id`),
+	UNIQUE KEY (`artwork`, `type`, `name`),
+	KEY (`type`, `name`) -- also includes index on only `type`
 );
 
 CREATE TABLE `image` (
