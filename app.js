@@ -501,9 +501,12 @@ async function search(params) {
 
 		// Build expressions for scoring by regexp.
 		const searchExprs = Object.keys(colScores).map(col =>
-			knex.raw("IF(?? LIKE ?, ?, 0)", [
+			// Find term either in the beginning or following a space.
+			knex.raw("IF(?? LIKE ? OR ?? LIKE ?, ?, 0)", [
 				col,
 				`${params.search}%`,
+				col,
+				`% ${params.search}%`,
 				colScores[col]
 			])
 		);
