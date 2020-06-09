@@ -747,9 +747,6 @@ function putCombineDocuments(req, res) {
 					if (document._source.page) {
 						imageMetadata.page = document._source.page;
 					}
-					if (document._source.color) {
-						imageMetadata.color = document._source.color;
-					}
 					if (document._source.imagesize) {
 						imageMetadata.imagesize = document._source.imagesize;
 					}
@@ -778,7 +775,6 @@ function putCombineDocuments(req, res) {
 				body: {
 					doc: {
 						images: imageMetadataArray,
-						color: null
 					}
 				}
 			}, function(error, response) {
