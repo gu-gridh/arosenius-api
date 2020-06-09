@@ -373,19 +373,6 @@ function createQuery(req, showUnpublished, showDeleted) {
 		}, this));
 	}
 
-	if (req.query.google_label) {
-		var persons = req.query.google_label.split(';');
-
-		_.each(persons, _.bind(function(google_label) {
-			// terms, type, caseSensitive, nested, nestedPath, disableProcessing
-//		queryBuilder.addBool(terms, 'must', false, true, colorPath);
-
-			queryBuilder.addBool([
-				['googleVisionLabels.label', google_label]
-			], 'must', false, true, 'googleVisionLabels');
-		}, this));
-	}
-
 	// Get documents tagged with a specific place/places
 	if (req.query.place) {
 		queryBuilder.addBool([
@@ -415,56 +402,6 @@ function createQuery(req, showUnpublished, showDeleted) {
 		], 'must', false, false, null, true);
 
 		//terms, type, caseSensitive, nested, nestedPath, disableProcessing
-	}
-
-	// Get documents of specific color - rewrite needed
-	if (req.query.hue || req.query.saturation || req.query.lightness) {
-		var colorMargins = 15;
-		var colorPath = 'googleVisionColors';
-
-		var terms = [];
-
-		if (req.query.hue) {
-			terms.push([
-				colorPath+'.hsv.h',
-				{
-					from: Number(req.query.hue)-colorMargins,
-					to: Number(req.query.hue)+colorMargins
-				},
-				'range'
-			]);
-		}
-		if (req.query.saturation) {
-			terms.push([
-				colorPath+'.hsv.s',
-				{
-					from: Number(req.query.saturation)-colorMargins,
-					to: Number(req.query.saturation)+colorMargins
-				},
-				'range'
-			]);
-		}
-		if (req.query.lightness) {
-			terms.push([
-				colorPath+'.hsv.v',
-				{
-					from: Number(req.query.lightness)-colorMargins,
-					to: Number(req.query.lightness)+colorMargins
-				},
-				'range'
-			]);
-		}
-
-		terms.push([
-			colorPath+'.score',
-			{
-				from: 0.2,
-				to: 1
-			},
-			'range'
-		]);
-
-		queryBuilder.addBool(terms, 'must', false, true, colorPath);
 	}
 
 	// Defines if search should exclusively return artworks and photographs (images) or exclude artworks and photographs
@@ -1168,7 +1105,7 @@ function getTagCloud(req, res) {
 				return {
 					value: tag.key,
 					doc_count: tag.doc_count,
-					type: 'collection'
+					type: 'museum'
 				};
 			}))
 			.concat(_.map(response.aggregations.genre.buckets, function(tag) {
@@ -1210,187 +1147,6 @@ function getExhibitions(req, res) {
 				value: genre.key
 			};
 		}));
-	});
-}
-
-function getGoogleVisionLabels(req, res) {
-	var query = createQuery(req);
-
-	throw new Error("Not implemented in MySQL yet.");
-	client.search({
-		index: config.index,
-		type: 'artwork',
-		body: {
-			query: query.query,
-			size: 0,
-			aggs: {
-				googleVison: {
-					nested: {
-						path: "googleVisionLabels"
-					},
-					aggs: {
-						labels: {
-							terms: {
-								field: "googleVisionLabels.label",
-								size: 1000,
-								exclude: "font|paper|text|document|art|artwork|drawing|illustration|visual arts|material|handwriting|writing|paper product|painting|black and white|sketch|letter|picture frame|calligraphy|portrait|history|photograph|angle|figure drawing|stock photography|vintage clothing|line|snapshot|paint|watercolor paint|monochrome"
-							}
-						}
-					}
-				}
-			}
-		}
-	}, function(error, response) {
-		res.json(_.map(response.aggregations.googleVison.labels.buckets, function(label) {
-			return {
-				value: label.key,
-				doc_count: label.doc_count
-			}
-		}));
-	});
-}
-
-function getColorMap(req, res) {
-	var nestedPath = 'googleVisionColors';
-	var query = createQuery(req);
-
-	throw new Error("Not implemented in MySQL yet.");
-	client.search({
-		index: config.index,
-		type: 'artwork',
-		body: {
-			size: 0,
-			query: query,
-			aggs: {
-				colormap: {
-					nested: {
-						path: nestedPath
-					},
-					aggs: {
-						filtered: {
-							filter: {
-								range: {
-									"googleVisionColors.score": {
-										gte: 0.2,
-										lte: 1
-									}
-								}
-							},
-							aggs: {
-								hue: {
-									terms: {
-										field: nestedPath+'.hsv.h',
-										size: 360,
-										order: {
-											_term: 'asc'
-										}
-									},
-									aggs: {
-										saturation: {
-											terms: {
-												field: nestedPath+'.hsv.s',
-												size: 100,
-												order: {
-													_term: 'asc'
-												}
-											}
-										}
-									}
-								}
-							}
-						}
-					}
-				}
-			}
-		}
-	}, function(error, response) {
-		res.json(_.map(response.aggregations.colormap.filtered.hue.buckets, function(hue) {
-			return {
-				hue: hue.key,
-				saturation: _.map(hue.saturation.buckets, function(saturation) {
-					return saturation.key;
-				})
-			};
-		}));
-
-	});
-}
-
-function getColorMatrix(req, res) {
-	var nestedPath = req.query.prominent == 'true' ? 'color.colors.prominent' : 'color.colors.three';
-
-	throw new Error("Not implemented in MySQL yet.");
-	client.search({
-		index: config.index,
-		type: 'artwork',
-		body: {
-			size: 0,
-			query: {
-				query_string: {
-					query: req.query.query ? req.query.query : '*',
-					analyze_wildcard: true
-				}
-			},
-
-			aggs: {
-				hue: {
-					nested: {
-						path: nestedPath
-					},
-					aggs: {
-						hue: {
-							terms: {
-								field: nestedPath+'.hsv.h',
-								size: 360,
-								order: {
-									_term: 'asc'
-								}
-							},
-							aggs: {
-								saturation: {
-									terms: {
-										field: nestedPath+'.hsv.s',
-										size: 100,
-										order: {
-											_term: 'asc'
-										}
-									},
-									aggs: {
-										lightness: {
-											terms: {
-												field: nestedPath+'.hsv.v',
-												size: 100,
-												order: {
-													_term: 'asc'
-												}
-											}
-										}
-									}
-								}
-							}
-						}
-					}
-				}
-			}
-
-		}
-	}, function(error, response) {
-		res.json(_.map(response.aggregations.hue.hue.buckets, function(hue) {
-			return {
-				hue: hue.key,
-				saturation: _.map(hue.saturation.buckets, function(saturation) {
-					return {
-						saturation: saturation.key,
-						lightness: _.map(saturation.lightness.buckets, function(lightnessObj) {
-							return {
-								lightness: lightnessObj.key
-							}
-						})
-					};
-				})
-			};
-		}));
-
 	});
 }
 
@@ -1747,17 +1503,10 @@ app.get(urlRoot+'/persons', getPersons);
 app.get(urlRoot+'/places', getPlaces);
 app.get(urlRoot+'/genres', getGenres);
 app.get(urlRoot+'/exhibitions', getExhibitions);
-// uses googleVisionColors
-app.get(urlRoot+'/colormap', getColorMap);
-// only api call that uses color.colors.prominent, also uses color.colors.three
-app.get(urlRoot+'/colormatrix', getColorMatrix);
 
 app.get(urlRoot+'/next/:insert_id', getNextId);
 app.get(urlRoot+'/prev/:insert_id', getPrevId);
 app.get(urlRoot+'/highest_insert_id', getHighestId);
-
-// Only used by GoogleVisionLabelsViewer component in frontend which is just a demo
-app.get(urlRoot+'/googleVisionLabels', getGoogleVisionLabels);
 
 app.get(urlRoot+'/autocomplete', getAutoComplete);
 
