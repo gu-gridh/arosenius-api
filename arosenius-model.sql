@@ -53,13 +53,13 @@ CREATE TABLE `artwork` (
 );
 
 CREATE TABLE `keyword` (
-	`id` INT(7) UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-	`artwork` INT(6) UNSIGNED NOT NULL,
-	`type` VARCHAR(50) NOT NULL,
-	`name` VARCHAR(50) NOT NULL,
-	FOREIGN KEY (`artwork`) REFERENCES `artwork` (`id`),
-	UNIQUE KEY (`artwork`, `type`, `name`),
-	KEY (`type`, `name`) -- also includes index on only `type`
+  `id` INT(7) UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  `artwork` INT(6) UNSIGNED NOT NULL,
+  `type` VARCHAR(50) NOT NULL,
+  `name` VARCHAR(50) NOT NULL,
+  FOREIGN KEY (`artwork`) REFERENCES `artwork` (`id`),
+  UNIQUE KEY (`artwork`, `type`, `name`),
+  KEY (`type`, `name`) -- also includes index on only `type`
 );
 
 CREATE TABLE `image` (

@@ -111,49 +111,49 @@ async function main() {
             )
         );
       await Promise.all([
-				insertKeyword("type", "type", "y"),
-				insertKeyword("genre", "genre", "g"),
-				insertKeyword("tags", "tag", "t"),
-				insertKeyword("persons", "person", "p"),
-				insertKeyword("places", "place", "l"),
-				...artwork.images.map(image =>
-					insertSet(
-						"image",
-						{
-							artwork: results.insertId,
-							filename: image.image,
-							type: image.imagesize.type,
-							width: image.imagesize.width,
-							height: image.imagesize.height,
-							page: image.page && (image.page.number || undefined),
-							pageid: image.page && image.page.id,
-							order: image.page && (image.page.order || undefined),
-							side: image.page && image.page.side,
-							color:
-								image.googleVisionColors &&
-								JSON.stringify(
-									image.googleVisionColors.sort((a, b) => b.score - a.score)[0].color
-								)
-						},
-						"I"
-					)
-				),
-				...(artwork.exhibitions || [])
-					.filter(s => s)
-					.map(s => {
-						// "<location>|<year>" or "<location> <year>"
-						const match = s.match(/(.*).(\d{4})/);
-						insertSet(
-							"exhibition",
-							{
-								artwork: results.insertId,
-								location: match[1],
-								year: match[2]
-							},
-							"x"
-						);
-					})
-			]);
+        insertKeyword("type", "type", "y"),
+        insertKeyword("genre", "genre", "g"),
+        insertKeyword("tags", "tag", "t"),
+        insertKeyword("persons", "person", "p"),
+        insertKeyword("places", "place", "l"),
+        ...artwork.images.map(image =>
+          insertSet(
+            "image",
+            {
+              artwork: results.insertId,
+              filename: image.image,
+              type: image.imagesize.type,
+              width: image.imagesize.width,
+              height: image.imagesize.height,
+              page: image.page && (image.page.number || undefined),
+              pageid: image.page && image.page.id,
+              order: image.page && (image.page.order || undefined),
+              side: image.page && image.page.side,
+              color:
+                image.googleVisionColors &&
+                JSON.stringify(
+                  image.googleVisionColors.sort((a, b) => b.score - a.score)[0].color
+                )
+            },
+            "I"
+          )
+        ),
+        ...(artwork.exhibitions || [])
+          .filter(s => s)
+          .map(s => {
+            // "<location>|<year>" or "<location> <year>"
+            const match = s.match(/(.*).(\d{4})/);
+            insertSet(
+              "exhibition",
+              {
+                artwork: results.insertId,
+                location: match[1],
+                year: match[2]
+              },
+              "x"
+            );
+          })
+      ]);
     });
   }
 }
