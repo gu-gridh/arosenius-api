@@ -5,7 +5,6 @@
  */
 
 /* Drop child tables before parent tables to respect foreign key constraints. */
-DROP TABLE IF EXISTS `exhibition`;
 DROP TABLE IF EXISTS `image`;
 DROP TABLE IF EXISTS `keyword`;
 DROP TABLE IF EXISTS `artwork`;
@@ -44,6 +43,7 @@ CREATE TABLE `artwork` (
   `signature` VARCHAR(200),
   `sender` INT(3) UNSIGNED,
   `recipient` INT(3) UNSIGNED,
+  `exhibitions` VARCHAR(300), -- JSON
   `literature` VARCHAR(300),
   `reproductions` VARCHAR(300),
   `bundle` VARCHAR(50),
@@ -76,12 +76,3 @@ CREATE TABLE `image` (
   `color` VARCHAR(50),
   FOREIGN KEY (`artwork`) REFERENCES `artwork` (`id`)
 );
-
-CREATE TABLE `exhibition` (
-  `id` INT(3) UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-  `artwork` INT(6) UNSIGNED NOT NULL,
-  `location` VARCHAR(100) NOT NULL,
-  `year` INT(4) NOT NULL,
-  FOREIGN KEY (`artwork`) REFERENCES `artwork` (`id`),
-  UNIQUE KEY (`artwork`, `location`, `year`)
-)

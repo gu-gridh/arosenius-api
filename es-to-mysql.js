@@ -47,37 +47,49 @@ async function main() {
     // One particular document is very incomplete.
     if (artwork.id === "PRIV-undefined") continue;
     const values = {
-      insert_id: artwork.insert_id,
-      name: artwork.id,
-      title: artwork.title,
-      title_en: artwork.title_en,
-      subtitle: artwork.subtitle,
-      deleted: artwork.deleted || false,
-      published: artwork.published || false,
-      description: artwork.description,
-      museum_int_id: Array.isArray(artwork.museum_int_id)
-        ? artwork.museum_int_id.join("|")
-        : artwork.museum_int_id,
-      museum: artwork.collection && artwork.collection.museum,
-      museum_url: artwork.museumLink,
-      date_human: artwork.item_date_str,
-      date: artwork.item_date_string,
-      size: artwork.size ? JSON.stringify(artwork.size) : undefined,
-      technique_material: artwork.technique_material,
-      acquisition: artwork.acquisition || undefined,
-      content: artwork.content,
-      inscription: artwork.inscription,
-      material: Array.isArray(artwork.material)
-        ? artwork.material.pop()
-        : undefined,
-      creator: artwork.creator,
-      signature: artwork.signature,
-      // sender set below
-      // recipient set below
-      literature: artwork.literature,
-      reproductions: artwork.reproductions,
-      bundle: artwork.bundle
-    };
+			insert_id: artwork.insert_id,
+			name: artwork.id,
+			title: artwork.title,
+			title_en: artwork.title_en,
+			subtitle: artwork.subtitle,
+			deleted: artwork.deleted || false,
+			published: artwork.published || false,
+			description: artwork.description,
+			museum_int_id: Array.isArray(artwork.museum_int_id)
+				? artwork.museum_int_id.join("|")
+				: artwork.museum_int_id,
+			museum: artwork.collection && artwork.collection.museum,
+			museum_url: artwork.museumLink,
+			date_human: artwork.item_date_str,
+			date: artwork.item_date_string,
+			size: artwork.size ? JSON.stringify(artwork.size) : undefined,
+			technique_material: artwork.technique_material,
+			acquisition: artwork.acquisition || undefined,
+			content: artwork.content,
+			inscription: artwork.inscription,
+			material: Array.isArray(artwork.material)
+				? artwork.material.pop()
+				: undefined,
+			creator: artwork.creator,
+			signature: artwork.signature,
+			// sender set below
+			// recipient set below
+			exhibitions:
+				artwork.exhibitions && artwork.exhibitions.length
+					? JSON.stringify(
+							artwork.exhibitions
+								.filter(s => s)
+								.map(s => {
+									// "<location>|<year>" or "<location> <year>"
+									const match = s.match(/(.*).(\d{4})/);
+									return { location: match[1], year: match[2] };
+								})
+					  )
+					: undefined,
+			literature: artwork.literature,
+			reproductions: artwork.reproductions,
+			bundle: artwork.bundle
+		};
 
     // Insert persons to reference them.
     for (const f of ["sender", "recipient"].filter(
@@ -137,22 +149,7 @@ async function main() {
             },
             "I"
           )
-        ),
-        ...(artwork.exhibitions || [])
-          .filter(s => s)
-          .map(s => {
-            // "<location>|<year>" or "<location> <year>"
-            const match = s.match(/(.*).(\d{4})/);
-            insertSet(
-              "exhibition",
-              {
-                artwork: results.insertId,
-                location: match[1],
-                year: match[2]
-              },
-              "x"
-            );
-          })
+        )
       ]);
     });
   }
