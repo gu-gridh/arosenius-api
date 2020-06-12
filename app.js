@@ -1081,87 +1081,22 @@ function getGenres(req, res) {
 }
 
 function getTagCloud(req, res) {
-	var additional = !req.query.sort || req.query.sort != 'doc_count' ? { order: { _term: 'asc' } } : {}
-	// Only use aggsUnique to get the base, then replace `temp` with specific term aggs.
-	var queryBody = aggsUnique('temp', additional)
-	queryBody.aggs.uniq.aggs = {
-		"tags": {
-			"terms": {
-				"field": "tags.raw",
-				"size": 5000,
-				"exclude": "GKMs diabildssamling|Skepplandamaterialet"
-			}
-		},
-		"persons": {
-			"terms": {
-				"field": "persons.raw",
-				"size": 5000
-			}
-		},
-		"places": {
-			"terms": {
-				"field": "places.raw",
-				"size": 5000
-			}
-		},
-		"genre": {
-			"terms": {
-				"field": "genre.raw",
-				"size": 5000
-			}
-		},
-		"collections": {
-			"terms": {
-				"field": "collection.museum.raw",
-				"size": 5000
-			}
-		}
-	};
-
-	throw new Error("Not implemented in MySQL yet.");
-	client.search({
-		index: config.index,
-		type: 'artwork',
-		body: queryBody
-	}, function(error, response) {
-		res.json(_.filter(_.map(response.aggregations.tags.buckets, function(tag) {
-				return {
-					value: tag.key,
-					doc_count: tag.doc_count,
-					type: 'tags'
-				};
-			})
-			.concat(_.map(response.aggregations.persons.buckets, function(tag) {
-				return {
-					value: tag.key,
-					doc_count: tag.doc_count,
-					type: 'person'
-				};
-			}))
-			.concat(_.map(response.aggregations.places.buckets, function(tag) {
-				return {
-					value: tag.key,
-					doc_count: tag.doc_count,
-					type: 'place'
-				};
-			}))
-			.concat(_.map(response.aggregations.collections.buckets, function(tag) {
-				return {
-					value: tag.key,
-					doc_count: tag.doc_count,
-					type: 'museum'
-				};
-			}))
-			.concat(_.map(response.aggregations.genre.buckets, function(tag) {
-				return {
-					value: tag.key,
-					doc_count: tag.doc_count,
-					type: 'genre'
-				};
-			})), function(tag) {
-			return tag.doc_count > 4;
-		}));
-	});
+	Promise.all([
+		knex("keyword")
+			.select({ type: "type", value: "name" })
+			.whereNot("type", "type")
+			.whereNotIn("name", ["GKMs diabildssamling", "Skepplandamaterialet"])
+			.count({ doc_count: "id" })
+			.groupBy("type", "value")
+			.having("doc_count", ">", 4),
+		knex("artwork")
+			.select({ type: knex.raw("?", "museum"), value: "museum" })
+			.count({ doc_count: "id" })
+			.groupBy("museum")
+			.having("doc_count", ">", 4)
+	]).then(([keywordRows, museumRows]) =>
+		res.json(keywordRows.concat(museumRows))
+	);
 }
 
 function getPagetypes(req, res) {
