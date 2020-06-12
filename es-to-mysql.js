@@ -1,11 +1,10 @@
-const mysql = require("mysql");
 const fs = require("fs");
 const readline = require("readline");
 const config = require("./config");
-
-const sql = mysql.createConnection({
-  ...config.mysql,
-  multipleStatements: true
+const knex = require("knex")({
+  // debug: true,
+  client: "mysql",
+  connection: config.mysql
 });
 
 const modelQuery = fs.readFileSync("arosenius-model.sql").toString();
@@ -14,27 +13,20 @@ const dataReadline = readline.createInterface({
   input: fs.createReadStream("arosenius_v4.json")
 });
 
-// sql.query as a promise
-function sqlQuery(query, values) {
-  return new Promise((resolve, reject) =>
-    sql.query(query, values, (error, results) =>
-      error ? reject(error) : resolve(results)
-    )
-  );
-}
-
 let lastChangeTime = Date.now();
 
 function insertSet(table, values, char = "", ignoreDuplicate = false) {
-  return sqlQuery(`INSERT INTO ${table} SET ?`, values)
+  return knex(table)
+    .insert(values)
+    // If ignoreDuplicate, ignore the ER_DUP_ENTRY error.
     .catch(
       err =>
         (err.code === "ER_DUP_ENTRY" && ignoreDuplicate) || Promise.reject(err)
     )
-    .then(results => {
+    .then(insertIds => {
       lastChangeTime = Date.now();
       process.stdout.write(char);
-      return results;
+      return insertIds[0];
     });
 }
 
@@ -47,49 +39,49 @@ async function main() {
     // One particular document is very incomplete.
     if (artwork.id === "PRIV-undefined") continue;
     const values = {
-			insert_id: artwork.insert_id,
-			name: artwork.id,
-			title: artwork.title,
-			title_en: artwork.title_en,
-			subtitle: artwork.subtitle,
-			deleted: artwork.deleted || false,
-			published: artwork.published || false,
-			description: artwork.description,
-			museum_int_id: Array.isArray(artwork.museum_int_id)
-				? artwork.museum_int_id.join("|")
-				: artwork.museum_int_id,
-			museum: artwork.collection && artwork.collection.museum,
-			museum_url: artwork.museumLink,
-			date_human: artwork.item_date_str,
-			date: artwork.item_date_string,
-			size: artwork.size ? JSON.stringify(artwork.size) : undefined,
-			technique_material: artwork.technique_material,
-			acquisition: artwork.acquisition || undefined,
-			content: artwork.content,
-			inscription: artwork.inscription,
-			material: Array.isArray(artwork.material)
-				? artwork.material.pop()
-				: undefined,
-			creator: artwork.creator,
-			signature: artwork.signature,
-			// sender set below
-			// recipient set below
-			exhibitions:
-				artwork.exhibitions && artwork.exhibitions.length
-					? JSON.stringify(
-							artwork.exhibitions
-								.filter(s => s)
-								.map(s => {
-									// "<location>|<year>" or "<location> <year>"
-									const match = s.match(/(.*).(\d{4})/);
-									return { location: match[1], year: match[2] };
-								})
-					  )
-					: undefined,
-			literature: artwork.literature,
-			reproductions: artwork.reproductions,
-			bundle: artwork.bundle
-		};
+      insert_id: artwork.insert_id,
+      name: artwork.id,
+      title: artwork.title,
+      title_en: artwork.title_en,
+      subtitle: artwork.subtitle,
+      deleted: artwork.deleted || false,
+      published: artwork.published || false,
+      description: artwork.description,
+      museum_int_id: Array.isArray(artwork.museum_int_id)
+        ? artwork.museum_int_id.join("|")
+        : artwork.museum_int_id,
+      museum: artwork.collection && artwork.collection.museum,
+      museum_url: artwork.museumLink,
+      date_human: artwork.item_date_str,
+      date: artwork.item_date_string,
+      size: artwork.size ? JSON.stringify(artwork.size) : undefined,
+      technique_material: artwork.technique_material,
+      acquisition: artwork.acquisition || undefined,
+      content: artwork.content,
+      inscription: artwork.inscription,
+      material: Array.isArray(artwork.material)
+        ? artwork.material.pop()
+        : undefined,
+      creator: artwork.creator,
+      signature: artwork.signature,
+      // sender set below
+      // recipient set below
+      exhibitions:
+        artwork.exhibitions && artwork.exhibitions.length
+          ? JSON.stringify(
+              artwork.exhibitions
+                .filter(s => s)
+                .map(s => {
+                  // "<location>|<year>" or "<location> <year>"
+                  const match = s.match(/(.*).(\d{4})/);
+                  return { location: match[1], year: match[2] };
+                })
+            )
+          : undefined,
+      literature: artwork.literature,
+      reproductions: artwork.reproductions,
+      bundle: artwork.bundle
+    };
 
     // Insert persons to reference them.
     for (const f of ["sender", "recipient"].filter(
@@ -106,10 +98,10 @@ async function main() {
         },
         "P",
         true
-      ).then(results => (values[f] = results.insertId));
+      ).then(insertId => (values[f] = insertId));
     }
 
-    await insertSet("artwork", values, "A").then(async results => {
+    await insertSet("artwork", values, "A").then(async insertId => {
       const insertKeyword = (field, type, char) =>
         Promise.all(
           (Array.isArray(artwork[field]) ? artwork[field] : [artwork[field]])
@@ -117,7 +109,7 @@ async function main() {
             .map(async name =>
               insertSet(
                 "keyword",
-                { artwork: results.insertId, type, name },
+                { artwork: insertId, type, name },
                 char
               )
             )
@@ -132,7 +124,7 @@ async function main() {
           insertSet(
             "image",
             {
-              artwork: results.insertId,
+              artwork: insertId,
               filename: image.image,
               type: image.imagesize.type,
               width: image.imagesize.width,
