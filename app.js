@@ -418,7 +418,7 @@ function createQuery(req, showUnpublished, showDeleted) {
 }
 
 /** Get the names of artworks matching a range of parameters. */
-async function search(params) {
+async function search(params, options = {}) {
 	const query = knex("artwork").distinct("artwork.name");
 
 	// Ensure a table join for a keyword type.
@@ -531,7 +531,7 @@ async function search(params) {
 	// Determine sorting.
 	if (params.sort === "insert_id") {
 		query.orderBy("insert_id", "asc");
-	} else {
+	} else if (!options.noSort) {
 		const sortGenres = ["Målning", "Teckning", "Skiss"];
 		// Join the keyword table (again) specifically to find out whether these keywords are present.
 		sortGenres.forEach((genre, i) =>
@@ -923,7 +923,7 @@ function getDocument(req, res) {
 
 /** Load a document from the database and format it. */
 async function loadDocuments(ids) {
-	const results = await knex("artwork").where("name", "in", ids);
+	const results = await knex("artwork").whereIn("name", ids);
 	const documents = [];
 	for (const artwork of results) {
 		// No point in making queries in parallel because MySQL is sequential.
@@ -1195,39 +1195,18 @@ function getExhibitions(req, res) {
 		});
 }
 
+/** Search like getDocuments, but summarize as count per year. */
 function getYearRange(req, res) {
-	var query = createQuery(req);
-
-	if (query.sort) {
-		delete query.sort;
-	}
-
-	throw new Error("Not implemented in MySQL yet.");
-	client.search({
-		index: config.index,
-		type: 'artwork',
-		body: {
-			size: 0,
-			query: query,
-			aggs: {
-				years: {
-					date_histogram: {
-						field: "item_date_string",
-						interval: "1y",
-						time_zone: "Europe/Berlin",
-						min_doc_count: 1
-					}
-				}
-			}
-		}
-	}, function(error, response) {
-		res.json(_.map(response.aggregations.years.buckets, function(bucket) {
-			return {
-				year: bucket.key_as_string.split('-')[0],
-				key: bucket.key,
-				doc_count: bucket.doc_count
-			};
-		}));
+	search(req.query, {noSort: true}).then(names => {
+		knex("artwork")
+			.whereIn("name", names)
+			.whereNotNull("date")
+			.select({ year: knex.raw("substring(??, 1, 4)", "date") })
+			.count({ doc_count: "id" })
+			.groupBy("year")
+			.then(rows => {
+				res.json(rows);
+			});
 	});
 }
 
