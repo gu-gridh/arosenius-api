@@ -1165,33 +1165,34 @@ function getTagCloud(req, res) {
 }
 
 function getPagetypes(req, res) {
-	throw new Error("Not implemented in MySQL yet.");
-	client.search({
-		index: config.index,
-		type: 'artwork',
-		body: aggsUnique('page.side')
-	}, function(error, response) {
-		res.json(_.map(response.aggregations.uniq.uniq.buckets, function(side) {
-			return {
-				value: side.key
-			};
-		}));
-	});
+	knex('image').distinct('side').then(rows => {
+		res.json(rows.filter(row => row.side).map(row => ({value: row.side})))
+	})
 }
 
 function getExhibitions(req, res) {
-	throw new Error("Not implemented in MySQL yet.");
-	client.search({
-		index: config.index,
-		type: 'artwork',
-		body: aggsUnique('exhibitions.raw', {size: 200, order: {_term: 'asc'}})
-	}, function(error, response) {
-		res.json(_.map(response.aggregations.uniq.uniq.buckets, function(genre) {
-			return {
-				value: genre.key
-			};
-		}));
-	});
+	knex("artwork")
+		.distinct("exhibitions")
+		.then(rows => {
+			// Parse JSON, flatten and deduplicate.
+			const unique = [];
+			rows
+				.map(row => JSON.parse(row.exhibitions))
+				.forEach(es => {
+					(es || []).forEach(e => {
+						!unique.find(
+							e2 => e.location === e2.location && e.year === e2.year
+						) && unique.push(e);
+					});
+				});
+			res.json(
+				unique
+					.map(e => ({
+						value: `${e.location}|${e.year}`
+					}))
+					.sort((a, b) => a.value.localeCompare(b.value))
+			);
+		});
 }
 
 function getYearRange(req, res) {
