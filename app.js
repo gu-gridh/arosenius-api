@@ -280,120 +280,25 @@ async function search(params, options = {}) {
 }
 
 function getNextId(req, res) {
-	throw new Error("Not implemented in MySQL yet.");
-	client.search({
-		index: config.index,
-		type: 'artwork',
-		size: 1,
-		body: {
-			sort: [
-				{
-					"insert_id": {
-						"order": "asc"
-					}
-				}
-			],
-			"query": {
-				"bool": {
-					"must": [
-						{
-							"range": {
-								"insert_id": {
-									"gte": Number(req.params.insert_id)+1
-								}
-							}
-						}
-					]
-				}
-			}
-		}
-	}, function(error, response) {
-		console.log(error)
-	
-		try {
-			res.json({
-				id: response.hits.hits[0]._id,
-				title: response.hits.hits[0]._source.title,
-				insert_id: response.hits.hits[0]._source.insert_id
-			});
-		}
-		catch (e) {
-			res.json({error: 'not found'});
-		}
-	});
+	knex("artwork")
+		.first({ id: "name" }, "title", "insert_id")
+		.where("insert_id", ">", req.params.insert_id)
+		.orderBy("insert_id")
+		.then(row => res.json(row || { error: "not found" }));
 }
 
 function getPrevId(req, res) {
-	throw new Error("Not implemented in MySQL yet.");
-	client.search({
-		index: config.index,
-		type: 'artwork',
-		size: 1,
-		body: {
-			sort: [
-				{
-					"insert_id": {
-						"order": "desc"
-					}
-				}
-			],
-			"query": {
-				"bool": {
-					"must": [
-						{
-							"range": {
-								"insert_id": {
-									"lte": Number(req.params.insert_id)-1
-								}
-							}
-						}
-					]
-				}
-			}
-		}
-	}, function(error, response) {
-		console.log(error)
-	
-		try {
-			res.json({
-				id: response.hits.hits[0]._id,
-				title: response.hits.hits[0]._source.title,
-				insert_id: response.hits.hits[0]._source.insert_id
-			});
-		}
-		catch (e) {
-			res.json({error: 'not found'});
-		}
-	});
+	knex("artwork")
+		.first({ id: "name" }, "title", "insert_id")
+		.where("insert_id", "<", req.params.insert_id)
+		.orderBy("insert_id", "desc")
+		.then(row => res.json(row || { error: "not found" }));
 }
 
 function getHighestId(req, res) {
-	throw new Error("Not implemented in MySQL yet.");
-	client.search({
-		index: config.index,
-		type: 'artwork',
-		size: 0,
-		body: {
-			"aggs": {
-				"insert_id": {
-					"max": {
-						"field": "insert_id"
-					}
-				}
-			}
-		}
-	}, function(error, response) {
-		console.log(error)
-	
-		try {
-			res.json({
-				highest_insert_id: response.aggregations.insert_id.value
-			});
-		}
-		catch (e) {
-			res.json({error: 'not found'});
-		}
-	});
+	knex("artwork")
+		.max({ highest_insert_id: "insert_id" })
+		.then(rows => res.json(rows[0] || { error: "not found" }));
 }
 
 // Search for documents
