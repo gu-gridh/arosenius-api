@@ -460,17 +460,7 @@ function postDocument(req, res) {
 		document.images = processImages(document.images);
 	}
 
-	throw new Error("Not implemented in MySQL yet.");
-	client.update({
-		index: config.index,
-		type: 'artwork',
-		id: req.body.id,
-		body: {
-			doc: document
-		}
-	}, function(error, response) {
-		res.json({response: 'post'});
-	});
+	insertDocument(document).then(() => res.json({ response: "post" }));
 }
 
 /**
