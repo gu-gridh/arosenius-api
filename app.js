@@ -6,6 +6,7 @@ var fs = require('fs');
 var path = require('path');
 
 var config = require('./config');
+var { insertDocument, formatDocument } = require('./document')
 
 var app = express();
 var auth = require('basic-auth')
@@ -543,86 +544,6 @@ async function loadDocuments(ids) {
 		});
 	}
 	return documents;
-}
-
-/** Combine rows related to an object into a single structured object. */
-function formatDocument({ artwork, images, keywords, sender, recipient }) {
-	return {
-		insert_id: artwork.insert_id,
-		id: artwork.name,
-		title: artwork.title,
-		title_en: artwork.title_en,
-		subtitle: artwork.subtitle,
-		deleted: artwork.deleted,
-		published: artwork.published,
-		description: artwork.description,
-		museum_int_id: artwork.museum_int_id.split("|"),
-		collection: {
-			museum: artwork.museum
-		},
-		museumLink: artwork.museum_url,
-		item_date_str: artwork.date_human,
-		item_date_string: artwork.date,
-		size: artwork.size ? JSON.parse(artwork.size) : undefined,
-		technique_material: artwork.technique_material,
-		acquisition: artwork.acquisition,
-		content: artwork.content,
-		inscription: artwork.inscription,
-		material: artwork.material,
-		creator: artwork.creator,
-		signature: artwork.signature,
-		literature: artwork.literature,
-		reproductions: artwork.reproductions,
-		bundle: artwork.bundle,
-		images:
-			images &&
-			images.map(image => ({
-				image: image.filename,
-				imagesize: {
-					width: image.width,
-					height: image.height,
-					type: image.type || undefined
-				},
-				page: {
-					number: image.page,
-					order: image.order,
-					side: image.side,
-					id: image.pageid || undefined
-				},
-				googleVisionColors: image.color
-					? [
-							{
-								color: JSON.parse(image.color),
-								score: 1
-							}
-					  ]
-					: undefined
-			})),
-		type: keywords.type,
-		tags: keywords.tag,
-		persons: keywords.person,
-		places: keywords.place,
-		genre: keywords.genre,
-		exhibitions: artwork.exhibitions
-			? JSON.parse(artwork.exhibitions).map(
-					({ location, year }) => `${location}|${year}`
-			  )
-			: undefined,
-		sender: sender
-			? {
-					name: sender.name,
-					birth_year: sender.birth_year,
-					death_year: sender.death_year
-			  }
-			: {},
-		recipient: recipient
-			? {
-					name: recipient.name,
-					birth_year: recipient.birth_year,
-					death_year: recipient.death_year
-			  }
-			: {}
-	};
 }
 
 function getMuseums(req, res) {
