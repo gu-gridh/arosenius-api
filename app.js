@@ -451,6 +451,9 @@ async function search(params, options = {}) {
 	if (!params.showDeleted) {
 		query.where("deleted", 0);
 	}
+	if (params.insert_id) {
+		query.where("insert_id", ">=", params.insert_id);
+	}
 	if (params.museum) {
 		query.where("museum", "like", `${params.museum}%`);
 	}
