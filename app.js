@@ -651,266 +651,51 @@ function getYearRange(req, res) {
 }
 
 function getAutoComplete(req, res) {
-	var searchStrings = req.query.search.toLowerCase().split(' ');
+  const terms = req.query.search.toLowerCase().split(" ");
 
-	var query = [
-		// Documents
-		{ index: config.index, type: 'artwork' },
-		{
-			size: 10,
-			query: {
-				bool: {
-					must: _.map(searchStrings, function(searchString) {
-						return {
-							wildcard: {
-								title: '*'+searchString+'*'
-							}
-						}
-					})
-				}
-			}
-		},
-
-		// Titles aggregation
-		{ index: config.index, type: 'artwork' },
-		{
-			size: 0,
-			query: {
-				bool: {
-					must: _.map(searchStrings, function(searchString) {
-						return {
-							wildcard: {
-								title: '*'+searchString+'*'
-							}
-						}
-					})
-				}
-			},
-			aggs: {
-				titles: {
-					terms: {
-						field: 'title.raw',
-						size: 100,
-						order: {
-							_term: 'asc'
-						}
-					}
-				}
-			}
-		},
-
-		// Tags
-		{ index: config.index, type: 'artwork' },
-		{
-			size: 0,
-			query: {
-				bool: {
-					must: _.map(searchStrings, function(searchString) {
-						return {
-							wildcard: {
-								tags: '*'+searchString+'*'
-							}
-						}
-					})
-				}
-			},
-			aggs: {
-				tags: {
-					terms: {
-						field: 'tags.raw',
-						size: 100,
-						order: {
-							_term: 'asc'
-						}
-					}
-				}
-			}
-		},
-
-		// Places
-		{ index: config.index, type: 'artwork' },
-		{
-			size: 0,
-			query: {
-				bool: {
-					must: _.map(searchStrings, function(searchString) {
-						return {
-							wildcard: {
-								places: '*'+searchString+'*'
-							}
-						}
-					})
-				}
-			},
-			aggs: {
-				places: {
-					terms: {
-						field: 'places.raw',
-						size: 100,
-						order: {
-							_term: 'asc'
-						}
-					}
-				}
-			}
-		},
-
-		// Persons
-		{ index: config.index, type: 'artwork' },
-		{
-			size: 0,
-			query: {
-				bool: {
-					must: _.map(searchStrings, function(searchString) {
-						return {
-							wildcard: {
-								persons: '*'+searchString+'*'
-							}
-						}
-					})
-				}
-			},
-			aggs: {
-				persons: {
-					terms: {
-						field: 'persons.raw',
-						size: 100,
-						order: {
-							_term: 'asc'
-						}
-					}
-				}
-			}
-		},
-
-		// Genre
-		{ index: config.index, type: 'artwork' },
-		{
-			size: 0,
-			query: {
-				bool: {
-					must: _.map(searchStrings, function(searchString) {
-						return {
-							wildcard: {
-								genre: '*'+searchString+'*'
-							}
-						}
-					})
-				}
-			},
-			aggs: {
-				genre: {
-					terms: {
-						field: 'genre.raw',
-						size: 100,
-						order: {
-							_term: 'asc'
-						}
-					}
-				}
-			}
-		},
-
-		// Type
-		{ index: config.index, type: 'artwork' },
-		{
-			size: 0,
-			query: {
-				bool: {
-					must: _.map(searchStrings, function(searchString) {
-						return {
-							wildcard: {
-								type: '*'+searchString+'*'
-							}
-						}
-					})
-				}
-			},
-			aggs: {
-				type: {
-					terms: {
-						field: 'type.raw',
-						size: 100,
-						order: {
-							_term: 'asc'
-						}
-					}
-				}
-			}
-		},
-
-		// Museum
-		{ index: config.index, type: 'artwork' },
-		{
-			size: 0,
-			query: {
-				bool: {
-					must: _.map(searchStrings, function(searchString) {
-						return {
-							wildcard: {
-								'collection.museum': '*'+searchString+'*'
-							}
-						}
-					})
-				}
-			},
-			aggs: {
-				museum: {
-					terms: {
-						field: 'collection.museum.raw',
-						size: 100,
-						order: {
-							_term: 'asc'
-						}
-					}
-				}
-			}
-		}
-	];
-
-	throw new Error("Not implemented in MySQL yet.");
-	client.msearch({
-		body: query
-	}, function(error, response) {
-		var getBuckets = function(field) {
-			var responseItem = _.find(response.responses, function(item) {
-				return Boolean(item.aggregations && item.aggregations[field]);
-			});
-
-			var buckets = _.filter(responseItem.aggregations[field].buckets, function(item) {
-				var found = false;
-
-				_.each(searchStrings, function(searchString) {
-					if (item.key.toLowerCase().indexOf(searchString) > -1) {
-						found = true;
-					}
-				})
-				return found;
-			});
-
-			return buckets;
-		};
-
-		var results = {
-
-			documents: _.map(response.responses[0].hits.hits, function(item) {
-				return {
-					key: item._source.title,
-					id: item._id
-				}
-			}),
-			titles: getBuckets('titles'),
-			tags: getBuckets('tags'),
-			persons: getBuckets('persons'),
-			places: getBuckets('places'),
-			genre: getBuckets('genre'),
-			type: getBuckets('type'),
-			museum: getBuckets('museum')
-		};
-
-
-		res.json(results);
-	});
+  Promise.all([
+    knex("artwork")
+      .select(["name", "title"])
+      .where(function () {
+        terms.forEach(term => this.where("title", "like", `%${term}%`));
+      }),
+    knex("keyword")
+      .select({ type: "type", key: "name" })
+      .where(function () {
+        terms.forEach(term => this.where("name", "like", `%${term}%`));
+      })
+      .count({ doc_count: "id" })
+      .groupBy(["type", "name"]),
+    knex("artwork")
+      .select({ key: "museum" })
+      .where(function () {
+        terms.forEach(term => this.where("museum", "like", `%${term}%`));
+      })
+      .count({ doc_count: "id" })
+      .groupBy(["museum"])
+  ]).then(([titleSearch, keywordCounts, museumCounts]) => {
+    const titleCounts = _.mapObject(
+      _.groupBy(titleSearch, "title"),
+      (items, title) => ({ key: title, doc_count: items.length })
+    );
+    function formatKeywordCounts(type) {
+      return keywordCounts
+        .filter(row => row.type === type)
+        .map(row => _.omit(row, "type"));
+    }
+    res.json({
+      documents: titleSearch
+        .slice(0, 10)
+        .map(row => ({ key: row.title, id: row.name })),
+      titles: Object.values(titleCounts),
+      tags: formatKeywordCounts("tag"),
+      persons: formatKeywordCounts("person"),
+      places: formatKeywordCounts("place"),
+      genre: formatKeywordCounts("genre"),
+      type: formatKeywordCounts("type"),
+      museum: museumCounts
+    });
+  });
 }
 
 function getImageFileList(req, res) {
@@ -977,9 +762,9 @@ app.get(urlRoot+'/autocomplete', getAutoComplete);
 app.get(urlRoot+'/year_range', getYearRange);
 
 app.get(urlRoot+'/admin/login', adminLogin);
-app.put(urlRoot+'/admin/documents/combine', putCombineDocuments);
+app.put(urlRoot+'/admin/documents/combine', putCombineDocuments); // TODO Convert to MySQL
 app.get(urlRoot+'/admin/documents', adminGetDocuments);
-app.put('/admin/document/:id', putDocument);
+app.put('/admin/document/:id', putDocument); // TODO Convert to MySQL
 app.post('/admin/document/:id', postDocument);
 app.get('/admin/document/:id', getDocument);
 app.get('/admin/museums', getMuseums);
