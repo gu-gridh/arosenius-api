@@ -588,7 +588,7 @@ function getGenres(req, res) {
 function getTagCloud(req, res) {
 	Promise.all([
 		knex("keyword")
-			.select({ type: "type", value: "name" })
+			.select({ type: knex.raw("IF(type = 'tag', 'tags', type)"), value: "name" })
 			.whereNot("type", "type")
 			.whereNotIn("name", ["GKMs diabildssamling", "Skepplandamaterialet"])
 			.count({ doc_count: "id" })
