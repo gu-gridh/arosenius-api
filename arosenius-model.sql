@@ -47,6 +47,8 @@ CREATE TABLE `artwork` (
   `literature` VARCHAR(300),
   `reproductions` VARCHAR(300),
   `bundle` VARCHAR(50),
+  `bundle_order` INT(2) UNSIGNED,
+  `bundle_side` VARCHAR(20),
   FOREIGN KEY (`sender`) REFERENCES `person` (`id`),
   FOREIGN KEY (`recipient`) REFERENCES `person` (`id`),
   UNIQUE KEY (`name`)

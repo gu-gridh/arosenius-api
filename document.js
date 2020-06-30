@@ -151,7 +151,9 @@ function formatArtworkRow(artwork) {
         : undefined,
     literature: artwork.literature,
     reproductions: artwork.reproductions,
-    bundle: artwork.bundle
+		bundle: artwork.bundle,
+		bundle_order: artwork.page && artwork.page.order,
+		bundle_side: artwork.page && artwork.page.side
   };
 }
 
@@ -220,6 +222,10 @@ function formatDocument({ artwork, images, keywords, sender, recipient }) {
 		literature: artwork.literature,
 		reproductions: artwork.reproductions,
 		bundle: artwork.bundle,
+		page: {
+			order: artwork.bundle_order,
+			side: artwork.bundle_side
+		},
 		images:
 			images &&
 			images.map(image => ({
