@@ -96,65 +96,65 @@ async function updateDocument(artwork) {
 async function ensurePerson(person) {
 	if (!person || !(person.surname || person.name)) return null;
 	return await ensure("person", ["name"], {
-    name: person.surname
-      ? `${person.firstname} ${person.surname}`
-      : person.name,
-    birth_year: person.birth_year,
-    death_year: person.death_year
-  });
+		name: person.surname
+			? `${person.firstname} ${person.surname}`
+			: person.name,
+		birth_year: person.birth_year,
+		death_year: person.death_year
+	});
 }
 
 /** Format most of the fields for a row in the artwork table, using an Elasticsearch-formatted object. */
 function formatArtworkRow(artwork) {
 	return {
-    insert_id: artwork.insert_id,
-    name: artwork.id,
-    title: artwork.title,
-    title_en: artwork.title_en,
-    subtitle: artwork.subtitle,
-    deleted: artwork.deleted || false,
-    published: artwork.published || false,
-    description: artwork.description,
-    museum_int_id: Array.isArray(artwork.museum_int_id)
-      ? artwork.museum_int_id.join("|")
-      : artwork.museum_int_id,
-    museum: artwork.collection && artwork.collection.museum,
-    museum_url: artwork.museumLink,
-    date_human: artwork.item_date_str,
-    date: artwork.item_date_string,
-    size: artwork.size ? JSON.stringify(artwork.size) : undefined,
-    technique_material: artwork.technique_material,
-    acquisition: artwork.acquisition || undefined,
-    content: artwork.content,
-    inscription: artwork.inscription,
-    material: Array.isArray(artwork.material)
-      ? artwork.material.pop()
-      : undefined,
-    creator: artwork.creator,
-    signature: artwork.signature,
-    // sender set below
-    // recipient set below
-    exhibitions:
-      artwork.exhibitions && artwork.exhibitions.length
-        ? JSON.stringify(
-            artwork.exhibitions
-              .filter(s => s)
-              .map(s => {
-                // "<location>|<year>" or "<location> <year>"
-                const match = s.match(/(.*).(\d{4})/);
-                return {
-                  location: match[1],
-                  year: match[2]
-                };
-              })
-          )
-        : undefined,
-    literature: artwork.literature,
-    reproductions: artwork.reproductions,
+		insert_id: artwork.insert_id,
+		name: artwork.id,
+		title: artwork.title,
+		title_en: artwork.title_en,
+		subtitle: artwork.subtitle,
+		deleted: artwork.deleted || false,
+		published: artwork.published || false,
+		description: artwork.description,
+		museum_int_id: Array.isArray(artwork.museum_int_id)
+			? artwork.museum_int_id.join("|")
+			: artwork.museum_int_id,
+		museum: artwork.collection && artwork.collection.museum,
+		museum_url: artwork.museumLink,
+		date_human: artwork.item_date_str,
+		date: artwork.item_date_string,
+		size: artwork.size ? JSON.stringify(artwork.size) : undefined,
+		technique_material: artwork.technique_material,
+		acquisition: artwork.acquisition || undefined,
+		content: artwork.content,
+		inscription: artwork.inscription,
+		material: Array.isArray(artwork.material)
+			? artwork.material.pop()
+			: undefined,
+		creator: artwork.creator,
+		signature: artwork.signature,
+		// sender set below
+		// recipient set below
+		exhibitions:
+			artwork.exhibitions && artwork.exhibitions.length
+				? JSON.stringify(
+						artwork.exhibitions
+							.filter(s => s)
+							.map(s => {
+								// "<location>|<year>" or "<location> <year>"
+								const match = s.match(/(.*).(\d{4})/);
+								return {
+									location: match[1],
+									year: match[2]
+								};
+							})
+					)
+				: undefined,
+		literature: artwork.literature,
+		reproductions: artwork.reproductions,
 		bundle: artwork.bundle,
 		bundle_order: artwork.page && artwork.page.order,
 		bundle_side: artwork.page && artwork.page.side
-  };
+	};
 }
 
 /**
@@ -164,33 +164,33 @@ function formatArtworkRow(artwork) {
  */
 async function ensure(table, uniqueCols, row) {
 	// Find a row by the unique columns.
-  const rows = await knex(table)
-    .select("id")
-    .where(_.pick(row, uniqueCols))
+	const rows = await knex(table)
+		.select("id")
+		.where(_.pick(row, uniqueCols))
 	if (rows.length) return rows[0].id;
 	// If not found, insert the full row.
 	const insertIds = await knex(table).insert(row);
-  return insertIds[0];
+	return insertIds[0];
 }
 
 /** Format the fields for a row in the image table, using an Elasticsearch-formatted object. */
 function formatImageRow(artworkId, image) {
 	return {
-    artwork: artworkId,
-    filename: image.image,
-    type: image.imagesize.type,
-    width: image.imagesize.width,
-    height: image.imagesize.height,
-    page: image.page && (image.page.number || undefined),
-    pageid: image.page && image.page.id,
-    order: image.page && (image.page.order || undefined),
-    side: image.page && image.page.side,
-    color:
-      image.googleVisionColors &&
-      JSON.stringify(
-        image.googleVisionColors.sort((a, b) => b.score - a.score)[0].color
-      )
-  }
+		artwork: artworkId,
+		filename: image.image,
+		type: image.imagesize.type,
+		width: image.imagesize.width,
+		height: image.imagesize.height,
+		page: image.page && (image.page.number || undefined),
+		pageid: image.page && image.page.id,
+		order: image.page && (image.page.order || undefined),
+		side: image.page && image.page.side,
+		color:
+			image.googleVisionColors &&
+			JSON.stringify(
+				image.googleVisionColors.sort((a, b) => b.score - a.score)[0].color
+			)
+	}
 }
 
 /** Combine rows related to an object into a single structured object. */
@@ -280,5 +280,5 @@ function formatDocument({ artwork, images, keywords, sender, recipient }) {
 module.exports = {
 	insertDocument,
 	updateDocument,
-  formatDocument
+	formatDocument
 };
