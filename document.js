@@ -195,6 +195,30 @@ function formatImageRow(artworkId, image) {
 
 /** Combine rows related to an object into a single structured object. */
 function formatDocument({ artwork, images, keywords, sender, recipient }) {
+	const imagesFormatted =
+		images &&
+		images.map(image => ({
+			image: image.filename,
+			imagesize: {
+				width: image.width,
+				height: image.height,
+				type: image.type || undefined
+			},
+			page: {
+				number: image.page,
+				order: image.order,
+				side: image.side,
+				id: image.pageid || undefined
+			},
+			googleVisionColors: image.color
+				? [
+						{
+							color: JSON.parse(image.color),
+							score: 1
+						}
+					]
+				: undefined
+		}));
 	return {
 		insert_id: artwork.insert_id,
 		id: artwork.name,
@@ -226,30 +250,8 @@ function formatDocument({ artwork, images, keywords, sender, recipient }) {
 			order: artwork.bundle_order,
 			side: artwork.bundle_side
 		},
-		images:
-			images &&
-			images.map(image => ({
-				image: image.filename,
-				imagesize: {
-					width: image.width,
-					height: image.height,
-					type: image.type || undefined
-				},
-				page: {
-					number: image.page,
-					order: image.order,
-					side: image.side,
-					id: image.pageid || undefined
-				},
-				googleVisionColors: image.color
-					? [
-							{
-								color: JSON.parse(image.color),
-								score: 1
-							}
-						]
-					: undefined
-			})),
+		images: imagesFormatted,
+		image: imagesFormatted && imagesFormatted[0].image,
 		type: keywords.type,
 		tags: keywords.tag,
 		persons: keywords.person,
