@@ -52,34 +52,58 @@ async function insertDocument(artwork) {
  * Update an existing artwork.
  */
 async function updateDocument(artwork) {
-	const values = formatArtworkRow( artwork );
+	const values = formatArtworkRow(artwork);
 
 	// Insert persons to reference them.
 	values.sender = await ensurePerson(artwork.sender)
 	values.recipient = await ensurePerson(artwork.recipient)
 
-	const ids = await knex("artwork")
-		.where({ name: artwork.id })
-		.update(values, ['id'])
-	const artworkId = ids[0]
+	await knex("artwork").where({ name: artwork.id }).update(values)
+	const artworkId = await knex("artwork").where({ name: artwork.id }).pluck('id')
 	
 	// Insert and delete keywords and images.
 	async function updateKeywords(field, type) {
-		const rows = await knex('keyword').pluck('name').where({ artwork: artworkId, type })
-		const inserts = artwork[field].filter(x => !rows.includes(x)).map(name => knex('keyword').insert({artwork: artworkId, type, name}))
-		const deletes = rows.filter(x => !artwork[field].includes(x)).map(name => knex('keyword').where({ artwork: artworkId, type, name }).delete())
+		const rows = await knex("keyword")
+			.pluck("name")
+			.where({ artwork: artworkId, type });
+		const inserts = (artwork[field] || [])
+			.filter(x => !rows.includes(x))
+			.map(name => knex("keyword").insert({ artwork: artworkId, type, name }));
+		const deletes = rows
+			.filter(x => !artwork[field].includes(x))
+			.map(name =>
+				knex("keyword").where({ artwork: artworkId, type, name }).delete()
+			);
 		// Return a promise of the promises.
-		return Promise.all(inserts.concat(deletes))
+		return Promise.all(inserts.concat(deletes));
 	}
 	
 	async function updateImages() {
-		const existing = await knex('image').select('*').where({ artwork: artworkId })
+		const existing = await knex("image")
+			.select("*")
+			.where({ artwork: artworkId });
 		// Insert images. For images that already exist, update them.
-		const upserts = artwork.images.map(image => knex('image').insert(image).catch(err => err.code === 'ER_DUP_ENTRY' ? knex('image').where({ artwork: artworkId, filename: image.filename }).update(image) : Promise.reject(err)))
+		const upserts = (artwork.images || []).map(image =>
+			knex("image")
+				.insert(formatImageRow(artworkId, image))
+				.catch(err =>
+					err.code === "ER_DUP_ENTRY"
+						? knex("image")
+								.where({ artwork: artworkId, filename: image.filename })
+								.update(image)
+						: Promise.reject(err)
+				)
+		);
 		// Delete images that are not in the incoming data.
-		const deletes = existing.filter(e => !artwork.images.find(i => i.filename === e.filename)).map(image => knex('image').where({ artwork: artworkId, filename: image.filename }).delete())
+		const deletes = existing
+			.filter(e => !artwork.images.find(i => i.filename === e.filename))
+			.map(image =>
+				knex("image")
+					.where({ artwork: artworkId, filename: image.filename })
+					.delete()
+			);
 		// Return a promise of the promises.
-		return Promise.all(upserts.concat(deletes))
+		return Promise.all(upserts.concat(deletes));
 	}
 	
 	await Promise.all([
@@ -87,7 +111,7 @@ async function updateDocument(artwork) {
 		updateKeywords('genre', 'genre'),
 		updateKeywords('tags', 'tag'),
 		updateKeywords('persons', 'person'),
-		updateKeyword('places', 'place'),
+		updateKeywords('places', 'place'),
 		updateImages(),
 	])
 }
@@ -251,7 +275,7 @@ function formatDocument({ artwork, images, keywords, sender, recipient }) {
 			side: artwork.bundle_side
 		},
 		images: imagesFormatted,
-		image: imagesFormatted && imagesFormatted[0].image,
+		image: imagesFormatted && imagesFormatted[0] && imagesFormatted[0].image,
 		type: keywords.type,
 		tags: keywords.tag,
 		persons: keywords.person,
