@@ -6,7 +6,7 @@ var fs = require('fs');
 var path = require('path');
 
 var config = require('./config');
-var { insertDocument, formatDocument } = require('./document')
+var { insertDocument, updateDocument, formatDocument } = require('./document')
 
 var app = express();
 var auth = require('basic-auth')
@@ -420,6 +420,7 @@ function putCombineDocuments(req, res) {
 	});
 }
 
+// TODO Test it.
 function putDocument(req, res) {
 	var document = req.body;
 
@@ -427,15 +428,7 @@ function putDocument(req, res) {
 		document.images = processImages(document.images);
 	}
 
-	throw new Error("Not implemented in MySQL yet.");
-	client.create({
-		index: config.index,
-		type: 'artwork',
-		id: req.body.id,
-		body: document
-	}, function(error, response) {
-		res.json(response);
-	});
+	insertDocument(document).then(() => res.json({ response: "created" }));
 }
 
 var sizeOf = require('image-size');
@@ -453,6 +446,7 @@ function processImages(images) {
 	return images;
 }
 
+// TODO Test it.
 function postDocument(req, res) {
 	var document = req.body;
 
@@ -460,7 +454,7 @@ function postDocument(req, res) {
 		document.images = processImages(document.images);
 	}
 
-	insertDocument(document).then(() => res.json({ response: "post" }));
+	updateDocument(document).then(res.json({response: 'updated'}))
 }
 
 /**

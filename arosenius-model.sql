@@ -74,5 +74,6 @@ CREATE TABLE `image` (
   `order` INT(1),
   `side` VARCHAR(20),
   `color` VARCHAR(50),
-  FOREIGN KEY (`artwork`) REFERENCES `artwork` (`id`)
+  FOREIGN KEY (`artwork`) REFERENCES `artwork` (`id`),
+  UNIQUE KEY (`artwork`, `filename`)
 );
