@@ -10,18 +10,18 @@ const knex = require("knex")({
 
 /**
  * Insert a new artwork.
- * 
+ *
  * Some parts of this code are motivated by inconsistencies in imported Elasticsearch data.
  */
 async function insertDocument(artwork) {
 	const values = formatArtworkRow(artwork);
 
 	// Insert persons to reference them.
-	values.sender = await ensurePerson(artwork.sender)
-	values.recipient = await ensurePerson(artwork.recipient)
+	values.sender = await ensurePerson(artwork.sender);
+	values.recipient = await ensurePerson(artwork.recipient);
 
-	const insertIds = await knex("artwork").insert(values)
-	const artworkId = insertIds[0]
+	const insertIds = await knex("artwork").insert(values);
+	const artworkId = insertIds[0];
 
 	function insertKeyword(field, type) {
 		return Promise.all(
@@ -43,7 +43,7 @@ async function insertDocument(artwork) {
 		insertKeyword("persons", "person"),
 		insertKeyword("places", "place"),
 		...artwork.images.map(image =>
-			knex('image').insert(formatImageRow(artworkId, image))
+			knex("image").insert(formatImageRow(artworkId, image))
 		)
 	]);
 }
@@ -55,12 +55,14 @@ async function updateDocument(artwork) {
 	const values = formatArtworkRow(artwork);
 
 	// Insert persons to reference them.
-	values.sender = await ensurePerson(artwork.sender)
-	values.recipient = await ensurePerson(artwork.recipient)
+	values.sender = await ensurePerson(artwork.sender);
+	values.recipient = await ensurePerson(artwork.recipient);
 
-	await knex("artwork").where({ name: artwork.id }).update(values)
-	const artworkId = await knex("artwork").where({ name: artwork.id }).pluck('id')
-	
+	await knex("artwork").where({ name: artwork.id }).update(values);
+	const artworkId = await knex("artwork")
+		.where({ name: artwork.id })
+		.pluck("id");
+
 	// Insert and delete keywords and images.
 	async function updateKeywords(field, type) {
 		const rows = await knex("keyword")
@@ -77,7 +79,7 @@ async function updateDocument(artwork) {
 		// Return a promise of the promises.
 		return Promise.all(inserts.concat(deletes));
 	}
-	
+
 	async function updateImages() {
 		const existing = await knex("image")
 			.select("*")
@@ -105,15 +107,15 @@ async function updateDocument(artwork) {
 		// Return a promise of the promises.
 		return Promise.all(upserts.concat(deletes));
 	}
-	
+
 	await Promise.all([
-		updateKeywords("type", 'type'),
-		updateKeywords('genre', 'genre'),
-		updateKeywords('tags', 'tag'),
-		updateKeywords('persons', 'person'),
-		updateKeywords('places', 'place'),
-		updateImages(),
-	])
+		updateKeywords("type", "type"),
+		updateKeywords("genre", "genre"),
+		updateKeywords("tags", "tag"),
+		updateKeywords("persons", "person"),
+		updateKeywords("places", "place"),
+		updateImages()
+	]);
 }
 
 /** Ensure a sender/recipient exists, and return its id. */
@@ -171,7 +173,7 @@ function formatArtworkRow(artwork) {
 									year: match[2]
 								};
 							})
-					)
+				  )
 				: undefined,
 		literature: artwork.literature,
 		reproductions: artwork.reproductions,
@@ -183,14 +185,12 @@ function formatArtworkRow(artwork) {
 
 /**
  * Ensure (find or insert) a row and return its (existing or new) id.
- * 
+ *
  * This is not an upsert, it does not update any existing rows.
  */
 async function ensure(table, uniqueCols, row) {
 	// Find a row by the unique columns.
-	const rows = await knex(table)
-		.select("id")
-		.where(_.pick(row, uniqueCols))
+	const rows = await knex(table).select("id").where(_.pick(row, uniqueCols));
 	if (rows.length) return rows[0].id;
 	// If not found, insert the full row.
 	const insertIds = await knex(table).insert(row);
@@ -214,7 +214,7 @@ function formatImageRow(artworkId, image) {
 			JSON.stringify(
 				image.googleVisionColors.sort((a, b) => b.score - a.score)[0].color
 			)
-	}
+	};
 }
 
 /** Combine rows related to an object into a single structured object. */
@@ -240,7 +240,7 @@ function formatDocument({ artwork, images, keywords, sender, recipient }) {
 							color: JSON.parse(image.color),
 							score: 1
 						}
-					]
+				  ]
 				: undefined
 		}));
 	return {
@@ -284,21 +284,21 @@ function formatDocument({ artwork, images, keywords, sender, recipient }) {
 		exhibitions: artwork.exhibitions
 			? JSON.parse(artwork.exhibitions).map(
 					({ location, year }) => `${location}|${year}`
-				)
+			  )
 			: undefined,
 		sender: sender
 			? {
 					name: sender.name,
 					birth_year: sender.birth_year,
 					death_year: sender.death_year
-				}
+			  }
 			: {},
 		recipient: recipient
 			? {
 					name: recipient.name,
 					birth_year: recipient.birth_year,
 					death_year: recipient.death_year
-				}
+			  }
 			: {}
 	};
 }
