@@ -6,7 +6,13 @@ var fs = require('fs');
 var path = require('path');
 
 var config = require('./config');
-var { insertDocument, updateDocument, formatDocument } = require('./document')
+var {
+	insertDocument,
+	updateDocument,
+	updateImages,
+	loadDocuments,
+	deleteDocuments
+} = require("./document");
 
 var app = express();
 var auth = require('basic-auth')
@@ -17,8 +23,6 @@ var knex = require('knex')({
 	// debug: true,
 	connection: config.mysql,
 })
-
-var client = null
 
 function authenticate(user) {
 	var users = require('./users').users;
@@ -308,7 +312,7 @@ function getDocuments(req, res) {
 		// Get specific documents.
 		loadDocuments(req.query.ids.split(";")).then(docs =>
 			res.json({
-				data: docs.length ? docs.map(formatDocument) : undefined
+				documents: docs
 			})
 		);
 	} else {
@@ -324,7 +328,7 @@ function getDocuments(req, res) {
 					total: names.length,
 					documents: docs.map(doc => {
 						if (req.query.simple) doc.images = undefined;
-						return formatDocument(doc);
+						return doc;
 					})
 				})
 			)
@@ -332,91 +336,35 @@ function getDocuments(req, res) {
 	}
 }
 
-function putCombineDocuments(req, res) {
-	var ids = req.body.documents;
-	var finalDocument = req.body.selectedDocument;
+async function putCombineDocuments(req, res) {
+	const ids = req.body.documents;
+	const keep = req.body.selectedDocument;
 
-	throw new Error("Not implemented in MySQL yet.");
-	client.search({
-		index: config.index,
-		type: 'artwork',
-		size: 100,
-		body: {
-			query: {
-				query_string: {
-					query: '_id: '+ids.join(' OR _id: ')
-				}
-			}
-		}
-	}, function(error, response) {
-		if (ids.length != response.hits.total) {
-			res.status(500);
-			res.json({error: 'Unable to combine documents, have they been combined before?'});
-		}
-		else {
+	const documents = await loadDocuments(ids, true);
+	// Find the internal SQL ID of the artwork to keep.
+	const keepId = documents.find(d => d.id === keep)._id
 
-			var imageMetadataArray = [];
+	// Abort if all documents are not found.
+	if (ids.length != documents.length) {
+		return res.status(500).json({
+			error: "Unable to combine documents, have they been combined before?"
+		});
+	}
 
-			_.each(response.hits.hits, function(document) {
-				var imageMetadata = {};
+	// Add new images to the chosen document.
+	const images = []
+		.concat(...documents.map(document => document.images))
+		.sort((a, b) => a.page.order - b.page.order);
+	await updateImages(keepId, images);
 
-				if (document._source.image) {
-					imageMetadata.image = document._source.image;
+	// Delete the other selected documents.
+	const deleteIds = ids.filter(id => id != keep);
+	await deleteDocuments(deleteIds);
 
-					if (document._source.page) {
-						imageMetadata.page = document._source.page;
-					}
-					if (document._source.imagesize) {
-						imageMetadata.imagesize = document._source.imagesize;
-					}
-
-					imageMetadataArray.push(imageMetadata);
-				}
-
-				if (document._source.images) {
-					imageMetadataArray = imageMetadataArray.concat(document._source.images);
-				}
-
-				imageMetadataArray = _.uniq(imageMetadataArray, function(image) {
-					return image.image;
-				});
-			});
-
-			imageMetadataArray = _.sortBy(imageMetadataArray, function(image) {
-				return image.page.order || 0;
-			});
-
-			throw new Error("Not implemented in MySQL yet.");
-			client.update({
-				index: config.index,
-				type: 'artwork',
-				id: finalDocument,
-				body: {
-					doc: {
-						images: imageMetadataArray,
-					}
-				}
-			}, function(error, response) {
-				var documentsToDelete = _.difference(ids, [finalDocument]);
-
-				var bulkBody = _.map(documentsToDelete, function(document) {
-					return {
-						delete: {
-							_index: config.index,
-							_type: 'artwork',
-							_id: document
-						}
-					}
-				});
-
-				throw new Error("Not implemented in MySQL yet.");
-				client.bulk({
-					body: bulkBody
-				}, function(error, response) {
-					res.json({response: 'post'});
-				});
-			});
-		}
+	res.json({
+		keep,
+		images: images.length,
+		deleted: deleteIds
 	});
 }
 
@@ -427,7 +375,9 @@ function putDocument(req, res) {
 		document.images = processImages(document.images);
 	}
 
-	insertDocument(document).then(() => res.json({ response: "created" }));
+	insertDocument(document)
+		.catch((error) => res.status(500).json({error}))
+		.then(() => res.json({ response: "created" }));
 }
 
 var sizeOf = require('image-size');
@@ -452,7 +402,9 @@ function postDocument(req, res) {
 		document.images = processImages(document.images);
 	}
 
-	updateDocument(document).then(res.json({response: 'updated'}))
+	updateDocument(document)
+		.catch(error => res.status(500).json({ error }))
+		.then(res.json({ response: "updated" }));
 }
 
 /**
@@ -494,38 +446,8 @@ function getDocument(req, res) {
 	}
 	
 	loadDocuments([req.params.id]).then(docs => res.json({
-		data: docs.length ? formatDocument(docs[0]) : undefined
+		data: docs.length ? docs[0] : undefined
 	}))
-}
-
-/** Load a document from the database and format it. */
-async function loadDocuments(ids) {
-	const results = await knex("artwork").whereIn("name", ids);
-	const documents = [];
-	for (const artwork of results) {
-		// No point in making queries in parallel because MySQL is sequential.
-		const images = await knex("image").where("artwork", artwork.id);
-		const keywords = await knex("keyword").where("artwork", artwork.id);
-		// Group keywords by type.
-		const keywordsByType = {};
-		keywords.forEach(row => {
-			keywordsByType[row.type] = keywordsByType[row.type] || [];
-			keywordsByType[row.type].push(row.name);
-		});
-		const sender =
-			artwork.sender && (await knex("person").where("id", artwork.sender));
-		const recipient =
-			artwork.recipient &&
-			(await knex("person").where("id", artwork.recipient));
-		documents.push({
-			artwork,
-			images,
-			keywords: keywordsByType,
-			sender,
-			recipient
-		});
-	}
-	return documents;
 }
 
 function getMuseums(req, res) {
@@ -754,7 +676,7 @@ app.get(urlRoot+'/autocomplete', getAutoComplete);
 app.get(urlRoot+'/year_range', getYearRange);
 
 app.get(urlRoot+'/admin/login', adminLogin);
-app.put(urlRoot+'/admin/documents/combine', putCombineDocuments); // TODO Convert to MySQL
+app.put(urlRoot+'/admin/documents/combine', putCombineDocuments);
 app.get(urlRoot+'/admin/documents', adminGetDocuments);
 app.put('/admin/document/:id', putDocument);
 app.post('/admin/document/:id', postDocument);

@@ -36,7 +36,7 @@ async function insertDocument(artwork) {
 				)
 		);
 	}
-	await Promise.all([
+	return await Promise.all([
 		insertKeyword("type", "type"),
 		insertKeyword("genre", "genre"),
 		insertKeyword("tags", "tag"),
@@ -80,41 +80,13 @@ async function updateDocument(artwork) {
 		return Promise.all(inserts.concat(deletes));
 	}
 
-	async function updateImages() {
-		const existing = await knex("image")
-			.select("*")
-			.where({ artwork: artworkId });
-		// Insert images. For images that already exist, update them.
-		const upserts = (artwork.images || []).map(image =>
-			knex("image")
-				.insert(formatImageRow(artworkId, image))
-				.catch(err =>
-					err.code === "ER_DUP_ENTRY"
-						? knex("image")
-								.where({ artwork: artworkId, filename: image.image })
-								.update(formatImageRow(artworkId, image))
-						: Promise.reject(err)
-				)
-		);
-		// Delete images that are not in the incoming data.
-		const deletes = existing
-			.filter(e => !artwork.images.find(i => i.filename === e.filename))
-			.map(image =>
-				knex("image")
-					.where({ artwork: artworkId, filename: image.filename })
-					.delete()
-			);
-		// Return a promise of the promises.
-		return Promise.all(upserts.concat(deletes));
-	}
-
-	await Promise.all([
+	return await Promise.all([
 		updateKeywords("type", "type"),
 		updateKeywords("genre", "genre"),
 		updateKeywords("tags", "tag"),
 		updateKeywords("persons", "person"),
 		updateKeywords("places", "place"),
-		updateImages()
+		updateImages(artworkId, artwork.images)
 	]);
 }
 
@@ -217,6 +189,67 @@ function formatImageRow(artworkId, image) {
 	});
 }
 
+/** Update the list of images for a given artwork. */
+async function updateImages(artworkId, images) {
+	const existing = await knex("image")
+		.select("*")
+		.where({ artwork: artworkId });
+	// Insert images. For images that already exist, update them.
+	const upserts = (images || []).map(image =>
+		knex("image")
+			.insert(formatImageRow(artworkId, image))
+			.catch(err =>
+				err.code === "ER_DUP_ENTRY"
+					? knex("image")
+							.where({ artwork: artworkId, filename: image.image })
+							.update(formatImageRow(artworkId, image))
+					: Promise.reject(err)
+			)
+	);
+	// Delete images that are not in the incoming data.
+	const deletes = existing
+		.filter(e => !images.find(i => i.filename === e.filename))
+		.map(image =>
+			knex("image")
+				.where({ artwork: artworkId, filename: image.filename })
+				.delete()
+		);
+	// Return a promise of the promises.
+	return Promise.all(upserts.concat(deletes));
+}
+
+/** Load a document from the database and format it. */
+async function loadDocuments(ids, includeInternalId = false) {
+	const results = await knex("artwork").whereIn("name", ids);
+	const documents = [];
+	for (artwork of results) {
+		// No point in making queries in parallel because MySQL is sequential.
+		const images = await knex("image").where("artwork", artwork.id);
+		const keywords = await knex("keyword").where("artwork", artwork.id);
+		// Group keywords by type.
+		const keywordsByType = {};
+		keywords.forEach(row => {
+			keywordsByType[row.type] = keywordsByType[row.type] || [];
+			keywordsByType[row.type].push(row.name);
+		});
+		const sender =
+			artwork.sender && (await knex("person").where("id", artwork.sender));
+		const recipient =
+			artwork.recipient &&
+			(await knex("person").where("id", artwork.recipient));
+		const document = formatDocument({
+			artwork,
+			images,
+			keywords: keywordsByType,
+			sender,
+			recipient
+		});
+		if (includeInternalId) document._id = artwork.id;
+		documents.push(document);
+	}
+	return documents;
+}
+
 /** Combine rows related to an object into a single structured object. */
 function formatDocument({ artwork, images, keywords, sender, recipient }) {
 	const imagesFormatted =
@@ -303,6 +336,15 @@ function formatDocument({ artwork, images, keywords, sender, recipient }) {
 	};
 }
 
+async function deleteDocuments(names) {
+	const ids = await knex("artwork").pluck("id").where("name", "in", names);
+	await Promise.all([
+		knex("artwork").delete().where("id", "in", ids),
+		knex("image").delete().where("artwork", "in", ids),
+		knex("keyword").delete().where("artwork", "in", ids),
+	]);
+}
+
 /**
  * Convert `undefined` values in an object to `null`.
  *
@@ -316,5 +358,8 @@ function noUndefined(obj) {
 module.exports = {
 	insertDocument,
 	updateDocument,
-	formatDocument
+	updateImages,
+	loadDocuments,
+	formatDocument,
+	deleteDocuments
 };
