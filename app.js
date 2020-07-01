@@ -318,7 +318,7 @@ function getDocuments(req, res) {
 	} else {
 		// Perform search.
 		search(req.query).then(names => {
-			const size = req.query.showAll ? 10000 : req.query.count || 100;
+			const size = req.query.showAll ? 10000 : parseInt(req.query.count) || 100;
 			const from =
 				!req.query.showAll && req.query.page > 0
 					? (req.query.page - 1) * size
