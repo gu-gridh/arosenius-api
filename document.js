@@ -20,7 +20,7 @@ async function insertDocument(artwork) {
 	values.sender = await ensurePerson(artwork.sender);
 	values.recipient = await ensurePerson(artwork.recipient);
 
-	const insertIds = await knex("artwork").insert(values);
+	const insertIds = await knex("artwork").insert(noUndefined(values));
 	const artworkId = insertIds[0];
 
 	function insertKeyword(field, type) {
@@ -91,8 +91,8 @@ async function updateDocument(artwork) {
 				.catch(err =>
 					err.code === "ER_DUP_ENTRY"
 						? knex("image")
-								.where({ artwork: artworkId, filename: image.filename })
-								.update(image)
+								.where({ artwork: artworkId, filename: image.image })
+								.update(formatImageRow(artworkId, image))
 						: Promise.reject(err)
 				)
 		);
@@ -199,7 +199,7 @@ async function ensure(table, uniqueCols, row) {
 
 /** Format the fields for a row in the image table, using an Elasticsearch-formatted object. */
 function formatImageRow(artworkId, image) {
-	return {
+	return noUndefined({
 		artwork: artworkId,
 		filename: image.image,
 		type: image.imagesize.type,
@@ -214,7 +214,7 @@ function formatImageRow(artworkId, image) {
 			JSON.stringify(
 				image.googleVisionColors.sort((a, b) => b.score - a.score)[0].color
 			)
-	};
+	});
 }
 
 /** Combine rows related to an object into a single structured object. */
@@ -301,6 +301,16 @@ function formatDocument({ artwork, images, keywords, sender, recipient }) {
 			  }
 			: {}
 	};
+}
+
+/**
+ * Convert `undefined` values in an object to `null`.
+ *
+ * Useful when providing objects to knex.insert and knex.update.
+ * Not recursive.
+ */
+function noUndefined(obj) {
+	return _.mapObject(obj, v => v === undefined ? null : v)
 }
 
 module.exports = {

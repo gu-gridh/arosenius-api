@@ -420,7 +420,6 @@ function putCombineDocuments(req, res) {
 	});
 }
 
-// TODO Test it.
 function putDocument(req, res) {
 	var document = req.body;
 
@@ -446,7 +445,6 @@ function processImages(images) {
 	return images;
 }
 
-// TODO Test it.
 function postDocument(req, res) {
 	var document = req.body;
 
