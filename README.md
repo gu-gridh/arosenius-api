@@ -10,7 +10,7 @@ This documentation also addresses server requiremments and server setup.
 
 ### Current server specifications
 
-- Elasticsearch 2.4.6
+- MySQL 5.7.30
 - Node.js 8.1.4
 - Express.js 4.13.4
 
@@ -30,9 +30,9 @@ cp users.demo.js users.js
 node app.js
 ```
 
-## Elasticsearch
+## Documentation
 
-The API depends on Elasticsearch installed and running. Documents are stored as `artwork` mapping type. Mapping definition can be found [here](https://github.com/CDH-DevTeam/arosenius-api/blob/master/es-artwork-mapping.json).
+The ApiDoc documentation in `documentation/` is _very incomplete and oudated_.
 
 ## Images
 
@@ -47,10 +47,14 @@ Images are kept in the `/appl/cdh/arosenius-imagedata` folder on the server. Res
 
 Users are defined in the `users.js` file. All users have the same privileges.
 
-## Migrating to MySQL
+## Data model
 
-Note that the migration script `es-to-mysql.js` is not written with the server Node version in mind.
-Instead, perform the migration locally (using a newer version of Node) and then transfer to server via `mysqldump`.
+The data model for this project began as an Elasticsearch index, before it was converted to MySQL in 2020.
+The data structure is still artwork-document-centered, and some other design choices in the model and code are due to this Elasticsearch legacy.
+
+### Migrating from Elasticsearch to MySQL
+
+Consider this as documentation for a one-shot operation in the past.
 
 1. Run `npm install` to get new dependencies
 2. Run `elasticdump` on the server and scp it to `./arosenius_v4.json`
