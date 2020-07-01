@@ -167,10 +167,10 @@ function formatArtworkRow(artwork) {
 							.filter(s => s)
 							.map(s => {
 								// "<location>|<year>" or "<location> <year>"
-								const match = s.match(/(.*).(\d{4})/);
+								const match = s.match(/(.*)(.(\d{4}))?/);
 								return {
 									location: match[1],
-									year: match[2]
+									year: match[3]
 								};
 							})
 				  )

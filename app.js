@@ -756,7 +756,7 @@ app.get(urlRoot+'/year_range', getYearRange);
 app.get(urlRoot+'/admin/login', adminLogin);
 app.put(urlRoot+'/admin/documents/combine', putCombineDocuments); // TODO Convert to MySQL
 app.get(urlRoot+'/admin/documents', adminGetDocuments);
-app.put('/admin/document/:id', putDocument); // TODO Convert to MySQL
+app.put('/admin/document/:id', putDocument);
 app.post('/admin/document/:id', postDocument);
 app.get('/admin/document/:id', getDocument);
 app.get('/admin/museums', getMuseums);
