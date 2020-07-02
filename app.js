@@ -252,7 +252,7 @@ async function search(params, options = {}) {
 	
 	// Determine sorting.
 	if (params.sort === "insert_id") {
-		query.orderBy("insert_id", "asc");
+		query.select("insert_id").orderBy("insert_id", "asc");
 	} else if (!options.noSort) {
 		const sortGenres = ["Målning", "Teckning", "Skiss"];
 		// Join the keyword table (again) specifically to find out whether these keywords are present.
