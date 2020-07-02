@@ -1,9 +1,4 @@
 module.exports = {
-  es_host: "127.0.0.1:9200",
-  user: "",
-  pass: "",
-  index: "arosenius_v4",
-
   mysql: {
     host: "localhost",
     user: "",
