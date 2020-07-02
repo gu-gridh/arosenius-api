@@ -226,7 +226,9 @@ async function loadDocuments(ids, includeInternalId = false) {
 	const documents = [];
 	for (artwork of results) {
 		// No point in making queries in parallel because MySQL is sequential.
-		const images = await knex("image").where("artwork", artwork.id);
+		const images = await knex("image")
+			.where("artwork", artwork.id)
+			.orderBy("order", "asc");
 		const keywords = await knex("keyword").where("artwork", artwork.id);
 		// Group keywords by type.
 		const keywordsByType = {};
@@ -256,30 +258,28 @@ async function loadDocuments(ids, includeInternalId = false) {
 function formatDocument({ artwork, images, keywords, sender, recipient }) {
 	const imagesFormatted =
 		images &&
-		images
-			.map(image => ({
-				image: image.filename,
-				imagesize: {
-					width: image.width,
-					height: image.height,
-					type: image.type || undefined
-				},
-				page: {
-					number: image.page,
-					order: image.order,
-					side: image.side,
-					id: image.pageid || undefined
-				},
-				googleVisionColors: image.color
-					? [
-							{
-								color: JSON.parse(image.color),
-								score: 1
-							}
-					  ]
-					: undefined
-			}))
-			.sort((a, b) => a.page.order - b.page.order);
+		images.map(image => ({
+			image: image.filename,
+			imagesize: {
+				width: image.width,
+				height: image.height,
+				type: image.type || undefined
+			},
+			page: {
+				number: image.page,
+				order: image.order,
+				side: image.side,
+				id: image.pageid || undefined
+			},
+			googleVisionColors: image.color
+				? [
+						{
+							color: JSON.parse(image.color),
+							score: 1
+						}
+				  ]
+				: undefined
+		}));
 	return {
 		insert_id: artwork.insert_id,
 		id: artwork.name,
