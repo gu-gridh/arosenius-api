@@ -256,28 +256,30 @@ async function loadDocuments(ids, includeInternalId = false) {
 function formatDocument({ artwork, images, keywords, sender, recipient }) {
 	const imagesFormatted =
 		images &&
-		images.map(image => ({
-			image: image.filename,
-			imagesize: {
-				width: image.width,
-				height: image.height,
-				type: image.type || undefined
-			},
-			page: {
-				number: image.page,
-				order: image.order,
-				side: image.side,
-				id: image.pageid || undefined
-			},
-			googleVisionColors: image.color
-				? [
-						{
-							color: JSON.parse(image.color),
-							score: 1
-						}
-				  ]
-				: undefined
-		}));
+		images
+			.map(image => ({
+				image: image.filename,
+				imagesize: {
+					width: image.width,
+					height: image.height,
+					type: image.type || undefined
+				},
+				page: {
+					number: image.page,
+					order: image.order,
+					side: image.side,
+					id: image.pageid || undefined
+				},
+				googleVisionColors: image.color
+					? [
+							{
+								color: JSON.parse(image.color),
+								score: 1
+							}
+					  ]
+					: undefined
+			}))
+			.sort((a, b) => a.page.order - b.page.order);
 	return {
 		insert_id: artwork.insert_id,
 		id: artwork.name,
