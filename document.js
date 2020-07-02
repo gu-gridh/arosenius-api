@@ -220,7 +220,9 @@ async function updateImages(artworkId, images) {
 
 /** Load a document from the database and format it. */
 async function loadDocuments(ids, includeInternalId = false) {
-	const results = await knex("artwork").whereIn("name", ids);
+	const results = await knex("artwork")
+		.whereIn("name", ids)
+		.orderByRaw("FIND_IN_SET(??, ?)", ["name", ids.join(",")]);
 	const documents = [];
 	for (artwork of results) {
 		// No point in making queries in parallel because MySQL is sequential.
