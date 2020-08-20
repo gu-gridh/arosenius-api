@@ -67,3 +67,9 @@ Consider this as documentation for a one-shot operation in the past.
    - Inspect the MySQL database
    - Improve the script and `arosenius-model.sql`
    - Repeat
+
+## Adapting to custom data
+
+This database backend is open source, and we encourage you to use it for your own data. If you do, we also recommend using [arosenius-archive-gui](https://github.com/CDH-DevTeam/arosenius-archive-gui) as a user-friendly GUI and [arosenius-admin](https://github.com/CDH-DevTeam/arosenius-admin) for manually managing data entries.
+
+As the data model is quite hard-coded into the code, this requires that you can either structure your data into the same model, or edit the code to fit your data better. See [`arosenius-model.sql`](arosenius-model.sql) for the SQL definition of the data model (schema).
