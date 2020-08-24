@@ -882,43 +882,58 @@ function getTagCloud(req, res) {
 		type: 'artwork',
 		body: queryBody
 	}, function(error, response) {
-		res.json(_.filter(_.map(response.aggregations.tags.buckets, function(tag) {
-				return {
-					value: tag.key,
-					doc_count: tag.doc_count,
-					type: 'tags'
-				};
-			})
-			.concat(_.map(response.aggregations.persons.buckets, function(tag) {
-				return {
-					value: tag.key,
-					doc_count: tag.doc_count,
-					type: 'person'
-				};
-			}))
-			.concat(_.map(response.aggregations.places.buckets, function(tag) {
-				return {
-					value: tag.key,
-					doc_count: tag.doc_count,
-					type: 'place'
-				};
-			}))
-                        .concat(_.map(response.aggregations.collections.buckets, function(tag) {
-                                return {
-                                        value: tag.key,
-                                        doc_count: tag.doc_count,
-                                        type: 'museum'
-                                };
-                        }))
-			.concat(_.map(response.aggregations.genre.buckets, function(tag) {
-				return {
-					value: tag.key,
-					doc_count: tag.doc_count,
-					type: 'genre'
-				};
-			})), function(tag) {
-			return tag.doc_count > 4;
-		}));
+		res.json(
+			_.filter(
+				_.map(response.aggregations.uniq.tags.buckets, function (tag) {
+					return {
+						value: tag.key,
+						doc_count: tag.doc_count,
+						type: "tags"
+					};
+				})
+					.concat(
+						_.map(response.aggregations.uniq.persons.buckets, function (tag) {
+							return {
+								value: tag.key,
+								doc_count: tag.doc_count,
+								type: "person"
+							};
+						})
+					)
+					.concat(
+						_.map(response.aggregations.uniq.places.buckets, function (tag) {
+							return {
+								value: tag.key,
+								doc_count: tag.doc_count,
+								type: "place"
+							};
+						})
+					)
+					.concat(
+						_.map(response.aggregations.uniq.collections.buckets, function (
+							tag
+						) {
+							return {
+								value: tag.key,
+								doc_count: tag.doc_count,
+								type: "museum"
+							};
+						})
+					)
+					.concat(
+						_.map(response.aggregations.uniq.genre.buckets, function (tag) {
+							return {
+								value: tag.key,
+								doc_count: tag.doc_count,
+								type: "genre"
+							};
+						})
+					),
+				function (tag) {
+					return tag.doc_count > 4;
+				}
+			)
+		);
 	});
 }
 
