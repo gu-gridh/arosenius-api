@@ -318,6 +318,7 @@ function getDocuments(req, res) {
 	} else {
 		// Perform search.
 		search(req.query).then(names => {
+			// Out of the full range of ids, determine what section to retrieve as complete records.
 			const size = req.query.showAll ? 10000 : parseInt(req.query.count) || 100;
 			const from =
 				!req.query.showAll && req.query.page > 0

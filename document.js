@@ -219,39 +219,52 @@ async function updateImages(artworkId, images) {
 }
 
 /** Load a document from the database and format it. */
-async function loadDocuments(ids, includeInternalId = false) {
-	const results = await knex("artwork")
-		.whereIn("name", ids)
-		.orderByRaw("FIND_IN_SET(??, ?)", ["name", ids.join(",")]);
-	const documents = [];
-	for (artwork of results) {
-		// No point in making queries in parallel because MySQL is sequential.
-		const images = await knex("image")
-			.where("artwork", artwork.id)
-			.orderBy("order", "asc");
-		const keywords = await knex("keyword").where("artwork", artwork.id);
+async function loadDocuments(names, includeInternalId = false) {
+	const artworks = await knex("artwork")
+		.leftJoin({ sender: "person" }, "artwork.sender", "sender.id")
+		.leftJoin({ recipient: "person" }, "artwork.recipient", "recipient.id")
+		.select("artwork.*", {
+			// Rename person columns to avoid collision.
+			sender_name: "sender.name",
+			sender_birth_year: "sender.birth_year",
+			sender_death_year: "sender.death_year",
+			recipient_name: "recipient.name",
+			recipient_birth_year: "recipient.birth_year",
+			recipient_death_year: "recipient.death_year"
+		})
+		.whereIn("artwork.name", names)
+		.orderByRaw("FIND_IN_SET(??, ?)", ["artwork.name", names.join(",")]);
+	const ids = artworks.map(artwork => artwork.id);
+	// Load all associated records at once to reduce the amount of MySQL queries.
+	const [imagesAll, keywordsAll] = await Promise.all([
+		knex("image").whereIn("artwork", ids).orderBy("order", "asc"),
+		knex("keyword").whereIn("artwork", ids)
+	]);
+	// Re-associate each image and keyword to their corresponding artwork objects.
+	return artworks.map(artwork => {
+		const images = imagesAll.filter(image => image.artwork == artwork.id);
 		// Group keywords by type.
-		const keywordsByType = {};
-		keywords.forEach(row => {
-			keywordsByType[row.type] = keywordsByType[row.type] || [];
-			keywordsByType[row.type].push(row.name);
-		});
-		const sender =
-			artwork.sender && (await knex("person").where("id", artwork.sender));
-		const recipient =
-			artwork.recipient &&
-			(await knex("person").where("id", artwork.recipient));
-		const document = formatDocument({
-			artwork,
-			images,
-			keywords: keywordsByType,
-			sender,
-			recipient
-		});
+		const keywords = {};
+		keywordsAll
+			.filter(keyword => keyword.artwork == artwork.id)
+			.forEach(row => {
+				keywords[row.type] = keywords[row.type] || [];
+				keywords[row.type].push(row.name);
+			});
+		const sender = {
+			name: artwork.sender_name,
+			birth_year: artwork.sender_birth_year,
+			death_year: artwork.sender_death_year
+		};
+		const recipient = {
+			name: artwork.recipient_name,
+			birth_year: artwork.recipient_birth_year,
+			death_year: artwork.recipient_death_year
+		};
+		const document = formatDocument({artwork, images, keywords, sender, recipient})
 		if (includeInternalId) document._id = artwork.id;
-		documents.push(document);
-	}
-	return documents;
+		return document
+	});
 }
 
 /** Combine rows related to an object into a single structured object. */
@@ -345,7 +358,7 @@ async function deleteDocuments(names) {
 	await Promise.all([
 		knex("artwork").delete().where("id", "in", ids),
 		knex("image").delete().where("artwork", "in", ids),
-		knex("keyword").delete().where("artwork", "in", ids),
+		knex("keyword").delete().where("artwork", "in", ids)
 	]);
 }
 
@@ -356,7 +369,7 @@ async function deleteDocuments(names) {
  * Not recursive.
  */
 function noUndefined(obj) {
-	return _.mapObject(obj, v => v === undefined ? null : v)
+	return _.mapObject(obj, v => (v === undefined ? null : v));
 }
 
 module.exports = {
