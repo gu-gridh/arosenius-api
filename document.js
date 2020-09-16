@@ -208,10 +208,10 @@ async function updateImages(artworkId, images) {
 	);
 	// Delete images that are not in the incoming data.
 	const deletes = existing
-		.filter(e => !images.find(i => i.filename === e.filename))
+		.filter(e => !images.find(i => i.image === e.filename))
 		.map(image =>
 			knex("image")
-				.where({ artwork: artworkId, filename: image.filename })
+				.where({ artwork: artworkId, filename: image.image })
 				.delete()
 		);
 	// Return a promise of the promises.

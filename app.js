@@ -384,6 +384,8 @@ function putDocument(req, res) {
 var sizeOf = require('image-size');
 
 function processImages(images) {
+	images = images.filter(image => image.image)
+
 	images = _.sortBy(images, function(image) {
 		return image.page && Number(image.page.order) || 0;
 	});
