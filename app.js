@@ -451,7 +451,7 @@ function getNextId(req, res) {
 			}
 		}
 	}, function(error, response) {
-		console.log(error)
+		error && console.log(error);
 	
 		try {
 			res.json({
@@ -494,7 +494,7 @@ function getPrevId(req, res) {
 			}
 		}
 	}, function(error, response) {
-		console.log(error)
+		error && console.log(error);
 	
 		try {
 			res.json({
@@ -524,7 +524,7 @@ function getHighestId(req, res) {
 			}
 		}
 	}, function(error, response) {
-		console.log(error)
+		error && console.log(error);
 	
 		try {
 			res.json({
@@ -698,19 +698,33 @@ function putDocument(req, res) {
 	});
 }
 
-var sizeOf = require('image-size');
-
 function processImages(images) {
 	images = _.sortBy(images, function(image) {
 		return image.page && Number(image.page.order) || 0;
 	});
 
 	images = images.map(function(image) {
-		image.imagesize = sizeOf(config.image_path+'/'+image.image+'.jpg')
+		image.imagesize = imageSize(config.image_path+'/'+image.image+'.jpg')
 		return image;
 	});
 
 	return images;
+}
+
+var sizeOf = require('image-size');
+
+function imageSize(path) {
+	try {
+		return sizeOf(path)
+	}
+	catch (e) {
+		// The buffer read by image-size is too small sometimes.
+		// Try again with the entire file.
+		// See https://github.com/image-size/image-size/issues/96
+		var buffer = fs.readFileSync(path)
+		console.warn('image-size buffer to small, had to read entire ' + path)
+		return sizeOf(buffer);
+	}
 }
 
 function postDocument(req, res) {
