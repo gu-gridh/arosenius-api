@@ -53,6 +53,22 @@ Users are defined in the `users.js` file. All users have the same privileges.
 The data model for this project began as an Elasticsearch index, before it was converted to MySQL in 2020.
 The data structure is still artwork-document-centered, and some other design choices in the model and code are due to this Elasticsearch legacy.
 
+### Migrating from Elasticsearch to MySQL
+
+Consider this as documentation for a one-shot operation in the past.
+
+1. Run `npm install` to get new dependencies
+2. Run `elasticdump` on the server and scp it to `./arosenius_v4.json`
+3. Create a MySQL database locally
+   - Make sure to use `DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_swedish_ci` (see https://mariadb.com/kb/en/setting-character-sets-and-collations/)
+4. Extend `config.js` with the `mysql.*` properties (see `config.demo.js`)
+5. Run the data migration:
+   - Run the SQL commands in `arosenius-model.sql` to delete (!) and create necessary tables.
+   - Run `node es-to-mysql.js`
+   - Inspect the MySQL database
+   - Improve the script and `arosenius-model.sql`
+   - Repeat
+
 ## Adapting to custom data
 
 This database backend is open source, and we encourage you to use it for your own data. If you do, we also recommend using [arosenius-archive-gui](https://github.com/CDH-DevTeam/arosenius-archive-gui) as a user-friendly GUI and [arosenius-admin](https://github.com/CDH-DevTeam/arosenius-admin) for manually managing data entries.
