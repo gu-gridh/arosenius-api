@@ -1,22 +1,28 @@
 var express = require('express');
 var bodyParser = require('body-parser');
 var _ = require('underscore');
-var elasticsearch = require('elasticsearch');
 var IMGR = require('imgr').IMGR;
-var request = require('request');
 var fs = require('fs');
 var path = require('path');
 
 var config = require('./config');
+var {
+	insertDocument,
+	updateDocument,
+	updateImages,
+	loadDocuments,
+	deleteDocuments
+} = require("./document");
 
 var app = express();
 var auth = require('basic-auth')
 var busboy = require('connect-busboy');
 
-var client = new elasticsearch.Client({
-	host: config.es_host
-//	log: 'trace'
-});
+var knex = require('knex')({
+	client: 'mysql',
+	// debug: true,
+	connection: config.mysql,
+})
 
 function authenticate(user) {
 	var users = require('./users').users;
@@ -77,141 +83,6 @@ function adminLogin(req, res) {
 	});
 };
 
-// Helper to build Elasticsearch queries
-function QueryBuilder(req, sort, showUnpublished, showDeleted) {
-
-	// Initialize the main body of the query
-	if (sort && sort == 'insert_id') {
-		// Sort by insert_id
-		this.queryBody = {
-			sort: [
-				{
-					'insert_id': {
-						'order': 'asc'
-					}
-				}
-			],
-			query: {
-				bool: {
-					must: []
-				}
-			}
-		};
-	}
-	else {
-		// Automatically sort results to that artwork and photographs appear first in the list
-		this.queryBody = {
-			query: {
-				function_score: {
-					query: {
-						bool: {
-							must: []
-						}
-					},
-					functions: [
-						{
-							filter: {
-								term: {
-									'genre.raw': 'Målning'
-								}
-							},
-							weight: 3
-						},
-						{
-							filter: {
-								term: {
-									'type.raw': 'Teckning'
-								}
-							},
-							weight: 2
-						},
-						{
-							filter: {
-								term: {
-									'type.raw': 'Skiss'
-								}
-							},
-							weight: 1
-						},
-						{
-							random_score: {
-								seed: req.query.seed || (new Date()).toDateString()+(new Date()).getHours()+(Math.ceil(new Date().getMinutes()/20))
-							}
-						}
-					],
-					score_mode: 'sum'
-				}
-			}
-		};
-	}
-
-	if (!showUnpublished) {
-		this._queryObj().bool.must.push({
-			'not': {
-				'term': {
-					'published': 'false'
-				}
-			}
-		});
-	}
-
-	if (!showDeleted) {
-		this._queryObj().bool.must.push({
-			'not': {
-				'term': {
-					'deleted': 'true'
-				}
-			}
-		});
-	}
-}
-
-// Get reference to query object
-QueryBuilder.prototype._queryObj = function() {
-	return this.queryBody.query.function_score ? this.queryBody.query.function_score.query : this.queryBody.query;
-}
-
-// Function to add boolean query to the query body
-QueryBuilder.prototype.addBool = function(terms, type, caseSensitive, nested, nestedPath, disableProcessing) {
-	var boolObj = {
-		bool: {}
-	};
-
-	boolObj.bool[type] = [];
-
-	for (var i = 0; i<terms.length; i++) {
-		if (disableProcessing) {
-			boolObj.bool[type].push(terms[i]);
-		}
-		else {
-			var propertyName = terms[i][2] ? terms[i][2] : 'term';
-			var termObj = {};
-			termObj[propertyName] = {}
-
-			if (caseSensitive || propertyName != 'term' || terms[i][3]) {
-				termObj[propertyName][terms[i][0]] = terms[i][1];
-			}
-			else {
-				termObj[propertyName][terms[i][0]] = terms[i][1].toLowerCase();
-			}
-
-			boolObj.bool[type].push(termObj);
-		}
-	}
-
-	if (nested) {
-		this._queryObj().bool.must.push({
-			nested: {
-				path: nestedPath,
-				query: boolObj
-			}
-		});
-	}
-	else {
-		this._queryObj().bool.must.push(boolObj);
-	}
-}
-
 /**
  * @api {get} /documents?params
  * @apiName GetDocuments
@@ -259,425 +130,242 @@ QueryBuilder.prototype.addBool = function(terms, type, caseSensitive, nested, ne
       }
  *
  */
- function adminGetDocuments(req, res) {
-	getDocuments(req, res, true, true);
+function adminGetDocuments(req, res) {
+	req.query.showUnpublished = true
+	req.query.showDeleted = true
+	getDocuments(req, res);
 }
 
-function createQuery(req, showUnpublished, showDeleted) {
-	var queryBuilder = new QueryBuilder(req, req.query.sort, req.query.showUnpublished == 'true' || showUnpublished == true, req.query.showDeleted || showDeleted);
+/** Get the names of artworks matching a range of parameters. */
+async function search(params, options = {}) {
+	const query = knex("artwork").distinct("artwork.name");
 
-	// Get documents with insert_id creater than given value
-	if (req.query.insert_id) {
-		var range = {
-			gte: req.query.insert_id
-		};
-
-		queryBuilder.addBool([
-			['insert_id', range, 'range']
-		], 'should', true);
-	}
-
-	// Get documents from a specific museum
-	if (req.query.museum) {
-		queryBuilder.addBool([
-			['collection.museum.raw', req.query.museum]
-		], 'should', true);
-	}
-
-	// Get documents in a specific bundle (deprected)
-	if (req.query.bundle) {
-		queryBuilder.addBool([
-			['bundle', req.query.bundle]
-		], 'should', true);
-	}
-
-	// Get documents based on search strings. Searches in various fields listed below
-	if (req.query.search) {
-		var terms = [];
-		var textSearchTerm = {
-			'query_string': {
-				'query': req.query.search+'*',
-				'fields': [
-					'title^5',
-					'description^5',
-					'collection.museum',
-					'places',
-					'persons',
-					'tags',
-					'genre^10',
-					'type^10',
-					'museum_int_id',
-					'material'
-				],
-				'minimum_should_match': '100%'
+	// Ensure a table join for a keyword type.
+	const keywordsJoined = [];
+	const joinKeyword = (type) => {
+		if (keywordsJoined.includes(type)) return;
+		query.leftJoin(
+			{ [`kw${type}`]: "keyword" },
+			{
+				[`kw${type}.type`]: knex.raw(`'${type}'`),
+				[`kw${type}.artwork`]: "artwork.id"
 			}
-		};
-
-		queryBuilder.addBool([textSearchTerm], 'must', false, false, null, true);
-	}
-
-	// Get documents of specific type
-	if (req.query.type) {
-		queryBuilder.addBool([
-			['type.raw', req.query.type]
-		], 'should', true);
-	}
-
-	// Get documents tagged with a specific person/persons
-	if (req.query.person) {
-		var persons = req.query.person.split(';');
-
-		_.each(persons, _.bind(function(person) {
-			queryBuilder.addBool([
-				['persons.raw', person]
-			], 'should', true);
-		}, this));
-	}
-
-	// Get documents with a specific tag/tags
-	if (req.query.tags) {
-		var tags = req.query.tags.split(';');
-
-		_.each(tags, _.bind(function(tag) {
-			queryBuilder.addBool([
-				['tags.raw', tag]
-			], 'should', true);
-		}, this));
-	}
-
-	// Get documents tagged with a specific place/places
-	if (req.query.place) {
-		queryBuilder.addBool([
-			['places.raw', req.query.place]
-		], 'should', true);
-	}
-
-	// Get documents of specific genre
-	if (req.query.genre) {
-		queryBuilder.addBool([
-			['genre.raw', req.query.genre]
-		], 'should', true);
-	}
-
-	// Get documents of from specific year
-	if (req.query.year) {
-		queryBuilder.addBool([
-			[{
-				'range': {
-					'item_date_string': {
-						'gte': req.query.year+'||/y',
-						'lte': req.query.year+'||/y',
-						'format': 'yyyy'
-					}
-				}
-			}]
-		], 'must', false, false, null, true);
-
-		//terms, type, caseSensitive, nested, nestedPath, disableProcessing
-	}
-
-	// Defines if search should exclusively return artworks and photographs (images) or exclude artworks and photographs
-	if (req.query.archivematerial) {
-		if (req.query.archivematerial == 'only') {
-			queryBuilder.addBool([
-				['type', 'fotografi'],
-				['type', 'konstverk']
-			], 'must_not', true);
-		}
-		if (req.query.archivematerial == 'exclude') {
-			queryBuilder.addBool([
-				['type', 'fotografi'],
-				['type', 'konstverk']
-			], 'should', true);
-		}
-	}
-
-	return queryBuilder.queryBody;
-}
-
-function aggsUnique(field, additional = {}) {
-	return {
-		"size": 0,
-		"aggs": {
-			"uniq": {
-				// Exclude deleted artworks.
-				"filter": {
-					"bool": {
-						"must_not": {
-							"term": {
-								"deleted": true
-							}
-						}
-					}
-				},
-				"aggs": {
-					"uniq": {
-						"terms": Object.assign({
-							"field": field,
-							"size": 5000,
-						}, additional)
-					}
-				}
-			}
-		}
+		)
+		keywordsJoined.push(type)
 	};
+
+	// For other keyword types, join if necessary.
+	const keywordTypes = ["type", "genre", "tag", "person", "place"];
+	keywordTypes.forEach(keywordType => {
+		// Interpret "tags" like "tag".
+		const value = params[keywordType] || params[`${keywordType}s`]
+		if (value) {
+			joinKeyword(keywordType);
+			query.where(`kw${keywordType}.name`, value);
+		}
+	});
+	if (!params.showUnpublished) {
+		query.where("published", 1);
+	}
+	if (!params.showDeleted) {
+		query.where("deleted", 0);
+	}
+	if (params.insert_id) {
+		query.where("insert_id", ">=", params.insert_id);
+	}
+	if (params.museum) {
+		query.where("museum", "like", `${params.museum}%`);
+	}
+	if (params.bundle) {
+		query.where("bundle", "like", `${params.bundle}%`);
+	}
+	if (params.year) {
+		query.where(knex.raw("substring(date, 1, 4) = ?", [params.year]))
+	}
+	if (params.archivematerial) {
+		// Join with the keyword table to find out if type has either Fotografi or Konstverk.
+		query.leftJoin({ archive_keyword: "keyword" }, function () {
+			this.on("archive_keyword.type", knex.raw("?", ["type"]))
+				.on("archive_keyword.artwork", "artwork.id")
+				.on(function () {
+					this.on("archive_keyword.name", knex.raw("?", ["Fotografi"]));
+					this.orOn("archive_keyword.name", knex.raw("?", ["Konstverk"]));
+				});
+		});
+		if (params.archivematerial == "only") {
+			// Require that both Fotografi and Konstverk are missing from type.
+			query.whereNull("archive_keyword.id");
+		} else if (params.archivematerial == "exclude") {
+			// Require that type has either Fotografi and Konstverk.
+			query.whereNotNull("archive_keyword.id");
+		}
+	}
+	if (params.search) {
+		// TODO Check if this matches keywords correctly. Won't it just check one of the keywords per type?
+		// Boost fields differently.
+		const colScores = {
+			title: 0.5,
+			description: 0.5,
+			museum: 0.1,
+			museum_int_id: 0.1,
+			material: 0.1,
+			"kwtype.name": 1.0,
+			"kwgenre.name": 1.0,
+			"kwtag.name": 0.1,
+			"kwplace.name": 0.1,
+			"kwperson.name": 0.1
+		};
+
+		// Build expressions for scoring by regexp.
+		const searchExprs = Object.keys(colScores).map(col =>
+			// Find term either in the beginning or following a space.
+			knex.raw("IF(?? LIKE ? OR ?? LIKE ?, ?, 0)", [
+				col,
+				`${params.search}%`,
+				col,
+				`% ${params.search}%`,
+				colScores[col]
+			])
+		);
+
+		// Join all keyword types.
+		keywordTypes.forEach(keywordType => {
+			joinKeyword(keywordType);
+		});
+
+		// Group conditions with OR: require a match in at least one of the fields.
+		query.where(function () {
+			searchExprs.forEach(expr => this.orWhere(expr, ">", 0));
+		});
+
+		// Sum up the score for sorting.
+		// Unfortunately, this alias cannot be re-used in the where-clause above, so the query gets very long.
+		query.select({
+			search_score: knex.raw(
+				searchExprs.map(() => "?").join(" + "),
+				searchExprs
+			)
+		});
+	} else {
+		query.select({ search_score: 0 });
+	}
+	
+	// Determine sorting.
+	if (params.sort === "insert_id") {
+		query.select("insert_id").orderBy("insert_id", "asc");
+	} else if (!options.noSort) {
+		const sortGenres = ["Målning", "Teckning", "Skiss"];
+		// Join the keyword table (again) specifically to find out whether these keywords are present.
+		sortGenres.forEach((genre, i) =>
+			query.leftJoin(
+				{ [`sort${i}`]: "keyword" },
+				{
+					[`sort${i}.type`]: knex.raw("?", ["genre"]),
+					[`sort${i}.artwork`]: "artwork.id",
+					[`sort${i}.name`]: knex.raw("?", [genre])
+				}
+			)
+		);
+		// Build an "else if" expression using recursion.
+		const scoreExpr = (i = 0) =>
+			i < sortGenres.length
+				? `IF(sort${i}.id, ${sortGenres.length - i}, ${scoreExpr(i + 1)})`
+				: 0;
+		query.select({
+			sort_score: knex.raw(scoreExpr())
+		});
+		// The random factor "smudges out" the boundaries between sections.
+		query.orderBy(
+			knex.raw(`sort_score + search_score + RAND(NOW() DIV 2000) * 1.1`),
+			"desc"
+		);
+	}
+
+	return query.then(rows => rows.map(row => row.name));
 }
 
 function getNextId(req, res) {
-	client.search({
-		index: config.index,
-		type: 'artwork',
-		size: 1,
-		body: {
-			sort: [
-				{
-					"insert_id": {
-						"order": "asc"
-					}
-				}
-			],
-			"query": {
-				"bool": {
-					"must": [
-						{
-							"range": {
-								"insert_id": {
-									"gte": Number(req.params.insert_id)+1
-								}
-							}
-						}
-					]
-				}
-			}
-		}
-	}, function(error, response) {
-		error && console.log(error);
-	
-		try {
-			res.json({
-				id: response.hits.hits[0]._id,
-				title: response.hits.hits[0]._source.title,
-				insert_id: response.hits.hits[0]._source.insert_id
-			});
-		}
-		catch (e) {
-			res.json({error: 'not found'});
-		}
-	});
+	knex("artwork")
+		.first({ id: "name" }, "title", "insert_id")
+		.where("insert_id", ">", req.params.insert_id)
+		.orderBy("insert_id")
+		.then(row => res.json(row || { error: "not found" }));
 }
 
 function getPrevId(req, res) {
-	client.search({
-		index: config.index,
-		type: 'artwork',
-		size: 1,
-		body: {
-			sort: [
-				{
-					"insert_id": {
-						"order": "desc"
-					}
-				}
-			],
-			"query": {
-				"bool": {
-					"must": [
-						{
-							"range": {
-								"insert_id": {
-									"lte": Number(req.params.insert_id)-1
-								}
-							}
-						}
-					]
-				}
-			}
-		}
-	}, function(error, response) {
-		error && console.log(error);
-	
-		try {
-			res.json({
-				id: response.hits.hits[0]._id,
-				title: response.hits.hits[0]._source.title,
-				insert_id: response.hits.hits[0]._source.insert_id
-			});
-		}
-		catch (e) {
-			res.json({error: 'not found'});
-		}
-	});
+	knex("artwork")
+		.first({ id: "name" }, "title", "insert_id")
+		.where("insert_id", "<", req.params.insert_id)
+		.orderBy("insert_id", "desc")
+		.then(row => res.json(row || { error: "not found" }));
 }
 
 function getHighestId(req, res) {
-	client.search({
-		index: config.index,
-		type: 'artwork',
-		size: 0,
-		body: {
-			"aggs": {
-				"insert_id": {
-					"max": {
-						"field": "insert_id"
-					}
-				}
-			}
-		}
-	}, function(error, response) {
-		error && console.log(error);
-	
-		try {
-			res.json({
-				highest_insert_id: response.aggregations.insert_id.value
-			});
-		}
-		catch (e) {
-			res.json({error: 'not found'});
-		}
-	});
+	knex("artwork")
+		.max({ highest_insert_id: "insert_id" })
+		.then(rows => res.json(rows[0] || { error: "not found" }));
 }
 
 // Search for documents
-function getDocuments(req, res, showUnpublished = false, showDeleted = false) {
-	var pageSize = req.query.count || 100;
-
-	var query = {};
-
+function getDocuments(req, res) {
 	if (req.query.ids) {
-		// Do a mget query
-		var docIds = req.query.ids.split(';');
-		query = {
-			ids: docIds
-		};
-
-		client.mget({
-			index: config.index,
-			type: 'artwork',
-			body: query
-		}, function(error, response) {
+		// Get specific documents.
+		loadDocuments(req.query.ids.split(";")).then(docs =>
 			res.json({
-				query: req.query.showQuery == 'true' ? query : null,
-				documents: response.docs ? _.compact(_.map(response.docs, function(item) {
-					if (item._source) {
-						var ret = item._source;
-						ret.id = item._id;
-						return ret;
-					}
-				})) : []
-			});
-		});
-	}
-	else {
-		query = createQuery(req, showUnpublished, showDeleted);
-
-		// Send the search query to Elasticsearch
-		client.search({
-			index: config.index,
-			type: 'artwork',
-			// pagination
-			size: req.query.showAll && req.query.showAll == 'true' ? 10000 : pageSize,
-			from: req.query.showAll && req.query.showAll == 'true' ? 0 : (req.query.page && req.query.page > 0 ? (req.query.page-1)*pageSize : 0),
-			body: req.query.ids ? query : query
-		}, function(error, response) {
-			res.json({
-				query: req.query.showQuery == 'true' ? query : null,
-				total: response.hits ? response.hits.total : 0,
-				documents: response.hits ? _.map(response.hits.hits, function(item) {
-					var ret = item._source;
-					ret.id = item._id;
-					if (req.query.simple) {
-						delete ret.images;
-					}
-
-					return ret;
-				}) : []
-			});
+				documents: docs
+			})
+		);
+	} else {
+		// Perform search.
+		search(req.query).then(names => {
+			// Out of the full range of ids, determine what section to retrieve as complete records.
+			const size = req.query.showAll ? 10000 : parseInt(req.query.count) || 100;
+			const from =
+				!req.query.showAll && req.query.page > 0
+					? (req.query.page - 1) * size
+					: 0;
+			loadDocuments(names.slice(from, from + size)).then(docs =>
+				res.json({
+					total: names.length,
+					documents: docs.map(doc => {
+						if (req.query.simple) doc.images = undefined;
+						return doc;
+					})
+				})
+			)
 		});
 	}
 }
 
-function putCombineDocuments(req, res) {
-	var ids = req.body.documents;
-	var finalDocument = req.body.selectedDocument;
+async function putCombineDocuments(req, res) {
+	const ids = req.body.documents;
+	const keep = req.body.selectedDocument;
 
-	client.search({
-		index: config.index,
-		type: 'artwork',
-		size: 100,
-		body: {
-			query: {
-				query_string: {
-					query: '_id: '+ids.join(' OR _id: ')
-				}
-			}
-		}
-	}, function(error, response) {
-		if (ids.length != response.hits.total) {
-			res.status(500);
-			res.json({error: 'Unable to combine documents, have they been combined before?'});
-		}
-		else {
+	const documents = await loadDocuments(ids, true);
+	// Find the internal SQL ID of the artwork to keep.
+	const keepId = documents.find(d => d.id === keep)._id
 
-			var imageMetadataArray = [];
+	// Abort if all documents are not found.
+	if (ids.length != documents.length) {
+		return res.status(500).json({
+			error: "Unable to combine documents, have they been combined before?"
+		});
+	}
 
-			_.each(response.hits.hits, function(document) {
-				var imageMetadata = {};
+	// Add new images to the chosen document.
+	const images = []
+		.concat(...documents.map(document => document.images))
+		.sort((a, b) => a.page.order - b.page.order);
+	await updateImages(keepId, images);
 
-				if (document._source.image) {
-					imageMetadata.image = document._source.image;
+	// Delete the other selected documents.
+	const deleteIds = ids.filter(id => id != keep);
+	await deleteDocuments(deleteIds);
 
-					if (document._source.page) {
-						imageMetadata.page = document._source.page;
-					}
-					if (document._source.imagesize) {
-						imageMetadata.imagesize = document._source.imagesize;
-					}
-
-					imageMetadataArray.push(imageMetadata);
-				}
-
-				if (document._source.images) {
-					imageMetadataArray = imageMetadataArray.concat(document._source.images);
-				}
-
-				imageMetadataArray = _.uniq(imageMetadataArray, function(image) {
-					return image.image;
-				});
-			});
-
-			imageMetadataArray = _.sortBy(imageMetadataArray, function(image) {
-				return image.page.order || 0;
-			});
-
-			client.update({
-				index: config.index,
-				type: 'artwork',
-				id: finalDocument,
-				body: {
-					doc: {
-						images: imageMetadataArray,
-					}
-				}
-			}, function(error, response) {
-				var documentsToDelete = _.difference(ids, [finalDocument]);
-
-				var bulkBody = _.map(documentsToDelete, function(document) {
-					return {
-						delete: {
-							_index: config.index,
-							_type: 'artwork',
-							_id: document
-						}
-					}
-				});
-
-				client.bulk({
-					body: bulkBody
-				}, function(error, response) {
-					res.json({response: 'post'});
-				});
-			});
-		}
+	res.json({
+		keep,
+		images: images.length,
+		deleted: deleteIds
 	});
 }
 
@@ -688,17 +376,14 @@ function putDocument(req, res) {
 		document.images = processImages(document.images);
 	}
 
-	client.create({
-		index: config.index,
-		type: 'artwork',
-		id: req.body.id,
-		body: document
-	}, function(error, response) {
-		res.json(response);
-	});
+	insertDocument(document)
+		.catch((error) => res.status(500).json({error}))
+		.then(() => res.json({ response: "created" }));
 }
 
 function processImages(images) {
+	images = images.filter(image => image.image)
+
 	images = _.sortBy(images, function(image) {
 		return image.page && Number(image.page.order) || 0;
 	});
@@ -734,16 +419,9 @@ function postDocument(req, res) {
 		document.images = processImages(document.images);
 	}
 
-	client.update({
-		index: config.index,
-		type: 'artwork',
-		id: req.body.id,
-		body: {
-			doc: document
-		}
-	}, function(error, response) {
-		res.json({response: 'post'});
-	});
+	updateDocument(document)
+		.catch(error => res.status(500).json({ error }))
+		.then(res.json({ response: "updated" }));
 }
 
 /**
@@ -778,556 +456,177 @@ function postDocument(req, res) {
       }
  *
  */
- function getDocument(req, res) {
+function getDocument(req, res) {
 	var query = [];
 	if (req.query.museum) {
 		query.push('collection.museum: "'+req.query.museum+'"');
 	}
-
-	client.search({
-		index: config.index,
-		type: 'artwork',
-		size: 1,
-		from: 0,
-		q: '_id: '+req.params.id
-	}, function(error, response) {
-		res.json({
-			data: _.map(response.hits.hits, function(item) {
-				var ret = item._source;
-				ret.id = item._id;
-				return ret;
-			})[0]
-		});
-	});
+	
+	loadDocuments([req.params.id]).then(docs => res.json({
+		data: docs.length ? docs[0] : undefined
+	}))
 }
 
 function getMuseums(req, res) {
-	client.search({
-		index: config.index,
-		type: 'artwork',
-		body: aggsUnique('collection.museum.raw', {size: 10, order: {_count: "desc"}})
-	}, function(error, response) {
-		res.json(_.map(response.aggregations.uniq.uniq.buckets, function(museum) {
-			return {
-				value: museum.key
-			};
-		}));
-	});
+	knex("artwork")
+		.select("museum")
+		.whereNot("deleted", 1)
+		.whereNot("museum", "")
+		.groupBy("museum")
+		.orderByRaw("count(id) desc")
+		.then(rows => res.json(rows.map(row => ({ value: row.museum }))));
+}
+
+/** Build SQL query for listing the keywords of a given type. */
+function keywordList(req, res, type) {
+	return knex("keyword")
+		.select("keyword.name")
+		.count({ count: "keyword.id" })
+		.join("artwork", "keyword.artwork", "=", "artwork.id")
+		.where("keyword.type", type)
+		.whereNot("artwork.deleted", 1)
+		.groupBy("keyword.name")
+		.orderBy([
+			req.query.sort === "doc_count"
+				? { column: "count", order: "desc" }
+				: { column: "keyword.name", order: "asc" }
+		])
+		.then(rows =>
+			res.json(rows.map(row => ({ value: row.name, doc_count: row.count })))
+		);
 }
 
 function getTypes(req, res) {
-	var additional = !req.query.sort || req.query.sort != 'doc_count' ? {order: {_term: 'asc'}} : {}
-	var queryBody = aggsUnique('type.raw', additional)
-
-	client.search({
-		index: config.index,
-		type: 'artwork',
-		body: queryBody
-	}, function(error, response) {
-		res.json(_.map(_.filter(response.aggregations.uniq.uniq.buckets, function(type) {
-			return type.key != '';
-		}), function(type) {
-			return {
-				value: type.key,
-				doc_count: type.doc_count
-			};
-		}));
-	});
+	keywordList(req, res, "type");
 }
 
 function getTags(req, res) {
-	var additional = !req.query.sort || req.query.sort != 'doc_count' ? {order: {_term: 'asc'}} : {}
-	var queryBody = aggsUnique('tags.raw', additional)
-
-	client.search({
-		index: config.index,
-		type: 'artwork',
-		body: queryBody
-	}, function(error, response) {
-		res.json(_.map(response.aggregations.uniq.uniq.buckets, function(tag) {
-			return {
-				value: tag.key,
-				doc_count: tag.doc_count
-			};
-		}));
-	});
-}
-
-function getTagCloud(req, res) {
-	var additional = !req.query.sort || req.query.sort != 'doc_count' ? { order: { _term: 'asc' } } : {}
-	// Only use aggsUnique to get the base, then replace `temp` with specific term aggs.
-	var queryBody = aggsUnique('temp', additional)
-	queryBody.aggs.uniq.aggs = {
-		"tags": {
-			"terms": {
-				"field": "tags.raw",
-				"size": 5000,
-				"exclude": "GKMs diabildssamling|Skepplandamaterialet"
-			}
-		},
-		"persons": {
-			"terms": {
-				"field": "persons.raw",
-				"size": 5000
-			}
-		},
-		"places": {
-			"terms": {
-				"field": "places.raw",
-				"size": 5000
-			}
-		},
-		"genre": {
-			"terms": {
-				"field": "genre.raw",
-				"size": 5000
-			}
-		},
-		"collections": {
-			"terms": {
-				"field": "collection.museum.raw",
-				"size": 5000
-			}
-		}
-	};
-
-	client.search({
-		index: config.index,
-		type: 'artwork',
-		body: queryBody
-	}, function(error, response) {
-		res.json(
-			_.filter(
-				_.map(response.aggregations.uniq.tags.buckets, function (tag) {
-					return {
-						value: tag.key,
-						doc_count: tag.doc_count,
-						type: "tags"
-					};
-				})
-					.concat(
-						_.map(response.aggregations.uniq.persons.buckets, function (tag) {
-							return {
-								value: tag.key,
-								doc_count: tag.doc_count,
-								type: "person"
-							};
-						})
-					)
-					.concat(
-						_.map(response.aggregations.uniq.places.buckets, function (tag) {
-							return {
-								value: tag.key,
-								doc_count: tag.doc_count,
-								type: "place"
-							};
-						})
-					)
-					.concat(
-						_.map(response.aggregations.uniq.collections.buckets, function (
-							tag
-						) {
-							return {
-								value: tag.key,
-								doc_count: tag.doc_count,
-								type: "museum"
-							};
-						})
-					)
-					.concat(
-						_.map(response.aggregations.uniq.genre.buckets, function (tag) {
-							return {
-								value: tag.key,
-								doc_count: tag.doc_count,
-								type: "genre"
-							};
-						})
-					),
-				function (tag) {
-					return tag.doc_count > 4;
-				}
-			)
-		);
-	});
-}
-
-function getPagetypes(req, res) {
-	client.search({
-		index: config.index,
-		type: 'artwork',
-		body: aggsUnique('page.side')
-	}, function(error, response) {
-		res.json(_.map(response.aggregations.uniq.uniq.buckets, function(side) {
-			return {
-				value: side.key
-			};
-		}));
-	});
+	keywordList(req, res, "tag");
 }
 
 function getPersons(req, res) {
-	var additional = !req.query.sort || req.query.sort != 'doc_count' ? {order: {_term: 'asc'}} : {}
-	var queryBody = aggsUnique('persons.raw', additional);
-
-	client.search({
-		index: config.index,
-		type: 'artwork',
-		body: queryBody
-	}, function(error, response) {
-		res.json(_.map(response.aggregations.uniq.uniq.buckets, function(person) {
-			return {
-				value: person.key,
-				doc_count: person.doc_count
-			};
-		}));
-	});
+	keywordList(req, res, "person");
 }
 
 function getPlaces(req, res) {
-	var additional = !req.query.sort || req.query.sort != 'doc_count' ? {order: {_term: 'asc'}} : {}
-	var queryBody = aggsUnique('places.raw', additional)
-
-	client.search({
-		index: config.index,
-		type: 'artwork',
-		body: queryBody
-	}, function(error, response) {
-		res.json(_.map(response.aggregations.uniq.uniq.buckets, function(place) {
-			return {
-				value: place.key,
-				doc_count: place.doc_count
-			};
-		}));
-	});
+	keywordList(req, res, "place");
 }
 
 function getGenres(req, res) {
-	var additional = !req.query.sort || req.query.sort != 'doc_count' ? {order: {_term: 'asc'}} : {}
-	var queryBody = aggsUnique('genre.raw', additional)
+	keywordList(req, res, "genre");
+}
 
-	client.search({
-		index: config.index,
-		type: 'artwork',
-		body: queryBody
-	}, function(error, response) {
-		res.json(_.map(response.aggregations.uniq.uniq.buckets, function(genre) {
-			return {
-				value: genre.key,
-				doc_count: genre.doc_count
-			};
-		}));
-	});
+function getTagCloud(req, res) {
+	Promise.all([
+		knex("keyword")
+			.select({ type: knex.raw("IF(type = 'tag', 'tags', type)"), value: "name" })
+			.whereNot("type", "type")
+			.whereNotIn("name", ["GKMs diabildssamling", "Skepplandamaterialet"])
+			.count({ doc_count: "id" })
+			.groupBy("type", "value")
+			.having("doc_count", ">", 4),
+		knex("artwork")
+			.select({ type: knex.raw("?", "museum"), value: "museum" })
+			.count({ doc_count: "id" })
+			.groupBy("museum")
+			.having("doc_count", ">", 4)
+	]).then(([keywordRows, museumRows]) =>
+		res.json(keywordRows.concat(museumRows))
+	);
+}
+
+function getPagetypes(req, res) {
+	knex('image').distinct('side').then(rows => {
+		res.json(rows.filter(row => row.side).map(row => ({value: row.side})))
+	})
 }
 
 function getExhibitions(req, res) {
-	client.search({
-		index: config.index,
-		type: 'artwork',
-		body: aggsUnique('exhibitions.raw', {size: 200, order: {_term: 'asc'}})
-	}, function(error, response) {
-		res.json(_.map(response.aggregations.uniq.uniq.buckets, function(genre) {
-			return {
-				value: genre.key
-			};
-		}));
-	});
+	knex("artwork")
+		.distinct("exhibitions")
+		.then(rows => {
+			// Parse JSON, flatten and deduplicate.
+			const unique = [];
+			rows
+				.map(row => JSON.parse(row.exhibitions))
+				.forEach(es => {
+					(es || []).forEach(e => {
+						!unique.find(
+							e2 => e.location === e2.location && e.year === e2.year
+						) && unique.push(e);
+					});
+				});
+			res.json(
+				unique
+					.map(e => ({
+						value: `${e.location}|${e.year}`
+					}))
+					.sort((a, b) => a.value.localeCompare(b.value))
+			);
+		});
 }
 
+/** Search like getDocuments, but summarize as count per year. */
 function getYearRange(req, res) {
-	var query = createQuery(req);
-
-	if (query.sort) {
-		delete query.sort;
-	}
-
-	client.search({
-		index: config.index,
-		type: 'artwork',
-		body: {
-			size: 0,
-			query: query,
-			aggs: {
-				years: {
-					date_histogram: {
-						field: "item_date_string",
-						interval: "1y",
-						time_zone: "Europe/Berlin",
-						min_doc_count: 1
-					}
-				}
-			}
-		}
-	}, function(error, response) {
-		res.json(_.map(response.aggregations.years.buckets, function(bucket) {
-			return {
-				year: bucket.key_as_string.split('-')[0],
-				key: bucket.key,
-				doc_count: bucket.doc_count
-			};
-		}));
+	search(req.query, {noSort: true}).then(names => {
+		knex("artwork")
+			.whereIn("name", names)
+			.whereNotNull("date")
+			.select({ year: knex.raw("substring(??, 1, 4)", "date") })
+			.count({ doc_count: "id" })
+			.groupBy("year")
+			.then(rows => {
+				res.json(rows);
+			});
 	});
 }
 
 function getAutoComplete(req, res) {
-	var searchStrings = req.query.search.toLowerCase().split(' ');
+  const terms = req.query.search.toLowerCase().split(" ");
 
-	var query = [
-		// Documents
-		{ index: config.index, type: 'artwork' },
-		{
-			size: 10,
-			query: {
-				bool: {
-					must: _.map(searchStrings, function(searchString) {
-						return {
-							wildcard: {
-								title: '*'+searchString+'*'
-							}
-						}
-					})
-				}
-			}
-		},
-
-		// Titles aggregation
-		{ index: config.index, type: 'artwork' },
-		{
-			size: 0,
-			query: {
-				bool: {
-					must: _.map(searchStrings, function(searchString) {
-						return {
-							wildcard: {
-								title: '*'+searchString+'*'
-							}
-						}
-					})
-				}
-			},
-			aggs: {
-				titles: {
-					terms: {
-						field: 'title.raw',
-						size: 100,
-						order: {
-							_term: 'asc'
-						}
-					}
-				}
-			}
-		},
-
-		// Tags
-		{ index: config.index, type: 'artwork' },
-		{
-			size: 0,
-			query: {
-				bool: {
-					must: _.map(searchStrings, function(searchString) {
-						return {
-							wildcard: {
-								tags: '*'+searchString+'*'
-							}
-						}
-					})
-				}
-			},
-			aggs: {
-				tags: {
-					terms: {
-						field: 'tags.raw',
-						size: 100,
-						order: {
-							_term: 'asc'
-						}
-					}
-				}
-			}
-		},
-
-		// Places
-		{ index: config.index, type: 'artwork' },
-		{
-			size: 0,
-			query: {
-				bool: {
-					must: _.map(searchStrings, function(searchString) {
-						return {
-							wildcard: {
-								places: '*'+searchString+'*'
-							}
-						}
-					})
-				}
-			},
-			aggs: {
-				places: {
-					terms: {
-						field: 'places.raw',
-						size: 100,
-						order: {
-							_term: 'asc'
-						}
-					}
-				}
-			}
-		},
-
-		// Persons
-		{ index: config.index, type: 'artwork' },
-		{
-			size: 0,
-			query: {
-				bool: {
-					must: _.map(searchStrings, function(searchString) {
-						return {
-							wildcard: {
-								persons: '*'+searchString+'*'
-							}
-						}
-					})
-				}
-			},
-			aggs: {
-				persons: {
-					terms: {
-						field: 'persons.raw',
-						size: 100,
-						order: {
-							_term: 'asc'
-						}
-					}
-				}
-			}
-		},
-
-		// Genre
-		{ index: config.index, type: 'artwork' },
-		{
-			size: 0,
-			query: {
-				bool: {
-					must: _.map(searchStrings, function(searchString) {
-						return {
-							wildcard: {
-								genre: '*'+searchString+'*'
-							}
-						}
-					})
-				}
-			},
-			aggs: {
-				genre: {
-					terms: {
-						field: 'genre.raw',
-						size: 100,
-						order: {
-							_term: 'asc'
-						}
-					}
-				}
-			}
-		},
-
-		// Type
-		{ index: config.index, type: 'artwork' },
-		{
-			size: 0,
-			query: {
-				bool: {
-					must: _.map(searchStrings, function(searchString) {
-						return {
-							wildcard: {
-								type: '*'+searchString+'*'
-							}
-						}
-					})
-				}
-			},
-			aggs: {
-				type: {
-					terms: {
-						field: 'type.raw',
-						size: 100,
-						order: {
-							_term: 'asc'
-						}
-					}
-				}
-			}
-		},
-
-		// Museum
-		{ index: config.index, type: 'artwork' },
-		{
-			size: 0,
-			query: {
-				bool: {
-					must: _.map(searchStrings, function(searchString) {
-						return {
-							wildcard: {
-								'collection.museum': '*'+searchString+'*'
-							}
-						}
-					})
-				}
-			},
-			aggs: {
-				museum: {
-					terms: {
-						field: 'collection.museum.raw',
-						size: 100,
-						order: {
-							_term: 'asc'
-						}
-					}
-				}
-			}
-		}
-	];
-
-	client.msearch({
-		body: query
-	}, function(error, response) {
-		var getBuckets = function(field) {
-			var responseItem = _.find(response.responses, function(item) {
-				return Boolean(item.aggregations && item.aggregations[field]);
-			});
-
-			var buckets = _.filter(responseItem.aggregations[field].buckets, function(item) {
-				var found = false;
-
-				_.each(searchStrings, function(searchString) {
-					if (item.key.toLowerCase().indexOf(searchString) > -1) {
-						found = true;
-					}
-				})
-				return found;
-			});
-
-			return buckets;
-		};
-
-		var results = {
-
-			documents: _.map(response.responses[0].hits.hits, function(item) {
-				return {
-					key: item._source.title,
-					id: item._id
-				}
-			}),
-			titles: getBuckets('titles'),
-			tags: getBuckets('tags'),
-			persons: getBuckets('persons'),
-			places: getBuckets('places'),
-			genre: getBuckets('genre'),
-			type: getBuckets('type'),
-			museum: getBuckets('museum')
-		};
-
-
-		res.json(results);
-	});
+  Promise.all([
+    knex("artwork")
+      .select(["name", "title"])
+      .where(function () {
+        terms.forEach(term => this.where("title", "like", `%${term}%`));
+      }),
+    knex("keyword")
+      .select({ type: "type", key: "name" })
+      .where(function () {
+        terms.forEach(term => this.where("name", "like", `%${term}%`));
+      })
+      .count({ doc_count: "id" })
+      .groupBy(["type", "name"]),
+    knex("artwork")
+      .select({ key: "museum" })
+      .where(function () {
+        terms.forEach(term => this.where("museum", "like", `%${term}%`));
+      })
+      .count({ doc_count: "id" })
+      .groupBy(["museum"])
+  ]).then(([titleSearch, keywordCounts, museumCounts]) => {
+    const titleCounts = _.mapObject(
+      _.groupBy(titleSearch, "title"),
+      (items, title) => ({ key: title, doc_count: items.length })
+    );
+    function formatKeywordCounts(type) {
+      return keywordCounts
+        .filter(row => row.type === type)
+        .map(row => _.omit(row, "type"));
+    }
+    res.json({
+      documents: titleSearch
+        .slice(0, 10)
+        .map(row => ({ key: row.title, id: row.name })),
+      titles: Object.values(titleCounts),
+      tags: formatKeywordCounts("tag"),
+      persons: formatKeywordCounts("person"),
+      places: formatKeywordCounts("place"),
+      genre: formatKeywordCounts("genre"),
+      type: formatKeywordCounts("type"),
+      museum: museumCounts
+    });
+  });
 }
 
 function getImageFileList(req, res) {
@@ -1403,6 +702,6 @@ app.get('/admin/museums', getMuseums);
 app.get('/image_file_list', getImageFileList);
 app.post('/admin/upload', postImageUpload);
 
-app.listen(3010, function () {
+app.listen(config.port || 3010, function () {
   console.log('Arosenius project API');
 });

@@ -13,11 +13,12 @@
     "body-parser": "^1.15.2",
     "connect-busboy": "0.0.2",
     "cookie-parser": "^1.4.3",
-    "elasticsearch": "^11.0.1",
     "express": "^4.13.4",
     "express-session": "^1.15.6",
     "image-size": "^0.6.3",
     "imgr": "^0.10.4",
+    "knex": "0.17",
+    "mysql": "^2.18.1",
     "request": "^2.83.0",
     "underscore": "^1.8.3"
   },

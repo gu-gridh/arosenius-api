@@ -1,5 +1,4 @@
-node_modules/elasticsearch/.npmignore
-config.js
 node_modules
+config.js
 users.js
 imagedata
