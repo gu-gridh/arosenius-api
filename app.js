@@ -160,8 +160,16 @@ async function search(params, options = {}) {
 		// Interpret "tags" like "tag".
 		const value = params[keywordType] || params[`${keywordType}s`]
 		if (value) {
-			joinKeyword(keywordType);
-			query.whereIn(`kw${keywordType}.name`, value.split(';'));
+			// Multiple tags of same type (AND) can be separated by semicolon.
+			value.split(';').forEach((val, i) => {
+				// Join with the keyword table once for every required keyword.
+				const joinName = `kw_${keywordType}_${i}`
+				query.leftJoin({ [joinName]: "keyword" }, {
+					[`${joinName}.type`]: knex.raw(`'${keywordType}'`),
+					[`${joinName}.artwork`]: "artwork.id"
+				})
+				query.where(`${joinName}.name`, val);
+			})
 		}
 	});
 	if (!params.showUnpublished) {
