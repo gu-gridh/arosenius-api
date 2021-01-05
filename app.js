@@ -161,7 +161,7 @@ async function search(params, options = {}) {
 		const value = params[keywordType] || params[`${keywordType}s`]
 		if (value) {
 			joinKeyword(keywordType);
-			query.where(`kw${keywordType}.name`, value);
+			query.whereIn(`kw${keywordType}.name`, value.split(';'));
 		}
 	});
 	if (!params.showUnpublished) {
