@@ -297,7 +297,7 @@ function formatDocument({ artwork, images, keywords, sender, recipient }) {
 		}));
 	return {
 		insert_id: artwork.insert_id,
-		id: artwork.name,
+		id: artwork.insert_id,
 		title: artwork.title,
 		title_en: artwork.title_en,
 		subtitle: artwork.subtitle,
@@ -355,8 +355,8 @@ function formatDocument({ artwork, images, keywords, sender, recipient }) {
 	};
 }
 
-async function deleteDocuments(names) {
-	const ids = await knex("artwork").pluck("id").where("name", "in", names);
+async function deleteDocuments(insert_ids) {
+	const ids = await knex("artwork").pluck("id").where("insert_id", "in", insert_ids);
 	await Promise.all([
 		knex("artwork").delete().where("id", "in", ids),
 		knex("image").delete().where("artwork", "in", ids),

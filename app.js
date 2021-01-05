@@ -594,7 +594,7 @@ function getAutoComplete(req, res) {
 
   Promise.all([
     knex("artwork")
-      .select(["name", "title"])
+      .select(["insert_id", "title"])
       .where(function () {
         terms.forEach(term => this.where("title", "like", `%${term}%`));
       }),
@@ -625,7 +625,7 @@ function getAutoComplete(req, res) {
     res.json({
       documents: titleSearch
         .slice(0, 10)
-        .map(row => ({ key: row.title, id: row.name })),
+        .map(row => ({ key: row.title, id: row.insert_id })),
       titles: Object.values(titleCounts),
       tags: formatKeywordCounts("tag"),
       persons: formatKeywordCounts("person"),
