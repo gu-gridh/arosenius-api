@@ -219,7 +219,9 @@ async function updateImages(artworkId, images) {
 }
 
 /** Load a document from the database and format it. */
-async function loadDocuments(names, includeInternalId = false) {
+async function loadDocuments(insert_ids, includeInternalId = false) {
+	// Convert legacy ids (aka names) to insert_id, e.g. "PRIV-4844" to "4844"
+	insert_ids = insert_ids.map(id => id.replace(/[A-Za-z]+-/, ''))
 	const artworks = await knex("artwork")
 		.leftJoin({ sender: "person" }, "artwork.sender", "sender.id")
 		.leftJoin({ recipient: "person" }, "artwork.recipient", "recipient.id")
@@ -232,8 +234,8 @@ async function loadDocuments(names, includeInternalId = false) {
 			recipient_birth_year: "recipient.birth_year",
 			recipient_death_year: "recipient.death_year"
 		})
-		.whereIn("artwork.name", names)
-		.orderByRaw("FIND_IN_SET(??, ?)", ["artwork.name", names.join(",")]);
+		.whereIn("artwork.insert_id", insert_ids)
+		.orderByRaw("FIND_IN_SET(??, ?)", ["artwork.insert_id", insert_ids.join(",")]);
 	const ids = artworks.map(artwork => artwork.id);
 	// Load all associated records at once to reduce the amount of MySQL queries.
 	const [imagesAll, keywordsAll] = await Promise.all([
