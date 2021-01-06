@@ -58,9 +58,9 @@ async function updateDocument(artwork) {
 	values.sender = await ensurePerson(artwork.sender);
 	values.recipient = await ensurePerson(artwork.recipient);
 
-	await knex("artwork").where({ name: artwork.id }).update(values);
+	await knex("artwork").where({ insert_id: artwork.id }).update(values);
 	const artworkId = await knex("artwork")
-		.where({ name: artwork.id })
+		.where({ insert_id: artwork.id })
 		.pluck("id");
 
 	// Insert and delete keywords and images.
