@@ -385,8 +385,8 @@ function putDocument(req, res) {
 	}
 
 	insertDocument(document)
-		.catch((error) => res.status(500).json({error}))
-		.then(() => res.json({ response: "created" }));
+		.then(() => res.json({ response: "created" }))
+		.catch((error) => res.status(500).json({ error }));
 }
 
 function processImages(images) {
@@ -428,8 +428,8 @@ function postDocument(req, res) {
 	}
 
 	updateDocument(document)
-		.catch(error => res.status(500).json({ error }))
-		.then(res.json({ response: "updated" }));
+		.then(() => res.json({ response: "updated" }))
+		.catch(error => res.status(500).json({ error }));
 }
 
 /**
