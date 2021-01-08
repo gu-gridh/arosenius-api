@@ -65,19 +65,15 @@ async function updateDocument(artwork) {
 
 	// Insert and delete keywords and images.
 	async function updateKeywords(field, type) {
-		const rows = await knex("keyword")
-			.pluck("name")
-			.where({ artwork: artworkId, type });
-		const inserts = (artwork[field] || [])
-			.filter(x => !rows.includes(x))
-			.map(name => knex("keyword").insert({ artwork: artworkId, type, name }));
-		const deletes = rows
-			.filter(x => !artwork[field].includes(x))
-			.map(name =>
-				knex("keyword").where({ artwork: artworkId, type, name }).delete()
-			);
-		// Return a promise of the promises.
-		return Promise.all(inserts.concat(deletes));
+		const keywords = (artwork[field] || [])
+			.map(name => name.trim())
+			.filter(Boolean);
+		// Delete exisiting keywords to ensure they are stored in order.
+		await knex("keyword").where({ artwork: artworkId, type }).delete();
+		// Insert new list.
+		return knex("keyword").insert(
+			keywords.map(name => ({ artwork: artworkId, type, name }))
+		);
 	}
 
 	return await Promise.all([
@@ -243,7 +239,7 @@ async function loadDocuments(insert_ids, includeInternalId = false) {
 	// Load all associated records at once to reduce the amount of MySQL queries.
 	const [imagesAll, keywordsAll] = await Promise.all([
 		knex("image").whereIn("artwork", ids).orderBy("order", "asc"),
-		knex("keyword").whereIn("artwork", ids)
+		knex("keyword").whereIn("artwork", ids).orderBy("id", "asc")
 	]);
 	// Re-associate each image and keyword to their corresponding artwork objects.
 	return artworks.map(artwork => {

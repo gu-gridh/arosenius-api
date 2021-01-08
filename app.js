@@ -438,7 +438,10 @@ function postDocument(req, res) {
 
 	updateDocument(document)
 		.then(() => res.json({ response: "updated" }))
-		.catch(error => res.status(500).json({ error }));
+		.catch(error => {
+			console.error(error);
+			res.status(500).json({ error });
+		});
 }
 
 /**
