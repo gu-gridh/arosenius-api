@@ -221,7 +221,7 @@ async function updateImages(artworkId, images) {
 /** Load a document from the database and format it. */
 async function loadDocuments(insert_ids, includeInternalId = false) {
 	// Convert legacy ids (aka names) to insert_id, e.g. "PRIV-4844" to "4844"
-	insert_ids = insert_ids.map(id => id.replace(/[A-Za-z]+-/, ''))
+	insert_ids = insert_ids.map(id => id.replace(/[A-Za-z]+-/, ""));
 	const artworks = await knex("artwork")
 		.leftJoin({ sender: "person" }, "artwork.sender", "sender.id")
 		.leftJoin({ recipient: "person" }, "artwork.recipient", "recipient.id")
@@ -235,7 +235,10 @@ async function loadDocuments(insert_ids, includeInternalId = false) {
 			recipient_death_year: "recipient.death_year"
 		})
 		.whereIn("artwork.insert_id", insert_ids)
-		.orderByRaw("FIND_IN_SET(??, ?)", ["artwork.insert_id", insert_ids.join(",")]);
+		.orderByRaw("FIND_IN_SET(??, ?)", [
+			"artwork.insert_id",
+			insert_ids.join(",")
+		]);
 	const ids = artworks.map(artwork => artwork.id);
 	// Load all associated records at once to reduce the amount of MySQL queries.
 	const [imagesAll, keywordsAll] = await Promise.all([
@@ -263,9 +266,15 @@ async function loadDocuments(insert_ids, includeInternalId = false) {
 			birth_year: artwork.recipient_birth_year,
 			death_year: artwork.recipient_death_year
 		};
-		const document = formatDocument({artwork, images, keywords, sender, recipient})
+		const document = formatDocument({
+			artwork,
+			images,
+			keywords,
+			sender,
+			recipient
+		});
 		if (includeInternalId) document._id = artwork.id;
-		return document
+		return document;
 	});
 }
 
@@ -356,7 +365,9 @@ function formatDocument({ artwork, images, keywords, sender, recipient }) {
 }
 
 async function deleteDocuments(insert_ids) {
-	const ids = await knex("artwork").pluck("id").where("insert_id", "in", insert_ids);
+	const ids = await knex("artwork")
+		.pluck("id")
+		.where("insert_id", "in", insert_ids);
 	await Promise.all([
 		knex("artwork").delete().where("id", "in", ids),
 		knex("image").delete().where("artwork", "in", ids),

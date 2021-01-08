@@ -1,5 +1,3 @@
 module.exports = {
-	users: [
-		['USERNAME', 'PASSWORD'],
-	]
+	users: [["USERNAME", "PASSWORD"]]
 };

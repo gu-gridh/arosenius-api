@@ -1,11 +1,11 @@
-var express = require('express');
-var bodyParser = require('body-parser');
-var _ = require('underscore');
-var IMGR = require('imgr').IMGR;
-var fs = require('fs');
-var path = require('path');
+var express = require("express");
+var bodyParser = require("body-parser");
+var _ = require("underscore");
+var IMGR = require("imgr").IMGR;
+var fs = require("fs");
+var path = require("path");
 
-var config = require('./config');
+var config = require("./config");
 var {
 	insertDocument,
 	updateDocument,
@@ -15,73 +15,80 @@ var {
 } = require("./document");
 
 var app = express();
-var auth = require('basic-auth')
-var busboy = require('connect-busboy');
+var auth = require("basic-auth");
+var busboy = require("connect-busboy");
 
-var knex = require('knex')({
-	client: 'mysql',
+var knex = require("knex")({
+	client: "mysql",
 	// debug: true,
-	connection: config.mysql,
-})
+	connection: config.mysql
+});
 
 function authenticate(user) {
-	var users = require('./users').users;
+	var users = require("./users").users;
 
 	if (user) {
-		var foundUser = _.find(users, function(u) {
-			return u[0] == user['name'] && u[1] == user['pass'];
+		var foundUser = _.find(users, function (u) {
+			return u[0] == user["name"] && u[1] == user["pass"];
 		});
 
 		return foundUser !== undefined;
-	}
-	else {
+	} else {
 		return false;
 	}
 }
 
 app.use(busboy());
 
-var auth = require('basic-auth');
+var auth = require("basic-auth");
 
 // Check to see if requesting the /admin part of the API, if so, request authentication
-app.use(function(req, res, next) {
+app.use(function (req, res, next) {
 	var user = auth(req);
 
-	if (req.path.substr(0, 7).toLowerCase() != '/admin/') {
+	if (req.path.substr(0, 7).toLowerCase() != "/admin/") {
 		next();
-	}
-	else if (user && authenticate(user)) {
+	} else if (user && authenticate(user)) {
 		next();
-	}
-	else {
-		res.setHeader('WWW-Authenticate', 'Basic realm="AroseniusAdminApi"');
-		res.header('Access-Control-Allow-Origin', '*');
-		res.header('Access-Control-Allow-Methods', 'GET,HEAD,OPTIONS,POST,PUT')
-		res.header('Access-Control-Allow-Headers', 'Authorization,Access-Control-Allow-Headers,Origin,Accept,X-Requested-With,Content-Type,Access-Control-Request-Method,Access-Control-Allow-Headers')
-		res.end('Unauthorized');
+	} else {
+		res.setHeader("WWW-Authenticate", 'Basic realm="AroseniusAdminApi"');
+		res.header("Access-Control-Allow-Origin", "*");
+		res.header("Access-Control-Allow-Methods", "GET,HEAD,OPTIONS,POST,PUT");
+		res.header(
+			"Access-Control-Allow-Headers",
+			"Authorization,Access-Control-Allow-Headers,Origin,Accept,X-Requested-With,Content-Type,Access-Control-Request-Method,Access-Control-Allow-Headers"
+		);
+		res.end("Unauthorized");
 	}
 });
 
-app.use(bodyParser.urlencoded({
-	extended: false
-}));
+app.use(
+	bodyParser.urlencoded({
+		extended: false
+	})
+);
 
-app.use(bodyParser.json({
-	limit: '2mb'
-}));
+app.use(
+	bodyParser.json({
+		limit: "2mb"
+	})
+);
 
-app.all('*', function(req, res, next) {
-	res.header('Access-Control-Allow-Origin', '*');
-	res.header('Access-Control-Allow-Methods', 'GET,HEAD,OPTIONS,POST,PUT')
-	res.header('Access-Control-Allow-Headers', 'Authorization,Access-Control-Allow-Headers,Origin,Accept,X-Requested-With,Content-Type,Access-Control-Request-Method,Access-Control-Allow-Headers')
+app.all("*", function (req, res, next) {
+	res.header("Access-Control-Allow-Origin", "*");
+	res.header("Access-Control-Allow-Methods", "GET,HEAD,OPTIONS,POST,PUT");
+	res.header(
+		"Access-Control-Allow-Headers",
+		"Authorization,Access-Control-Allow-Headers,Origin,Accept,X-Requested-With,Content-Type,Access-Control-Request-Method,Access-Control-Allow-Headers"
+	);
 	next();
 });
 
 function adminLogin(req, res) {
 	res.json({
-		login: 'success'
+		login: "success"
 	});
-};
+}
 
 /**
  * @api {get} /documents?params
@@ -131,8 +138,8 @@ function adminLogin(req, res) {
  *
  */
 function adminGetDocuments(req, res) {
-	req.query.showUnpublished = true
-	req.query.showDeleted = true
+	req.query.showUnpublished = true;
+	req.query.showDeleted = true;
 	getDocuments(req, res);
 }
 
@@ -142,7 +149,7 @@ async function search(params, options = {}) {
 
 	// Ensure a table join for a keyword type.
 	const keywordsJoined = [];
-	const joinKeyword = (type) => {
+	const joinKeyword = type => {
 		if (keywordsJoined.includes(type)) return;
 		query.leftJoin(
 			{ [`kw${type}`]: "keyword" },
@@ -150,26 +157,29 @@ async function search(params, options = {}) {
 				[`kw${type}.type`]: knex.raw(`'${type}'`),
 				[`kw${type}.artwork`]: "artwork.id"
 			}
-		)
-		keywordsJoined.push(type)
+		);
+		keywordsJoined.push(type);
 	};
 
 	// For other keyword types, join if necessary.
 	const keywordTypes = ["type", "genre", "tag", "person", "place"];
 	keywordTypes.forEach(keywordType => {
 		// Interpret "tags" like "tag".
-		const value = params[keywordType] || params[`${keywordType}s`]
+		const value = params[keywordType] || params[`${keywordType}s`];
 		if (value) {
 			// Multiple tags of same type (AND) can be separated by semicolon.
-			value.split(';').forEach((val, i) => {
+			value.split(";").forEach((val, i) => {
 				// Join with the keyword table once for every required keyword.
-				const joinName = `kw_${keywordType}_${i}`
-				query.leftJoin({ [joinName]: "keyword" }, {
-					[`${joinName}.type`]: knex.raw(`'${keywordType}'`),
-					[`${joinName}.artwork`]: "artwork.id"
-				})
+				const joinName = `kw_${keywordType}_${i}`;
+				query.leftJoin(
+					{ [joinName]: "keyword" },
+					{
+						[`${joinName}.type`]: knex.raw(`'${keywordType}'`),
+						[`${joinName}.artwork`]: "artwork.id"
+					}
+				);
 				query.where(`${joinName}.name`, val);
-			})
+			});
 		}
 	});
 	if (!params.showUnpublished) {
@@ -188,7 +198,7 @@ async function search(params, options = {}) {
 		query.where("bundle", "like", `${params.bundle}%`);
 	}
 	if (params.year) {
-		query.where(knex.raw("substring(date, 1, 4) = ?", [params.year]))
+		query.where(knex.raw("substring(date, 1, 4) = ?", [params.year]));
 	}
 	if (params.archivematerial) {
 		// Join with the keyword table to find out if type has either Fotografi or Konstverk.
@@ -257,7 +267,7 @@ async function search(params, options = {}) {
 	} else {
 		query.select({ search_score: 0 });
 	}
-	
+
 	// Determine sorting.
 	if (params.sort === "insert_id") {
 		query.select("insert_id").orderBy("insert_id", "asc");
@@ -340,7 +350,7 @@ function getDocuments(req, res) {
 						return doc;
 					})
 				})
-			)
+			);
 		});
 	}
 }
@@ -351,7 +361,7 @@ async function putCombineDocuments(req, res) {
 
 	const documents = await loadDocuments(ids, true);
 	// Find the internal SQL ID of the artwork to keep.
-	const keepId = documents.find(d => d.id === keep)._id
+	const keepId = documents.find(d => d.id === keep)._id;
 
 	// Abort if all documents are not found.
 	if (ids.length != documents.length) {
@@ -386,36 +396,35 @@ function putDocument(req, res) {
 
 	insertDocument(document)
 		.then(() => res.json({ response: "created" }))
-		.catch((error) => res.status(500).json({ error }));
+		.catch(error => res.status(500).json({ error }));
 }
 
 function processImages(images) {
-	images = images.filter(image => image.image)
+	images = images.filter(image => image.image);
 
-	images = _.sortBy(images, function(image) {
-		return image.page && Number(image.page.order) || 0;
+	images = _.sortBy(images, function (image) {
+		return (image.page && Number(image.page.order)) || 0;
 	});
 
-	images = images.map(function(image) {
-		image.imagesize = imageSize(config.image_path+'/'+image.image+'.jpg')
+	images = images.map(function (image) {
+		image.imagesize = imageSize(config.image_path + "/" + image.image + ".jpg");
 		return image;
 	});
 
 	return images;
 }
 
-var sizeOf = require('image-size');
+var sizeOf = require("image-size");
 
 function imageSize(path) {
 	try {
-		return sizeOf(path)
-	}
-	catch (e) {
+		return sizeOf(path);
+	} catch (e) {
 		// The buffer read by image-size is too small sometimes.
 		// Try again with the entire file.
 		// See https://github.com/image-size/image-size/issues/96
-		var buffer = fs.readFileSync(path)
-		console.warn('image-size buffer to small, had to read entire ' + path)
+		var buffer = fs.readFileSync(path);
+		console.warn("image-size buffer to small, had to read entire " + path);
 		return sizeOf(buffer);
 	}
 }
@@ -467,12 +476,14 @@ function postDocument(req, res) {
 function getDocument(req, res) {
 	var query = [];
 	if (req.query.museum) {
-		query.push('collection.museum: "'+req.query.museum+'"');
+		query.push('collection.museum: "' + req.query.museum + '"');
 	}
-	
-	loadDocuments([req.params.id]).then(docs => res.json({
-		data: docs.length ? docs[0] : undefined
-	}))
+
+	loadDocuments([req.params.id]).then(docs =>
+		res.json({
+			data: docs.length ? docs[0] : undefined
+		})
+	);
 }
 
 function getMuseums(req, res) {
@@ -527,7 +538,10 @@ function getGenres(req, res) {
 function getTagCloud(req, res) {
 	Promise.all([
 		knex("keyword")
-			.select({ type: knex.raw("IF(type = 'tag', 'tags', type)"), value: "name" })
+			.select({
+				type: knex.raw("IF(type = 'tag', 'tags', type)"),
+				value: "name"
+			})
 			.whereNot("type", "type")
 			.whereNotIn("name", ["GKMs diabildssamling", "Skepplandamaterialet"])
 			.count({ doc_count: "id" })
@@ -544,9 +558,11 @@ function getTagCloud(req, res) {
 }
 
 function getPagetypes(req, res) {
-	knex('image').distinct('side').then(rows => {
-		res.json(rows.filter(row => row.side).map(row => ({value: row.side})))
-	})
+	knex("image")
+		.distinct("side")
+		.then(rows => {
+			res.json(rows.filter(row => row.side).map(row => ({ value: row.side })));
+		});
 }
 
 function getExhibitions(req, res) {
@@ -576,7 +592,7 @@ function getExhibitions(req, res) {
 
 /** Search like getDocuments, but summarize as count per year. */
 function getYearRange(req, res) {
-	search(req.query, {noSort: true}).then(names => {
+	search(req.query, { noSort: true }).then(names => {
 		knex("artwork")
 			.whereIn("name", names)
 			.whereNotNull("date")
@@ -590,57 +606,57 @@ function getYearRange(req, res) {
 }
 
 function getAutoComplete(req, res) {
-  const terms = req.query.search.toLowerCase().split(" ");
+	const terms = req.query.search.toLowerCase().split(" ");
 
-  Promise.all([
-    knex("artwork")
-      .select(["insert_id", "title"])
-      .where(function () {
-        terms.forEach(term => this.where("title", "like", `%${term}%`));
-      }),
-    knex("keyword")
-      .select({ type: "type", key: "name" })
-      .where(function () {
-        terms.forEach(term => this.where("name", "like", `%${term}%`));
-      })
-      .count({ doc_count: "id" })
-      .groupBy(["type", "name"]),
-    knex("artwork")
-      .select({ key: "museum" })
-      .where(function () {
-        terms.forEach(term => this.where("museum", "like", `%${term}%`));
-      })
-      .count({ doc_count: "id" })
-      .groupBy(["museum"])
-  ]).then(([titleSearch, keywordCounts, museumCounts]) => {
-    const titleCounts = _.mapObject(
-      _.groupBy(titleSearch, "title"),
-      (items, title) => ({ key: title, doc_count: items.length })
-    );
-    function formatKeywordCounts(type) {
-      return keywordCounts
-        .filter(row => row.type === type)
-        .map(row => _.omit(row, "type"));
-    }
-    res.json({
-      documents: titleSearch
-        .slice(0, 10)
-        .map(row => ({ key: row.title, id: row.insert_id })),
-      titles: Object.values(titleCounts),
-      tags: formatKeywordCounts("tag"),
-      persons: formatKeywordCounts("person"),
-      places: formatKeywordCounts("place"),
-      genre: formatKeywordCounts("genre"),
-      type: formatKeywordCounts("type"),
-      museum: museumCounts
-    });
-  });
+	Promise.all([
+		knex("artwork")
+			.select(["insert_id", "title"])
+			.where(function () {
+				terms.forEach(term => this.where("title", "like", `%${term}%`));
+			}),
+		knex("keyword")
+			.select({ type: "type", key: "name" })
+			.where(function () {
+				terms.forEach(term => this.where("name", "like", `%${term}%`));
+			})
+			.count({ doc_count: "id" })
+			.groupBy(["type", "name"]),
+		knex("artwork")
+			.select({ key: "museum" })
+			.where(function () {
+				terms.forEach(term => this.where("museum", "like", `%${term}%`));
+			})
+			.count({ doc_count: "id" })
+			.groupBy(["museum"])
+	]).then(([titleSearch, keywordCounts, museumCounts]) => {
+		const titleCounts = _.mapObject(
+			_.groupBy(titleSearch, "title"),
+			(items, title) => ({ key: title, doc_count: items.length })
+		);
+		function formatKeywordCounts(type) {
+			return keywordCounts
+				.filter(row => row.type === type)
+				.map(row => _.omit(row, "type"));
+		}
+		res.json({
+			documents: titleSearch
+				.slice(0, 10)
+				.map(row => ({ key: row.title, id: row.insert_id })),
+			titles: Object.values(titleCounts),
+			tags: formatKeywordCounts("tag"),
+			persons: formatKeywordCounts("person"),
+			places: formatKeywordCounts("place"),
+			genre: formatKeywordCounts("genre"),
+			type: formatKeywordCounts("type"),
+			museum: museumCounts
+		});
+	});
 }
 
 function getImageFileList(req, res) {
-	fs.readdir(config.image_path, function(err, files) {
+	fs.readdir(config.image_path, function (err, files) {
 		var fileList = [];
-		files.forEach(function(file) {
+		files.forEach(function (file) {
 			if (!fs.lstatSync(path.join(config.image_path, file)).isDirectory()) {
 				fileList.push({
 					file: file
@@ -649,18 +665,18 @@ function getImageFileList(req, res) {
 		});
 
 		res.json(fileList);
-	})
+	});
 }
 
 function postImageUpload(req, res) {
 	var fstream;
 	req.pipe(req.busboy);
-	req.busboy.on('file', function (fieldname, file, filename) {
-		fstream = fs.createWriteStream(config.image_path+'/'+filename);
+	req.busboy.on("file", function (fieldname, file, filename) {
+		fstream = fs.createWriteStream(config.image_path + "/" + filename);
 		file.pipe(fstream);
-		fstream.on('close', function () {    
+		fstream.on("close", function () {
 			res.json({
-				success: 'file uploaded',
+				success: "file uploaded",
 				filename: filename
 			});
 		});
@@ -671,45 +687,46 @@ var imgr = new IMGR({
 	cache_dir: config.image_temp_path
 });
 
-imgr.serve(config.image_path)
-	.namespace('/images')
-	.urlRewrite('/:path/:size/:file.:ext')
+imgr
+	.serve(config.image_path)
+	.namespace("/images")
+	.urlRewrite("/:path/:size/:file.:ext")
 	.using(app);
 
 const urlRoot = config.urlRoot;
 
-app.use(express.static(__dirname + '/documentation'));
+app.use(express.static(__dirname + "/documentation"));
 
-app.get(urlRoot+'/documents', getDocuments);
-app.get(urlRoot+'/document/:id', getDocument);
-app.get(urlRoot+'/museums', getMuseums);
-app.get(urlRoot+'/types', getTypes);
-app.get(urlRoot+'/tags', getTags);
-app.get(urlRoot+'/tags/cloud', getTagCloud);
-app.get(urlRoot+'/pagetypes', getPagetypes);
-app.get(urlRoot+'/persons', getPersons);
-app.get(urlRoot+'/places', getPlaces);
-app.get(urlRoot+'/genres', getGenres);
-app.get(urlRoot+'/exhibitions', getExhibitions);
+app.get(urlRoot + "/documents", getDocuments);
+app.get(urlRoot + "/document/:id", getDocument);
+app.get(urlRoot + "/museums", getMuseums);
+app.get(urlRoot + "/types", getTypes);
+app.get(urlRoot + "/tags", getTags);
+app.get(urlRoot + "/tags/cloud", getTagCloud);
+app.get(urlRoot + "/pagetypes", getPagetypes);
+app.get(urlRoot + "/persons", getPersons);
+app.get(urlRoot + "/places", getPlaces);
+app.get(urlRoot + "/genres", getGenres);
+app.get(urlRoot + "/exhibitions", getExhibitions);
 
-app.get(urlRoot+'/next/:insert_id', getNextId);
-app.get(urlRoot+'/prev/:insert_id', getPrevId);
-app.get(urlRoot+'/highest_insert_id', getHighestId);
+app.get(urlRoot + "/next/:insert_id", getNextId);
+app.get(urlRoot + "/prev/:insert_id", getPrevId);
+app.get(urlRoot + "/highest_insert_id", getHighestId);
 
-app.get(urlRoot+'/autocomplete', getAutoComplete);
+app.get(urlRoot + "/autocomplete", getAutoComplete);
 
-app.get(urlRoot+'/year_range', getYearRange);
+app.get(urlRoot + "/year_range", getYearRange);
 
-app.get(urlRoot+'/admin/login', adminLogin);
-app.put(urlRoot+'/admin/documents/combine', putCombineDocuments);
-app.get(urlRoot+'/admin/documents', adminGetDocuments);
-app.put('/admin/document/:id', putDocument);
-app.post('/admin/document/:id', postDocument);
-app.get('/admin/document/:id', getDocument);
-app.get('/admin/museums', getMuseums);
-app.get('/image_file_list', getImageFileList);
-app.post('/admin/upload', postImageUpload);
+app.get(urlRoot + "/admin/login", adminLogin);
+app.put(urlRoot + "/admin/documents/combine", putCombineDocuments);
+app.get(urlRoot + "/admin/documents", adminGetDocuments);
+app.put("/admin/document/:id", putDocument);
+app.post("/admin/document/:id", postDocument);
+app.get("/admin/document/:id", getDocument);
+app.get("/admin/museums", getMuseums);
+app.get("/image_file_list", getImageFileList);
+app.post("/admin/upload", postImageUpload);
 
 app.listen(config.port || 3010, function () {
-  console.log('Arosenius project API');
+	console.log("Arosenius project API");
 });
