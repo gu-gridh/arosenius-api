@@ -102,7 +102,7 @@ async function ensurePerson(person) {
 function formatArtworkRow(artwork) {
 	return {
 		insert_id: artwork.insert_id,
-		name: artwork.id,
+		name: artwork.insert_id,
 		title: artwork.title,
 		title_en: artwork.title_en,
 		subtitle: artwork.subtitle,
@@ -216,8 +216,8 @@ async function updateImages(artworkId, images) {
 
 /** Load a document from the database and format it. */
 async function loadDocuments(insert_ids, includeInternalId = false) {
-	// Convert legacy ids (aka names) to insert_id, e.g. "PRIV-4844" to "4844"
-	insert_ids = insert_ids.map(id => id.replace(/[A-Za-z]+-/, ""));
+	// Convert legacy ids.
+	insert_ids = insert_ids.map(parseId);
 	const artworks = await knex("artwork")
 		.leftJoin({ sender: "person" }, "artwork.sender", "sender.id")
 		.leftJoin({ recipient: "person" }, "artwork.recipient", "recipient.id")
@@ -369,6 +369,19 @@ async function deleteDocuments(insert_ids) {
 		knex("image").delete().where("artwork", "in", ids),
 		knex("keyword").delete().where("artwork", "in", ids)
 	]);
+}
+
+/**
+ * Convert legacy ids (aka names) to insert_id, e.g. "PRIV-4844" to "4844".
+ *
+ * We used to build ids from a museum code (e.g. PRIV, GUB) and the insert_id,
+ * but abolished that in Jan 2021 since the owners of the artworks may change.
+ * As legacy ids may still be around in links from external sites, any incoming
+ * id should be converted to the insert_id form.
+ * This function takes both forms and normalizes to the latter.
+ */
+function parseId(id) {
+	return id.replace(/[A-Za-z]+-/, "");
 }
 
 /**
