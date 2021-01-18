@@ -161,8 +161,8 @@ async function search(params, options = {}) {
 		keywordsJoined.push(type);
 	};
 
-	// For other keyword types, join if necessary.
-	const keywordTypes = ["type", "genre", "tag", "person", "place"];
+	// Join keyword types if necessary.
+	const keywordTypes = ["type", "genre", "tag", "person", "place", "series"];
 	keywordTypes.forEach(keywordType => {
 		// Interpret "tags" like "tag".
 		const value = params[keywordType] || params[`${keywordType}s`];
@@ -231,7 +231,8 @@ async function search(params, options = {}) {
 			"kwgenre.name": 1.0,
 			"kwtag.name": 0.1,
 			"kwplace.name": 0.1,
-			"kwperson.name": 0.1
+			"kwperson.name": 0.1,
+			"kwseries.name": 0.1
 		};
 
 		// Build expressions for scoring by regexp.
@@ -269,8 +270,9 @@ async function search(params, options = {}) {
 	}
 
 	// Determine sorting.
-	if (params.sort === "insert_id") {
-		query.select("insert_id").orderBy("insert_id", "asc");
+	const sortFields = ["insert_id", "title", "item_date_string"];
+	if (sortFields.includes(params.sort)) {
+		query.select(params.sort).orderBy(params.sort, "asc");
 	} else if (!options.noSort) {
 		const sortGenres = ["Målning", "Teckning", "Skiss"];
 		// Join the keyword table (again) specifically to find out whether these keywords are present.
@@ -538,6 +540,10 @@ function getGenres(req, res) {
 	keywordList(req, res, "genre");
 }
 
+function getSeries(req, res) {
+	keywordList(req, res, "series");
+}
+
 function getTagCloud(req, res) {
 	Promise.all([
 		knex("keyword")
@@ -651,6 +657,7 @@ function getAutoComplete(req, res) {
 			places: formatKeywordCounts("place"),
 			genre: formatKeywordCounts("genre"),
 			type: formatKeywordCounts("type"),
+			series: formatKeywordCounts("series"),
 			museum: museumCounts
 		});
 	});
@@ -710,6 +717,7 @@ app.get(urlRoot + "/pagetypes", getPagetypes);
 app.get(urlRoot + "/persons", getPersons);
 app.get(urlRoot + "/places", getPlaces);
 app.get(urlRoot + "/genres", getGenres);
+app.get(urlRoot + "/series", getSeries);
 app.get(urlRoot + "/exhibitions", getExhibitions);
 
 app.get(urlRoot + "/next/:insert_id", getNextId);

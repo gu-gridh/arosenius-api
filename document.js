@@ -42,6 +42,7 @@ async function insertDocument(artwork) {
 		insertKeyword("tags", "tag"),
 		insertKeyword("persons", "person"),
 		insertKeyword("places", "place"),
+		insertKeyword("series", "series"),
 		...artwork.images.map(image =>
 			knex("image").insert(formatImageRow(artworkId, image))
 		)
@@ -82,6 +83,7 @@ async function updateDocument(artwork) {
 		updateKeywords("tags", "tag"),
 		updateKeywords("persons", "person"),
 		updateKeywords("places", "place"),
+		updateKeywords("series", "series"),
 		updateImages(artworkId, artwork.images)
 	]);
 }
@@ -338,6 +340,7 @@ function formatDocument({ artwork, images, keywords, sender, recipient }) {
 		persons: keywords.person,
 		places: keywords.place,
 		genre: keywords.genre,
+		series: keywords.series,
 		exhibitions: artwork.exhibitions
 			? JSON.parse(artwork.exhibitions).map(
 					({ location, year }) => `${location}|${year}`
