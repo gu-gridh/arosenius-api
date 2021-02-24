@@ -665,16 +665,12 @@ function getAutoComplete(req, res) {
 
 function getImageFileList(req, res) {
 	fs.readdir(config.image_path, function (err, files) {
-		var fileList = [];
-		files.forEach(function (file) {
-			if (!fs.lstatSync(path.join(config.image_path, file)).isDirectory()) {
-				fileList.push({
-					file: file
-				});
-			}
-		});
-
-		res.json(fileList);
+		// Skip subdirectories. stat/lstat was more correct but was too slow after the move to Forskarlagringen.
+		res.json(
+			files
+				.filter(filename => filename.indexOf(".") > 0)
+				.map(file => ({ file }))
+		);
 	});
 }
 
@@ -739,5 +735,5 @@ app.get("/image_file_list", getImageFileList);
 app.post("/admin/upload", postImageUpload);
 
 app.listen(config.port || 3010, function () {
-	console.log("Arosenius project API");
+	console.log("Arosenius project API: http://localhost:" + config.port || 3010);
 });
