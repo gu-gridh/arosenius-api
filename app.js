@@ -678,6 +678,8 @@ function postImageUpload(req, res) {
 	var fstream;
 	req.pipe(req.busboy);
 	req.busboy.on("file", function (fieldname, file, filename) {
+		// Standardize to ".jpg"
+		filename = filename.replace(/jpe?g$/i, "jpg");
 		fstream = fs.createWriteStream(config.image_path + "/" + filename);
 		file.pipe(fstream);
 		fstream.on("close", function () {
