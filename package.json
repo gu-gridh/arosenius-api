@@ -9,20 +9,20 @@
   "author": "Trausti Dagsson/CDH",
   "license": "ISC",
   "dependencies": {
-    "basic-auth": "^2.0.0",
-    "body-parser": "^1.15.2",
+    "basic-auth": "^2.0.1",
+    "body-parser": "^1.19.0",
     "connect-busboy": "0.0.2",
-    "cookie-parser": "^1.4.3",
-    "express": "^4.13.4",
-    "express-session": "^1.15.6",
+    "cookie-parser": "^1.4.5",
+    "express": "^4.17.1",
+    "express-session": "^1.17.1",
     "image-size": "^0.6.3",
     "imgr": "^0.10.4",
     "knex": "0.19",
     "mysql": "^2.18.1",
-    "request": "^2.83.0",
-    "underscore": "^1.8.3"
+    "request": "^2.88.2",
+    "underscore": "^1.12.1"
   },
   "devDependencies": {
-    "apidoc": "^0.17.6"
+    "apidoc": "^0.17.7"
   }
 }
