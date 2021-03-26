@@ -17,7 +17,7 @@
     "express-session": "^1.15.6",
     "image-size": "^0.6.3",
     "imgr": "^0.10.4",
-    "knex": "0.17",
+    "knex": "0.19",
     "mysql": "^2.18.1",
     "request": "^2.83.0",
     "underscore": "^1.8.3"
