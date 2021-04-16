@@ -236,15 +236,18 @@ async function search(params, options = {}) {
 		};
 
 		// Build expressions for scoring by regexp.
-		const searchExprs = Object.keys(colScores).map(col =>
-			// Find term either in the beginning or following a space.
-			knex.raw("IF(?? LIKE ? OR ?? LIKE ?, ?, 0)", [
-				col,
-				`${params.search}%`,
-				col,
-				`% ${params.search}%`,
-				colScores[col]
-			])
+		// A list of lists: one list of conditions for each word in the search string.
+		const searchScores = params.search.split(/\s+/).map(word =>
+			Object.keys(colScores).map(col =>
+				// Find term either in the beginning or following a space.
+				knex.raw("IF(?? LIKE ? OR ?? LIKE ?, ?, 0)", [
+					col,
+					`${word}%`,
+					col,
+					`% ${word}%`,
+					colScores[col]
+				])
+			)
 		);
 
 		// Join all keyword types.
@@ -252,18 +255,16 @@ async function search(params, options = {}) {
 			joinKeyword(keywordType);
 		});
 
-		// Group conditions with OR: require a match in at least one of the fields.
-		query.where(function () {
-			searchExprs.forEach(expr => this.orWhere(expr, ">", 0));
-		});
+		// Helper for creating an arbitrary SUM() expression.
+		const sqlSum = exprs => knex.raw(exprs.map(() => "?").join("+"), exprs);
+
+		// Require positive score for each word.
+		searchScores.forEach(wordScores => query.where(sqlSum(wordScores), ">", 0));
 
 		// Sum up the score for sorting.
 		// Unfortunately, this alias cannot be re-used in the where-clause above, so the query gets very long.
 		query.select({
-			search_score: knex.raw(
-				searchExprs.map(() => "?").join(" + "),
-				searchExprs
-			)
+			search_score: sqlSum(searchScores.map(sqlSum))
 		});
 	} else {
 		query.select({ search_score: 0 });
