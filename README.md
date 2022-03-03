@@ -30,6 +30,13 @@ cp users.demo.js users.js
 node app.js
 ```
 
+During development, you can use [nodemon](https://www.npmjs.com/package/nodemon) to have the server restart whenever any source file is changed:
+
+```sh
+npm --global install nodemon
+nodemon app.js
+```
+
 ## Documentation
 
 The ApiDoc documentation in `documentation/` is _very incomplete and oudated_. Improve it or ignore it.

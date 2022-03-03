@@ -273,7 +273,16 @@ async function search(params, options = {}) {
 	// Determine sorting.
 	const sortFields = ["insert_id", "title", "item_date_string"];
 	if (sortFields.includes(params.sort)) {
-		query.select(params.sort).orderBy(params.sort, "asc");
+		// Special case for series.
+		if (params.sort == "title" && params.series) {
+			// Put "A2" before "A10". Will also put "B" before "AA", which is why we only want this when
+			// filtering by series, where we can assume that titles will be identical except for a number.
+			// E.g: "Lillans kattresa (2 av 32)"
+			query.select("title").orderByRaw("LENGTH(title), title");
+		}
+		else {
+			query.select(params.sort).orderBy(params.sort, "asc");
+		}
 	} else if (!options.noSort) {
 		const sortGenres = ["Målning", "Teckning", "Skiss"];
 		// Join the keyword table (again) specifically to find out whether these keywords are present.

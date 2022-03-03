@@ -4,6 +4,7 @@
   "description": "",
   "main": "app.js",
   "scripts": {
+    "dev": "nodemon app.js",
     "doc": "apidoc -f app.js -o documentation --line-ending LF"
   },
   "author": "Trausti Dagsson/CDH",
